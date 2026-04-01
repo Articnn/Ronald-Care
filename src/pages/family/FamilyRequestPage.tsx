@@ -73,8 +73,8 @@ export function FamilyRequestPage() {
         </div>
 
         <Button
-          onClick={() => {
-            createRequest({
+          onClick={async () => {
+            await createRequest({
               site: family.site,
               familyId: family.id,
               title: note.trim() || `Solicitud de ${type.toLowerCase()}`,

@@ -10,10 +10,12 @@ import authMe from './api/auth/me.js'
 import referralsIndex from './api/referrals/index.js'
 import referralsStatus from './api/referrals/status.js'
 import familiesCheckin from './api/families/checkin.js'
+import familiesIndex from './api/families/index.js'
 import familiesStatus from './api/families/status.js'
 import requestsIndex from './api/requests/index.js'
 import requestsAssign from './api/requests/assign.js'
 import requestsResolve from './api/requests/resolve.js'
+import requestsStatus from './api/requests/status.js'
 import tripsIndex from './api/trips/index.js'
 import tripsStart from './api/trips/start.js'
 import tripsFinish from './api/trips/finish.js'
@@ -21,6 +23,7 @@ import volunteersShifts from './api/volunteers/shifts.js'
 import volunteersCoverage from './api/volunteers/coverage.js'
 import inventoryStock from './api/inventory/stock.js'
 import inventoryMovements from './api/inventory/movements.js'
+import kioskStatus from './api/kiosk/status.js'
 import analyticsKpis from './api/analytics/kpis.js'
 import donorImpact from './api/donor/impact.js'
 import communityPosts from './api/community/posts.js'
@@ -37,12 +40,15 @@ const routes = {
   'GET /api/referrals': referralsIndex,
   'POST /api/referrals': referralsIndex,
   'PATCH /api/referrals/status': referralsStatus,
+  'GET /api/families': familiesIndex,
   'PATCH /api/families/checkin': familiesCheckin,
   'GET /api/families/status': familiesStatus,
+  'GET /api/kiosk/status': kioskStatus,
   'GET /api/requests': requestsIndex,
   'POST /api/requests': requestsIndex,
   'PATCH /api/requests/assign': requestsAssign,
   'PATCH /api/requests/resolve': requestsResolve,
+  'PATCH /api/requests/status': requestsStatus,
   'GET /api/trips': tripsIndex,
   'POST /api/trips': tripsIndex,
   'PATCH /api/trips/start': tripsStart,
@@ -66,7 +72,11 @@ const routes = {
 const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname
   const routeKey = `${req.method} ${pathname}`
-  const handler = routes[routeKey]
+  let handler = routes[routeKey]
+
+  if (!handler && req.method === 'OPTIONS') {
+    handler = Object.entries(routes).find(([key]) => key.endsWith(` ${pathname}`))?.[1]
+  }
 
   if (!handler) {
     res.statusCode = 404

@@ -68,10 +68,10 @@ export function StaffRequestsPage() {
           <Input label="Comentario (opcional)" value={optionalWindow} onChange={(event) => setOptionalWindow(event.target.value)} />
         </div>
         <Button
-          onClick={() => {
+          onClick={async () => {
             const family = families.find((item) => item.id === familyId)
             if (!family) return
-            createRequest({
+            await createRequest({
               site: family.site,
               familyId: family.id,
               title: title.trim() || `Solicitud de ${type.toLowerCase()}`,
@@ -107,9 +107,9 @@ export function StaffRequestsPage() {
             </div>
             <p className="text-warm-700">{request.priority.reason}</p>
             <div className="flex flex-wrap gap-2">
-              {request.status === 'Nueva' ? <button className="rounded-xl bg-warm-100 px-4 py-2 font-semibold text-warm-900" onClick={() => updateRequestStatus(request.id, 'Asignada')}>Asignar</button> : null}
-              {request.status === 'Asignada' ? <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={() => updateRequestStatus(request.id, 'En proceso')}>Iniciar</button> : null}
-              {request.status !== 'Resuelta' ? <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={() => updateRequestStatus(request.id, 'Resuelta')}>Resolver</button> : null}
+              {request.status === 'Nueva' ? <button className="rounded-xl bg-warm-100 px-4 py-2 font-semibold text-warm-900" onClick={async () => updateRequestStatus(request.id, 'Asignada')}>Asignar</button> : null}
+              {request.status === 'Asignada' ? <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={async () => updateRequestStatus(request.id, 'En proceso')}>Iniciar</button> : null}
+              {request.status !== 'Resuelta' ? <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={async () => updateRequestStatus(request.id, 'Resuelta')}>Resolver</button> : null}
             </div>
           </Card>
         ))}

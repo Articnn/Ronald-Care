@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 import { SectionHeader } from '../../components/ui/SectionHeader'
@@ -7,12 +8,22 @@ import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 
 export function KioskPage() {
-  const { easyRead, families, referrals, requests, trips, toggleEasyRead, setCurrentFamily, setRole } = useAppState()
+  const {
+    authError,
+    clearKioskStatus,
+    easyRead,
+    isSyncing,
+    kioskStatus,
+    lookupFamilyStatus,
+    toggleEasyRead,
+    setCurrentFamily,
+    setRole,
+  } = useAppState()
   const [code, setCode] = useState('TKT-3481')
-  const family = useMemo(() => families.find((item) => item.kioskCode === code), [code, families])
-  const referral = referrals.find((item) => item.ticketCode === code)
-  const familyRequests = requests.filter((item) => item.familyId === family?.id)
-  const familyTrips = trips.filter((item) => item.familyId === family?.id)
+  const navigate = useNavigate()
+  const family = kioskStatus?.family || null
+  const familyRequests = kioskStatus?.requests || []
+  const familyTrips = kioskStatus?.trips || []
 
   return (
     <div className={`mx-auto max-w-3xl space-y-5 ${easyRead ? 'text-xl' : ''}`}>
@@ -22,11 +33,13 @@ export function KioskPage() {
           {easyRead ? 'Vista normal' : 'Lectura facil'}
         </button>
         <button
+          disabled={!family}
           className="rounded-2xl bg-warm-700 px-4 py-2 font-bold text-white"
           onClick={() => {
             if (family) {
               setCurrentFamily(family)
               setRole('family')
+              navigate('/family/status')
             }
           }}
         >
@@ -38,9 +51,29 @@ export function KioskPage() {
       </div>
       <Card className="space-y-4">
         <Input label="Codigo familia/ticket" value={code} onChange={(event) => setCode(event.target.value)} />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={isSyncing}
+            onClick={async () => {
+              await lookupFamilyStatus(code)
+            }}
+          >
+            {isSyncing ? 'Consultando...' : 'Consultar codigo'}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              clearKioskStatus()
+              setCode('')
+            }}
+          >
+            Limpiar
+          </Button>
+        </div>
+        {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <div className="rounded-2xl bg-warm-50 p-4">
           <p className="font-bold text-warm-900">Admision</p>
-          {family ? <StatusChip status={family.admissionStatus} /> : referral ? <StatusChip status="Pendiente" /> : <p className="text-warm-700">Codigo no encontrado.</p>}
+          {family ? <StatusChip status={family.admissionStatus} /> : <p className="text-warm-700">Ingresa un codigo para consultar.</p>}
         </div>
       </Card>
 

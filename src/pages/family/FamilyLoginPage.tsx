@@ -7,9 +7,9 @@ import { SectionHeader } from '../../components/ui/SectionHeader'
 import { useAppState } from '../../context/AppContext'
 
 export function FamilyLoginPage() {
-  const { families, setCurrentFamily, setRole } = useAppState()
+  const { authError, isSyncing, loginFamilyUser } = useAppState()
   const [qrCode, setQrCode] = useState('QR-FAM-3481')
-  const [pin, setPin] = useState('3481')
+  const [pin, setPin] = useState('Family3481!')
   const navigate = useNavigate()
 
   return (
@@ -18,18 +18,16 @@ export function FamilyLoginPage() {
       <Card className="space-y-4">
         <Input label="QR" value={qrCode} onChange={(event) => setQrCode(event.target.value)} />
         <Input label="PIN" value={pin} onChange={(event) => setPin(event.target.value)} />
+        {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <Button
           fullWidth
-          onClick={() => {
-            const match = families.find((item) => item.qrCode === qrCode && item.pin === pin)
-            if (match) {
-              setCurrentFamily(match)
-              setRole('family')
-              navigate('/family/status')
-            }
+          disabled={isSyncing}
+          onClick={async () => {
+            await loginFamilyUser(qrCode, pin)
+            navigate('/family/status')
           }}
         >
-          Ver mi estatus
+          {isSyncing ? 'Validando...' : 'Ver mi estatus'}
         </Button>
       </Card>
     </div>

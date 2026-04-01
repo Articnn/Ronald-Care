@@ -16,7 +16,11 @@ import type {
 
 const now = new Date().toISOString()
 
-export const sites = ['Casa Ronald McDonald Ciudad de Mexico', 'Puebla', 'Tlalnepantla']
+export const sites = [
+  'Casa Ronald McDonald Ciudad de Mexico',
+  'Casa Ronald McDonald Puebla',
+  'Casa Ronald McDonald Tlalnepantla',
+]
 
 export const initialReferrals: Referral[] = [
   {
@@ -35,7 +39,7 @@ export const initialReferrals: Referral[] = [
   {
     id: 'ref-1002',
     hospitalWorker: 'Trabajo Social Sur',
-    site: 'Puebla',
+    site: 'Casa Ronald McDonald Puebla',
     arrivalDate: '2026-03-12',
     companions: 1,
     logisticsNote: 'Ingreso vespertino, confirmar espacio.',
@@ -68,8 +72,8 @@ export const initialFamilies: FamilyProfile[] = [
 export const initialRooms: Room[] = [
   { id: 'room-1', site: 'Casa Ronald McDonald Ciudad de Mexico', label: 'A-12', capacity: 4, occupied: 3 },
   { id: 'room-2', site: 'Casa Ronald McDonald Ciudad de Mexico', label: 'B-03', capacity: 3, occupied: 1 },
-  { id: 'room-3', site: 'Puebla', label: 'C-18', capacity: 4, occupied: 4 },
-  { id: 'room-4', site: 'Tlalnepantla', label: 'D-07', capacity: 2, occupied: 1 },
+  { id: 'room-3', site: 'Casa Ronald McDonald Puebla', label: 'C-18', capacity: 4, occupied: 4 },
+  { id: 'room-4', site: 'Casa Ronald McDonald Tlalnepantla', label: 'D-07', capacity: 2, occupied: 1 },
 ]
 
 export const initialRequests: SupportRequest[] = [
@@ -102,7 +106,7 @@ export const initialRequests: SupportRequest[] = [
   },
   {
     id: 'req-3',
-    site: 'Puebla',
+    site: 'Casa Ronald McDonald Puebla',
     familyId: 'family-1',
     title: 'Apoyo de recepcion',
     type: 'Recepcion',

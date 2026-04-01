@@ -27,11 +27,11 @@ export function VolunteerRequestsPage() {
             <p className="text-warm-700">{request.priority.reason}</p>
             <div className="flex gap-2">
               {request.status === 'Nueva' || request.status === 'Asignada' ? (
-                <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={() => updateRequestStatus(request.id, 'En proceso')}>
+                <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={async () => updateRequestStatus(request.id, 'En proceso')}>
                   Tomar solicitud
                 </button>
               ) : null}
-              <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={() => updateRequestStatus(request.id, 'Resuelta')}>
+              <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={async () => updateRequestStatus(request.id, 'Resuelta')}>
                 Marcar resuelta
               </button>
             </div>

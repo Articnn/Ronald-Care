@@ -19,8 +19,8 @@ export function VolunteerTripsPage() {
             </div>
             <p className="text-warm-700">Turno {trip.shift} · duracion: {trip.durationMinutes ? `${trip.durationMinutes} min` : 'Sin finalizar'}</p>
             <div className="flex gap-2">
-              {trip.status === 'Pendiente' ? <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={() => startTrip(trip.id)}>Iniciar</button> : null}
-              {trip.status === 'En curso' ? <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={() => finishTrip(trip.id)}>Finalizar</button> : null}
+              {trip.status === 'Pendiente' ? <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={async () => startTrip(trip.id)}>Iniciar</button> : null}
+              {trip.status === 'En curso' ? <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={async () => finishTrip(trip.id)}>Finalizar</button> : null}
             </div>
           </Card>
         ))}

@@ -74,7 +74,7 @@ const roleLabels: Record<Exclude<Role, null>, string> = {
 }
 
 export function AppShell() {
-  const { role, site, easyRead, toggleEasyRead, setRole } = useAppState()
+  const { role, site, easyRead, toggleEasyRead, logout } = useAppState()
   const location = useLocation()
   const isDonorPublicView = !role && location.pathname.startsWith('/donor')
   const links = role ? navByRole[role] : isDonorPublicView ? donorPublicNav : publicNav
@@ -103,7 +103,7 @@ export function AppShell() {
               {easyRead ? 'Vista normal' : 'Lectura facil'}
             </Button>
             {role ? (
-              <Button variant="ghost" onClick={() => setRole(null)} className="text-base">
+              <Button variant="ghost" onClick={logout} className="text-base">
                 Salir
               </Button>
             ) : null}

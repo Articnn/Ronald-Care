@@ -39,7 +39,7 @@ export function StaffTripsPage() {
             Turno PM
           </button>
         </div>
-        <Button onClick={() => createTrip({ site, familyId, destination, assignedTo, shift })}>Crear viaje</Button>
+        <Button onClick={async () => createTrip({ site, familyId, destination, assignedTo, shift })}>Crear viaje</Button>
       </Card>
       <div className="grid gap-4">
         {trips.map((trip) => (
@@ -53,8 +53,8 @@ export function StaffTripsPage() {
             </div>
             <p className="text-warm-700">Duracion: {trip.durationMinutes ? `${trip.durationMinutes} min` : 'Sin finalizar'}</p>
             <div className="flex flex-wrap gap-2">
-              {trip.status === 'Pendiente' ? <Button variant="ghost" onClick={() => startTrip(trip.id)}>Iniciar viaje</Button> : null}
-              {trip.status === 'En curso' ? <Button variant="secondary" onClick={() => finishTrip(trip.id)}>Finalizar viaje</Button> : null}
+              {trip.status === 'Pendiente' ? <Button variant="ghost" onClick={async () => startTrip(trip.id)}>Iniciar viaje</Button> : null}
+              {trip.status === 'En curso' ? <Button variant="secondary" onClick={async () => finishTrip(trip.id)}>Finalizar viaje</Button> : null}
             </div>
           </Card>
         ))}
