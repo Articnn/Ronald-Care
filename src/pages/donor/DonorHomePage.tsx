@@ -1,5 +1,4 @@
 import { HeartHandshake, MapPinned } from 'lucide-react'
-import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { MetricCard } from '../../components/ui/MetricCard'
@@ -7,16 +6,15 @@ import { SectionHeader } from '../../components/ui/SectionHeader'
 import { useAppState } from '../../context/AppContext'
 
 export function DonorHomePage() {
-  const { setRole, referrals, requests, trips } = useAppState()
-
-  useEffect(() => {
-    setRole('donor')
-  }, [setRole])
+  const { referrals, requests, trips } = useAppState()
 
   const sites = [
-    { name: 'Monterrey', referrals: referrals.filter((item) => item.site === 'Monterrey').length },
-    { name: 'CDMX', referrals: referrals.filter((item) => item.site === 'CDMX').length },
-    { name: 'Guadalajara', referrals: referrals.filter((item) => item.site === 'Guadalajara').length },
+    {
+      name: 'Casa Ronald McDonald Ciudad de Mexico',
+      referrals: referrals.filter((item) => item.site === 'Casa Ronald McDonald Ciudad de Mexico').length,
+    },
+    { name: 'Puebla', referrals: referrals.filter((item) => item.site === 'Puebla').length },
+    { name: 'Tlalnepantla', referrals: referrals.filter((item) => item.site === 'Tlalnepantla').length },
   ]
 
   return (

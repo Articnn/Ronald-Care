@@ -16,13 +16,13 @@ import type {
 
 const now = new Date().toISOString()
 
-export const sites = ['Monterrey', 'CDMX', 'Guadalajara', 'Tijuana']
+export const sites = ['Casa Ronald McDonald Ciudad de Mexico', 'Puebla', 'Tlalnepantla']
 
 export const initialReferrals: Referral[] = [
   {
     id: 'ref-1001',
     hospitalWorker: 'Trabajo Social Norte',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     arrivalDate: '2026-03-11',
     companions: 2,
     logisticsNote: 'Llegada por autobus, requiere orientacion de acceso.',
@@ -35,7 +35,7 @@ export const initialReferrals: Referral[] = [
   {
     id: 'ref-1002',
     hospitalWorker: 'Trabajo Social Sur',
-    site: 'CDMX',
+    site: 'Puebla',
     arrivalDate: '2026-03-12',
     companions: 1,
     logisticsNote: 'Ingreso vespertino, confirmar espacio.',
@@ -53,7 +53,7 @@ export const initialFamilies: FamilyProfile[] = [
     referralId: 'ref-1001',
     caregiverName: 'Maria',
     familyLastName: 'Lopez',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     room: 'A-12',
     idVerified: true,
     regulationAccepted: true,
@@ -66,16 +66,16 @@ export const initialFamilies: FamilyProfile[] = [
 ]
 
 export const initialRooms: Room[] = [
-  { id: 'room-1', site: 'Monterrey', label: 'A-12', capacity: 4, occupied: 3 },
-  { id: 'room-2', site: 'Monterrey', label: 'B-03', capacity: 3, occupied: 1 },
-  { id: 'room-3', site: 'CDMX', label: 'C-18', capacity: 4, occupied: 4 },
-  { id: 'room-4', site: 'Guadalajara', label: 'D-07', capacity: 2, occupied: 1 },
+  { id: 'room-1', site: 'Casa Ronald McDonald Ciudad de Mexico', label: 'A-12', capacity: 4, occupied: 3 },
+  { id: 'room-2', site: 'Casa Ronald McDonald Ciudad de Mexico', label: 'B-03', capacity: 3, occupied: 1 },
+  { id: 'room-3', site: 'Puebla', label: 'C-18', capacity: 4, occupied: 4 },
+  { id: 'room-4', site: 'Tlalnepantla', label: 'D-07', capacity: 2, occupied: 1 },
 ]
 
 export const initialRequests: SupportRequest[] = [
   {
     id: 'req-1',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     familyId: 'family-1',
     title: 'Traslado a hospital',
     type: 'Transporte',
@@ -89,7 +89,7 @@ export const initialRequests: SupportRequest[] = [
   },
   {
     id: 'req-2',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     familyId: 'family-1',
     title: 'Kit de bienvenida',
     type: 'Kit',
@@ -102,7 +102,7 @@ export const initialRequests: SupportRequest[] = [
   },
   {
     id: 'req-3',
-    site: 'CDMX',
+    site: 'Puebla',
     familyId: 'family-1',
     title: 'Apoyo de recepcion',
     type: 'Recepcion',
@@ -118,7 +118,7 @@ export const initialRequests: SupportRequest[] = [
 export const initialTrips: Trip[] = [
   {
     id: 'trip-1',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     familyId: 'family-1',
     destination: 'Hospital Infantil',
     assignedTo: 'Carlos R.',
@@ -130,7 +130,7 @@ export const initialTrips: Trip[] = [
   },
   {
     id: 'trip-2',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     familyId: 'family-1',
     destination: 'Terminal Norte',
     assignedTo: 'Sara M.',
@@ -172,7 +172,7 @@ export const initialStories: DonorStory[] = [
 export const initialImpactFeed: ImpactFeedItem[] = [
   {
     id: 'impact-1',
-    site: 'Monterrey',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
     title: 'Recepcion agilizada',
     detail: '3 familias completaron check-in sin incidencias durante la manana.',
     createdAt: now,
@@ -196,5 +196,13 @@ export const initialCommunityPosts: CommunityPost[] = [
 ]
 
 export const initialReturnPasses: ReturnPass[] = [
-  { id: 'rp-1', familyId: 'family-1', site: 'Monterrey', date: '2026-04-04', companions: 2, note: 'Regreso para continuidad de hospedaje.', status: 'Enviado' },
+  {
+    id: 'rp-1',
+    familyId: 'family-1',
+    site: 'Casa Ronald McDonald Ciudad de Mexico',
+    date: '2026-04-04',
+    companions: 2,
+    note: 'Regreso para continuidad de hospedaje.',
+    status: 'Enviado',
+  },
 ]

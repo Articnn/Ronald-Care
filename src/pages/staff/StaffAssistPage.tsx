@@ -17,7 +17,7 @@ export function StaffAssistPage() {
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="Staff Assist / Family Status"
+        title="Ayuda asistida para familias"
         subtitle="Consulta asistida por codigo en menos de 30 segundos para admision, solicitudes y transporte."
       />
       <Card className="space-y-4">

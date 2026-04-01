@@ -1,78 +1,103 @@
- HEAD
-# Ronald-Care
-Plataforma NO clínica para Casa Ronald: admisiones y logística (pre-registro, check-in, solicitudes, transporte AM/PM, voluntariado e inventario) con acceso inclusivo sin smartphone e impacto medible.
+# RonaldCare Ops Suite
 
-# React + TypeScript + Vite
+Plataforma no clinica para Casa Ronald enfocada en referencias, check-in, solicitudes, transporte AM/PM, voluntariado, inventario, kiosko familiar y portal de transparencia para donantes.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Stack
 
-Currently, two official plugins are available:
+- Frontend: React + Vite + TypeScript + TailwindCSS
+- Backend: Node.js serverless-style API + `mssql`
+- Base de datos: SQL Server
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Estructura del repo
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+.
+├─ api/                     # funciones serverless por dominio
+├─ scripts/                 # utilidades de soporte
+├─ sql/                     # schema + seed de SQL Server
+├─ src/                     # frontend React y librerias compartidas del backend
+│  ├─ components/
+│  ├─ context/
+│  ├─ data/
+│  ├─ lib/                  # utilidades backend (db, auth, http, audit, etc.)
+│  ├─ pages/
+│  └─ ...
+├─ server.dev.js            # servidor local para probar API
+├─ .env.example
+├─ package.json
+└─ README.md
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Setup rapido
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 1. Instalar dependencias
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
+### 2. Configurar variables de entorno
+
+Crear `.env` tomando como base `.env.example`.
+
+### 3. Crear base de datos
+
+Ejecutar:
+
+1. `sql/001_schema.sql`
+2. `sql/002_seed.sql`
+
+## Correr el proyecto
+
+### Frontend
+
+```bash
+npm run dev:client
+```
+
+Frontend: [http://localhost:5173](http://localhost:5173)
+
+### Backend local
+
+```bash
+npm run dev:server
+```
+
+API local: `http://localhost:8787`
+
+### Build frontend
+
+```bash
+npm run build
+```
+
+## Usuarios demo
+
+- `hospital@ronaldcare.demo` / `Demo123!`
+- `staff@ronaldcare.demo` / `Demo123!`
+- `volunteer@ronaldcare.demo` / `Demo123!`
+
+Familias:
+
+- `QR-FAM-3481` o `TKT-3481` con PIN `Family3481!`
+- `QR-FAM-5520` o `TKT-5520` con PIN `Family5520!`
+
+## Git recomendado
+
+- `main`: estable / entregable
+- `dev`: integracion
+- `feature/<modulo>`: trabajo por funcionalidad
+
+## Primer commit limpio
+
+1. Confirmar que `.env` no este versionado.
+2. Confirmar que `node_modules/` y `dist/` no aparezcan en `git status`.
+3. Hacer commit de schema, seed, backend y frontend juntos.
+
+## Seguridad para repo publico
+
+- Nunca subir `.env`
+- Nunca subir cadenas de conexion reales
+- Nunca subir contrasenas reales
+- Usar solo datos demo / mock
+- Mantener donor con datos agregados sin PII

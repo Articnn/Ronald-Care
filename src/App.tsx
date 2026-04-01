@@ -14,6 +14,7 @@ import { FamilyRequestPage } from './pages/family/FamilyRequestPage'
 import { FamilyReturnPassPage } from './pages/family/FamilyReturnPassPage'
 import { FamilyStatusPage } from './pages/family/FamilyStatusPage'
 import { KioskPage } from './pages/family/KioskPage'
+import { OperationalAccessPage } from './pages/OperationalAccessPage'
 import { StaffAssistPage } from './pages/staff/StaffAssistPage'
 import { HospitalLoginPage } from './pages/hospital/HospitalLoginPage'
 import { HospitalReferralDetailPage } from './pages/hospital/HospitalReferralDetailPage'
@@ -39,6 +40,7 @@ function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<ProfileSelectorPage />} />
+            <Route path="/access" element={<OperationalAccessPage />} />
             <Route path="/kiosk" element={<KioskPage />} />
 
             <Route path="/hospital/login" element={<HospitalLoginPage />} />
@@ -79,7 +81,7 @@ function App() {
             <Route
               path="/staff/family-status"
               element={
-                <RequireRole allowed={['staff', 'volunteer']}>
+                <RequireRole allowed={['staff']}>
                   <StaffAssistPage />
                 </RequireRole>
               }

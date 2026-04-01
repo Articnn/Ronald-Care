@@ -1,16 +1,24 @@
 {
-  "name": "new-project",
+  "name": "ronaldcare-ops-suite",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:client": "vite",
+    "dev:server": "node server.dev.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed:hash": "node scripts/hash-password.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.7",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.577.0",
+    "mssql": "^11.0.1",
+    "msnodesqlv8": "^5.1.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.1",

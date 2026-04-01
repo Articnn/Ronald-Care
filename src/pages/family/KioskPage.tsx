@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
 import { SectionHeader } from '../../components/ui/SectionHeader'
@@ -15,7 +16,7 @@ export function KioskPage() {
 
   return (
     <div className={`mx-auto max-w-3xl space-y-5 ${easyRead ? 'text-xl' : ''}`}>
-      <SectionHeader title="Status de la familia" subtitle="Consulta minima de admision, solicitudes y viajes. Sin datos clinicos." />
+      <SectionHeader title="Kiosko familiar" subtitle="Consulta minima de admision, solicitudes y viajes. Sin datos clinicos." />
       <div className="flex flex-wrap gap-3">
         <button className="rounded-2xl bg-gold-300 px-4 py-2 font-bold text-warm-900" onClick={toggleEasyRead}>
           {easyRead ? 'Vista normal' : 'Lectura facil'}
@@ -31,6 +32,9 @@ export function KioskPage() {
         >
           Continuar como Familia
         </button>
+        <Link to="/family/login" className="rounded-2xl border border-warm-300 px-4 py-2 font-bold text-warm-800">
+          Entrar con QR + PIN
+        </Link>
       </div>
       <Card className="space-y-4">
         <Input label="Codigo familia/ticket" value={code} onChange={(event) => setCode(event.target.value)} />
