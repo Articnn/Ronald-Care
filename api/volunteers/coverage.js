@@ -13,7 +13,7 @@ export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
         COUNT(*) AS totalShifts,
         SUM(CASE WHEN AvailabilityStatus = 'disponible' THEN 1 ELSE 0 END) AS coveredShifts,
         SUM(HoursLogged) AS totalHours
-      FROM dbo.VolunteerShifts
+      FROM VolunteerShifts
       WHERE SiteId = @siteId
     `)
 

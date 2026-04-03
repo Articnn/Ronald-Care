@@ -1,158 +1,105 @@
-USE RonaldCareOps;
-GO
+TRUNCATE TABLE auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
 
-SET NOCOUNT ON;
-GO
+INSERT INTO sites (siteid, sitecode, name, isactive, createdat) VALUES
+  (1, 'CDMX', 'Casa Ronald McDonald Ciudad de Mexico', TRUE, NOW()),
+  (2, 'PUE', 'Casa Ronald McDonald Puebla', TRUE, NOW()),
+  (3, 'TLA', 'Casa Ronald McDonald Tlalnepantla', TRUE, NOW());
 
-DELETE FROM dbo.AuditEvents;
-DELETE FROM dbo.CommunityPosts;
-DELETE FROM dbo.ReturnPasses;
-DELETE FROM dbo.ImpactEvents;
-DELETE FROM dbo.InventoryMovements;
-DELETE FROM dbo.InventoryItems;
-DELETE FROM dbo.VolunteerShifts;
-DELETE FROM dbo.Trips;
-DELETE FROM dbo.Requests;
-DELETE FROM dbo.FamilyAccess;
-DELETE FROM dbo.Families;
-DELETE FROM dbo.Rooms;
-DELETE FROM dbo.Referrals;
-DELETE FROM dbo.Users;
-DELETE FROM dbo.Roles;
-DELETE FROM dbo.Sites;
-GO
+INSERT INTO roles (roleid, rolecode, displayname) VALUES
+  (1, 'hospital', 'Hospital / Trabajo Social'),
+  (2, 'staff', 'Staff / Operacion'),
+  (3, 'volunteer', 'Voluntariado');
 
-SET IDENTITY_INSERT dbo.Sites ON;
-INSERT INTO dbo.Sites (SiteId, SiteCode, Name, IsActive, CreatedAt) VALUES
-(1, 'CDMX', 'Casa Ronald McDonald Ciudad de Mexico', 1, SYSUTCDATETIME()),
-(2, 'PUE', 'Casa Ronald McDonald Puebla', 1, SYSUTCDATETIME()),
-(3, 'TLA', 'Casa Ronald McDonald Tlalnepantla', 1, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Sites OFF;
-GO
+INSERT INTO users (userid, siteid, roleid, fullname, email, passwordhash, isactive, createdat) VALUES
+  (1, 1, 1, 'Trabajo Social Demo', 'hospital@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW()),
+  (2, 1, 2, 'Recepcion Demo', 'staff@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW()),
+  (3, 1, 3, 'Voluntario Demo', 'volunteer@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW());
 
-SET IDENTITY_INSERT dbo.Roles ON;
-INSERT INTO dbo.Roles (RoleId, RoleCode, DisplayName) VALUES
-(1, 'hospital', 'Hospital / Trabajo Social'),
-(2, 'staff', 'Staff / Operacion'),
-(3, 'volunteer', 'Voluntariado');
-SET IDENTITY_INSERT dbo.Roles OFF;
-GO
+INSERT INTO rooms (roomid, siteid, roomcode, capacity, occupiedcount, isactive, createdat) VALUES
+  (1, 1, 'A-12', 4, 2, TRUE, NOW()),
+  (2, 1, 'B-03', 3, 1, TRUE, NOW()),
+  (3, 2, 'P-07', 2, 1, TRUE, NOW()),
+  (4, 3, 'T-04', 2, 0, TRUE, NOW());
 
-SET IDENTITY_INSERT dbo.Users ON;
-INSERT INTO dbo.Users (UserId, SiteId, RoleId, FullName, Email, PasswordHash, IsActive, CreatedAt) VALUES
-(1, 1, 1, 'Trabajo Social Demo', 'hospital@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', 1, SYSUTCDATETIME()),
-(2, 1, 2, 'Recepcion Demo', 'staff@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', 1, SYSUTCDATETIME()),
-(3, 1, 3, 'Voluntario Demo', 'volunteer@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', 1, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Users OFF;
-GO
+INSERT INTO referrals (referralid, siteid, createdbyuserid, referralcode, familycode, status, arrivaldate, companioncount, logisticsnote, eligibilityconfirmed, createdat) VALUES
+  (1, 1, 1, 'REF-2026-1001', 'FAM-3481', 'aceptada', '2026-04-02', 2, 'Llegada por autobus. Requiere orientacion de acceso.', TRUE, NOW()),
+  (2, 2, 1, 'REF-2026-1002', 'FAM-5520', 'en_revision', '2026-04-03', 1, 'Ingreso vespertino con acompanante unico.', TRUE, NOW()),
+  (3, 3, 1, 'REF-2026-1003', 'FAM-7781', 'enviada', '2026-04-04', 1, 'Llegada programada para primera hora.', TRUE, NOW());
 
-SET IDENTITY_INSERT dbo.Rooms ON;
-INSERT INTO dbo.Rooms (RoomId, SiteId, RoomCode, Capacity, OccupiedCount, IsActive, CreatedAt) VALUES
-(1, 1, 'A-12', 4, 2, 1, SYSUTCDATETIME()),
-(2, 1, 'B-03', 3, 1, 1, SYSUTCDATETIME()),
-(3, 2, 'P-07', 2, 1, 1, SYSUTCDATETIME()),
-(4, 3, 'T-04', 2, 0, 1, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Rooms OFF;
-GO
+INSERT INTO families (familyid, referralid, siteid, roomid, caregivername, familylastname, admissionstatus, idverified, regulationaccepted, simplesignature, checkincompletedat, createdat) VALUES
+  (1, 1, 1, 1, 'Maria', 'Lopez', 'checkin_completado', TRUE, TRUE, 'Maria Lopez', NOW(), NOW()),
+  (2, 2, 2, NULL, 'Carlos', 'Ramirez', 'pendiente', FALSE, FALSE, NULL, NULL, NOW()),
+  (3, 3, 3, NULL, 'Daniela', 'Soto', 'pendiente', FALSE, FALSE, NULL, NULL, NOW());
 
-SET IDENTITY_INSERT dbo.Referrals ON;
-INSERT INTO dbo.Referrals (ReferralId, SiteId, CreatedByUserId, ReferralCode, FamilyCode, Status, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed, CreatedAt) VALUES
-(1, 1, 1, 'REF-2026-1001', 'FAM-3481', 'aceptada', '2026-04-02', 2, 'Llegada por autobus. Requiere orientacion de acceso.', 1, SYSUTCDATETIME()),
-(2, 2, 1, 'REF-2026-1002', 'FAM-5520', 'en_revision', '2026-04-03', 1, 'Ingreso vespertino con acompanante unico.', 1, SYSUTCDATETIME()),
-(3, 3, 1, 'REF-2026-1003', 'FAM-7781', 'enviada', '2026-04-04', 1, 'Llegada programada para primera hora.', 1, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Referrals OFF;
-GO
+INSERT INTO familyaccess (familyaccessid, familyid, ticketcode, qrcode, pinhash, isactive, lastloginat, createdat) VALUES
+  (1, 1, 'TKT-3481', 'QR-FAM-3481', '$2b$10$vtuWzvpg1unem7N0vbTTK.Il0Jj0kgO1YTs4eEYjouPunIp6CAp5K', TRUE, NULL, NOW()),
+  (2, 2, 'TKT-5520', 'QR-FAM-5520', '$2b$10$sKSlKDzE94PW.FSzXaRVWOhmOACMqMo7Tu.vRdfa7uV92TRx49y3K', TRUE, NULL, NOW()),
+  (3, 3, 'TKT-7781', 'QR-FAM-7781', '$2b$10$sKSlKDzE94PW.FSzXaRVWOhmOACMqMo7Tu.vRdfa7uV92TRx49y3K', TRUE, NULL, NOW());
 
-SET IDENTITY_INSERT dbo.Families ON;
-INSERT INTO dbo.Families (FamilyId, ReferralId, SiteId, RoomId, CaregiverName, FamilyLastName, AdmissionStatus, IdVerified, RegulationAccepted, SimpleSignature, CheckInCompletedAt, CreatedAt) VALUES
-(1, 1, 1, 1, 'Maria', 'Lopez', 'checkin_completado', 1, 1, 'Maria Lopez', SYSUTCDATETIME(), SYSUTCDATETIME()),
-(2, 2, 2, NULL, 'Carlos', 'Ramirez', 'pendiente', 0, 0, NULL, NULL, SYSUTCDATETIME()),
-(3, 3, 3, NULL, 'Daniela', 'Soto', 'pendiente', 0, 0, NULL, NULL, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Families OFF;
-GO
-
-SET IDENTITY_INSERT dbo.FamilyAccess ON;
-INSERT INTO dbo.FamilyAccess (FamilyAccessId, FamilyId, TicketCode, QrCode, PinHash, IsActive, LastLoginAt, CreatedAt) VALUES
-(1, 1, 'TKT-3481', 'QR-FAM-3481', '$2b$10$vtuWzvpg1unem7N0vbTTK.Il0Jj0kgO1YTs4eEYjouPunIp6CAp5K', 1, NULL, SYSUTCDATETIME()),
-(2, 2, 'TKT-5520', 'QR-FAM-5520', '$2b$10$sKSlKDzE94PW.FSzXaRVWOhmOACMqMo7Tu.vRdfa7uV92TRx49y3K', 1, NULL, SYSUTCDATETIME()),
-(3, 3, 'TKT-7781', 'QR-FAM-7781', '$2b$10$sKSlKDzE94PW.FSzXaRVWOhmOACMqMo7Tu.vRdfa7uV92TRx49y3K', 1, NULL, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.FamilyAccess OFF;
-GO
-
-SET IDENTITY_INSERT dbo.Requests ON;
-INSERT INTO dbo.Requests (
-  RequestId, SiteId, FamilyId, CreatedByUserId, CreatedBySource, Title, RequestType, Urgency,
-  OptionalWindow, PriorityScore, PriorityLabel, PriorityReason, Status, AssignedRole,
-  AssignedUserId, AssignedDisplayName, WaitingStartedAt, AssignedAt, ResolvedAt, CreatedAt
+INSERT INTO requests (
+  requestid, siteid, familyid, createdbyuserid, createdbysource, title, requesttype, urgency,
+  optionalwindow, priorityscore, prioritylabel, priorityreason, status, assignedrole,
+  assigneduserid, assigneddisplayname, waitingstartedat, assignedat, resolvedat, createdat
 ) VALUES
-(1, 1, 1, 2, 'staff', 'Traslado a hospital', 'transporte', 'alta', '07:30', 88, 'alta', 'Alta urgencia, 52 min esperando, ventana 07:30', 'nueva', 'volunteer', 3, 'Voluntario Demo', DATEADD(MINUTE, -52, SYSUTCDATETIME()), NULL, NULL, DATEADD(MINUTE, -52, SYSUTCDATETIME())),
-(2, 1, 1, 2, 'staff', 'Kit de bienvenida', 'kit', 'media', NULL, 50, 'media', 'Media urgencia, 18 min esperando', 'asignada', 'staff', 2, 'Recepcion Demo', DATEADD(MINUTE, -18, SYSUTCDATETIME()), DATEADD(MINUTE, -10, SYSUTCDATETIME()), NULL, DATEADD(MINUTE, -18, SYSUTCDATETIME())),
-(3, 2, 2, NULL, 'family', 'Apoyo de recepcion', 'recepcion', 'baja', NULL, 26, 'baja', 'Baja urgencia, 10 min esperando', 'en_proceso', 'staff', 2, 'Recepcion Demo', DATEADD(MINUTE, -10, SYSUTCDATETIME()), DATEADD(MINUTE, -7, SYSUTCDATETIME()), NULL, DATEADD(MINUTE, -10, SYSUTCDATETIME())),
-(4, 3, 3, 2, 'staff', 'Kit de llegada', 'kit', 'media', NULL, 48, 'media', 'Media urgencia, 14 min esperando', 'nueva', 'staff', 2, 'Recepcion Demo', DATEADD(MINUTE, -14, SYSUTCDATETIME()), NULL, NULL, DATEADD(MINUTE, -14, SYSUTCDATETIME()));
-SET IDENTITY_INSERT dbo.Requests OFF;
-GO
+  (1, 1, 1, 2, 'staff', 'Traslado a hospital', 'transporte', 'alta', '07:30', 88, 'alta', 'Alta urgencia, 52 min esperando, ventana 07:30', 'nueva', 'volunteer', 3, 'Voluntario Demo', NOW() - interval '52 minutes', NULL, NULL, NOW() - interval '52 minutes'),
+  (2, 1, 1, 2, 'staff', 'Kit de bienvenida', 'kit', 'media', NULL, 50, 'media', 'Media urgencia, 18 min esperando', 'asignada', 'staff', 2, 'Recepcion Demo', NOW() - interval '18 minutes', NOW() - interval '10 minutes', NULL, NOW() - interval '18 minutes'),
+  (3, 2, 2, NULL, 'family', 'Apoyo de recepcion', 'recepcion', 'baja', NULL, 26, 'baja', 'Baja urgencia, 10 min esperando', 'en_proceso', 'staff', 2, 'Recepcion Demo', NOW() - interval '10 minutes', NOW() - interval '7 minutes', NULL, NOW() - interval '10 minutes'),
+  (4, 3, 3, 2, 'staff', 'Kit de llegada', 'kit', 'media', NULL, 48, 'media', 'Media urgencia, 14 min esperando', 'nueva', 'staff', 2, 'Recepcion Demo', NOW() - interval '14 minutes', NULL, NULL, NOW() - interval '14 minutes');
 
-SET IDENTITY_INSERT dbo.Trips ON;
-INSERT INTO dbo.Trips (TripId, SiteId, FamilyId, RelatedRequestId, Destination, Shift, AssignedUserId, AssignedDisplayName, Status, StartedAt, EndedAt, DurationMinutes, CreatedAt) VALUES
-(1, 1, 1, 1, 'Hospital Infantil', 'AM', 3, 'Voluntario Demo', 'pendiente', NULL, NULL, NULL, SYSUTCDATETIME()),
-(2, 2, 2, NULL, 'Terminal Norte', 'PM', 3, 'Voluntario Demo', 'finalizado', DATEADD(MINUTE, -42, SYSUTCDATETIME()), DATEADD(MINUTE, -4, SYSUTCDATETIME()), 38, DATEADD(HOUR, -3, SYSUTCDATETIME())),
-(3, 3, 3, NULL, 'Hospital Regional', 'AM', 3, 'Voluntario Demo', 'pendiente', NULL, NULL, NULL, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.Trips OFF;
-GO
+INSERT INTO trips (tripid, siteid, familyid, relatedrequestid, destination, shift, assigneduserid, assigneddisplayname, status, startedat, endedat, durationminutes, createdat) VALUES
+  (1, 1, 1, 1, 'Hospital Infantil', 'AM', 3, 'Voluntario Demo', 'pendiente', NULL, NULL, NULL, NOW()),
+  (2, 2, 2, NULL, 'Terminal Norte', 'PM', 3, 'Voluntario Demo', 'finalizado', NOW() - interval '42 minutes', NOW() - interval '4 minutes', 38, NOW() - interval '3 hours'),
+  (3, 3, 3, NULL, 'Hospital Regional', 'AM', 3, 'Voluntario Demo', 'pendiente', NULL, NULL, NULL, NOW());
 
-SET IDENTITY_INSERT dbo.VolunteerShifts ON;
-INSERT INTO dbo.VolunteerShifts (VolunteerShiftId, SiteId, UserId, VolunteerName, VolunteerType, RoleName, ShiftDay, ShiftPeriod, AvailabilityStatus, HoursLogged, CreatedAt) VALUES
-(1, 1, 3, 'Voluntario Demo', 'individual', 'traslados', '2026-04-02', 'AM', 'disponible', 4.00, SYSUTCDATETIME()),
-(2, 2, NULL, 'Equipo Escolar Norte', 'escolar', 'acompanamiento', '2026-04-02', 'PM', 'cupo_limitado', 3.50, SYSUTCDATETIME()),
-(3, 3, NULL, 'Brigada Empresarial Sol', 'empresarial', 'recepcion', '2026-04-03', 'AM', 'disponible', 5.00, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.VolunteerShifts OFF;
-GO
+INSERT INTO volunteershifts (volunteershiftid, siteid, userid, volunteername, volunteertype, rolename, shiftday, shiftperiod, availabilitystatus, hourslogged, createdat) VALUES
+  (1, 1, 3, 'Voluntario Demo', 'individual', 'traslados', '2026-04-02', 'AM', 'disponible', 4.00, NOW()),
+  (2, 2, NULL, 'Equipo Escolar Norte', 'escolar', 'acompanamiento', '2026-04-02', 'PM', 'cupo_limitado', 3.50, NOW()),
+  (3, 3, NULL, 'Brigada Empresarial Sol', 'empresarial', 'recepcion', '2026-04-03', 'AM', 'disponible', 5.00, NOW());
 
-SET IDENTITY_INSERT dbo.InventoryItems ON;
-INSERT INTO dbo.InventoryItems (InventoryItemId, SiteId, ItemCode, Name, Unit, Stock, MinStock, CreatedAt) VALUES
-(1, 1, 'KIT-BIENV', 'Kit bienvenida', 'pieza', 7, 8, SYSUTCDATETIME()),
-(2, 2, 'KIT-HIG', 'Kit higiene', 'pieza', 14, 10, SYSUTCDATETIME()),
-(3, 3, 'COBIJA', 'Cobija', 'pieza', 21, 6, SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.InventoryItems OFF;
-GO
+INSERT INTO inventoryitems (inventoryitemid, siteid, itemcode, name, unit, stock, minstock, createdat) VALUES
+  (1, 1, 'KIT-BIENV', 'Kit bienvenida', 'pieza', 7, 8, NOW()),
+  (2, 2, 'KIT-HIG', 'Kit higiene', 'pieza', 14, 10, NOW()),
+  (3, 3, 'COBIJA', 'Cobija', 'pieza', 21, 6, NOW());
 
-SET IDENTITY_INSERT dbo.InventoryMovements ON;
-INSERT INTO dbo.InventoryMovements (InventoryMovementId, InventoryItemId, SiteId, PerformedByUserId, MovementType, Quantity, Reason, CreatedAt) VALUES
-(1, 1, 1, 2, 'out', 1, 'Kit entregado a familia durante check-in', DATEADD(HOUR, -2, SYSUTCDATETIME())),
-(2, 2, 2, 2, 'out', 2, 'Entrega operativa de higiene', DATEADD(HOUR, -4, SYSUTCDATETIME())),
-(3, 3, 3, 2, 'in', 5, 'Reposicion semanal de cobijas', DATEADD(DAY, -1, SYSUTCDATETIME()));
-SET IDENTITY_INSERT dbo.InventoryMovements OFF;
-GO
+INSERT INTO inventorymovements (inventorymovementid, inventoryitemid, siteid, performedbyuserid, movementtype, quantity, reason, createdat) VALUES
+  (1, 1, 1, 2, 'out', 1, 'Kit entregado a familia durante check-in', NOW() - interval '2 hours'),
+  (2, 2, 2, 2, 'out', 2, 'Entrega operativa de higiene', NOW() - interval '4 hours'),
+  (3, 3, 3, 2, 'in', 5, 'Reposicion semanal de cobijas', NOW() - interval '1 day');
 
-SET IDENTITY_INSERT dbo.ImpactEvents ON;
-INSERT INTO dbo.ImpactEvents (ImpactEventId, SiteId, EventType, SourceEntityType, SourceEntityId, PublicTitle, PublicDetail, IsPublic, CreatedAt) VALUES
-(1, 1, 'checkin_completed', 'family', 1, 'Nueva familia recibida', 'Check-in operativo completado y ficha familia emitida sin incidencias.', 1, DATEADD(HOUR, -1, SYSUTCDATETIME())),
-(2, 2, 'request_resolved', 'request', 2, 'Kit entregado a tiempo', 'Un apoyo de bienvenida se completo dentro del flujo operativo.', 1, DATEADD(MINUTE, -30, SYSUTCDATETIME())),
-(3, 3, 'request_created', 'request', 4, 'Nueva necesidad registrada', 'Se detecto una necesidad operativa y se agrego al flujo de apoyo.', 1, DATEADD(MINUTE, -12, SYSUTCDATETIME()));
-SET IDENTITY_INSERT dbo.ImpactEvents OFF;
-GO
+INSERT INTO impactevents (impacteventid, siteid, eventtype, sourceentitytype, sourceentityid, publictitle, publicdetail, ispublic, createdat) VALUES
+  (1, 1, 'checkin_completed', 'family', 1, 'Nueva familia recibida', 'Check-in operativo completado y ficha familia emitida sin incidencias.', TRUE, NOW() - interval '1 hour'),
+  (2, 2, 'request_resolved', 'request', 2, 'Kit entregado a tiempo', 'Un apoyo de bienvenida se completo dentro del flujo operativo.', TRUE, NOW() - interval '30 minutes'),
+  (3, 3, 'request_created', 'request', 4, 'Nueva necesidad registrada', 'Se detecto una necesidad operativa y se agrego al flujo de apoyo.', TRUE, NOW() - interval '12 minutes');
 
-SET IDENTITY_INSERT dbo.ReturnPasses ON;
-INSERT INTO dbo.ReturnPasses (ReturnPassId, FamilyId, SiteId, RequestedDate, CompanionCount, LogisticsNote, Status, CreatedAt) VALUES
-(1, 1, 1, '2026-04-06', 2, 'Regreso para continuidad de hospedaje.', 'enviado', SYSUTCDATETIME()),
-(2, 2, 2, '2026-04-08', 1, 'Regreso logistico coordinado con sede Casa Ronald McDonald Puebla.', 'enviado', SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.ReturnPasses OFF;
-GO
+INSERT INTO returnpasses (returnpassid, familyid, siteid, requesteddate, companioncount, logisticsnote, status, createdat) VALUES
+  (1, 1, 1, '2026-04-06', 2, 'Regreso para continuidad de hospedaje.', 'enviado', NOW()),
+  (2, 2, 2, '2026-04-08', 1, 'Regreso logistico coordinado con sede Casa Ronald McDonald Puebla.', 'enviado', NOW());
 
-SET IDENTITY_INSERT dbo.CommunityPosts ON;
-INSERT INTO dbo.CommunityPosts (CommunityPostId, FamilyId, AuthorAlias, Message, Status, ReportCount, CreatedAt, ModeratedByUserId, ModeratedAt) VALUES
-(1, 1, 'Familia Lopez', 'Llevar horarios anotados nos ayudo mucho para los traslados.', 'active', 0, SYSUTCDATETIME(), NULL, NULL),
-(2, 2, 'Familia Horizonte', 'La consulta asistida en recepcion fue muy rapida cuando no tuvimos bateria.', 'active', 0, SYSUTCDATETIME(), NULL, NULL);
-SET IDENTITY_INSERT dbo.CommunityPosts OFF;
-GO
+INSERT INTO communityposts (communitypostid, familyid, authoralias, message, status, reportcount, createdat, moderatedbyuserid, moderatedat) VALUES
+  (1, 1, 'Familia Lopez', 'Llevar horarios anotados nos ayudo mucho para los traslados.', 'active', 0, NOW(), NULL, NULL),
+  (2, 2, 'Familia Horizonte', 'La consulta asistida en recepcion fue muy rapida cuando no tuvimos bateria.', 'active', 0, NOW(), NULL, NULL);
 
-SET IDENTITY_INSERT dbo.AuditEvents ON;
-INSERT INTO dbo.AuditEvents (AuditEventId, SiteId, ActorUserId, ActorFamilyId, EventType, EntityType, EntityId, MetadataJson, CreatedAt) VALUES
-(1, 1, 1, NULL, 'referral.created', 'referral', 1, '{"source":"seed"}', SYSUTCDATETIME()),
-(2, 1, 2, NULL, 'checkin.completed', 'family', 1, '{"room":"A-12"}', SYSUTCDATETIME()),
-(3, 2, 2, NULL, 'request.created', 'request', 3, '{"type":"recepcion"}', SYSUTCDATETIME()),
-(4, 1, 2, NULL, 'kit.delivered', 'inventory_movement', 1, '{"item":"Kit bienvenida","quantity":1}', SYSUTCDATETIME()),
-(5, 2, 3, NULL, 'trip.finished', 'trip', 2, '{"durationMinutes":38}', SYSUTCDATETIME()),
-(6, 3, 2, NULL, 'request.created', 'request', 4, '{"type":"kit"}', SYSUTCDATETIME());
-SET IDENTITY_INSERT dbo.AuditEvents OFF;
-GO
+INSERT INTO auditevents (auditeventid, siteid, actoruserid, actorfamilyid, eventtype, entitytype, entityid, metadatajson, createdat) VALUES
+  (1, 1, 1, NULL, 'referral.created', 'referral', 1, '{"source":"seed"}', NOW()),
+  (2, 1, 2, NULL, 'checkin.completed', 'family', 1, '{"room":"A-12"}', NOW()),
+  (3, 2, 2, NULL, 'request.created', 'request', 3, '{"type":"recepcion"}', NOW()),
+  (4, 1, 2, NULL, 'kit.delivered', 'inventory_movement', 1, '{"item":"Kit bienvenida","quantity":1}', NOW()),
+  (5, 2, 3, NULL, 'trip.finished', 'trip', 2, '{"durationMinutes":38}', NOW()),
+  (6, 3, 2, NULL, 'request.created', 'request', 4, '{"type":"kit"}', NOW());
+
+SELECT setval(pg_get_serial_sequence('sites', 'siteid'), COALESCE((SELECT MAX(siteid) FROM sites), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('roles', 'roleid'), COALESCE((SELECT MAX(roleid) FROM roles), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('users', 'userid'), COALESCE((SELECT MAX(userid) FROM users), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('rooms', 'roomid'), COALESCE((SELECT MAX(roomid) FROM rooms), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('referrals', 'referralid'), COALESCE((SELECT MAX(referralid) FROM referrals), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('families', 'familyid'), COALESCE((SELECT MAX(familyid) FROM families), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('familyaccess', 'familyaccessid'), COALESCE((SELECT MAX(familyaccessid) FROM familyaccess), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('requests', 'requestid'), COALESCE((SELECT MAX(requestid) FROM requests), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('trips', 'tripid'), COALESCE((SELECT MAX(tripid) FROM trips), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('volunteershifts', 'volunteershiftid'), COALESCE((SELECT MAX(volunteershiftid) FROM volunteershifts), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('inventoryitems', 'inventoryitemid'), COALESCE((SELECT MAX(inventoryitemid) FROM inventoryitems), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('inventorymovements', 'inventorymovementid'), COALESCE((SELECT MAX(inventorymovementid) FROM inventorymovements), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('impactevents', 'impacteventid'), COALESCE((SELECT MAX(impacteventid) FROM impactevents), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('returnpasses', 'returnpassid'), COALESCE((SELECT MAX(returnpassid) FROM returnpasses), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('communityposts', 'communitypostid'), COALESCE((SELECT MAX(communitypostid) FROM communityposts), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('auditevents', 'auditeventid'), COALESCE((SELECT MAX(auditeventid) FROM auditevents), 1), TRUE);

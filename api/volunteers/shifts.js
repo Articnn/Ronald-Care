@@ -18,7 +18,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer']
 
     const result = await dbReq.query(`
       SELECT *
-      FROM dbo.VolunteerShifts
+      FROM VolunteerShifts
       ${where}
       ORDER BY ShiftDay DESC, ShiftPeriod
     `)
@@ -46,9 +46,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer']
     .input('availabilityStatus', sql.NVarChar(30), req.body.availabilityStatus)
     .input('hoursLogged', sql.Decimal(5, 2), Number(req.body.hoursLogged))
     .query(`
-      INSERT INTO dbo.VolunteerShifts (SiteId, UserId, VolunteerName, VolunteerType, RoleName, ShiftDay, ShiftPeriod, AvailabilityStatus, HoursLogged)
-      OUTPUT INSERTED.*
+      INSERT INTO VolunteerShifts (SiteId, UserId, VolunteerName, VolunteerType, RoleName, ShiftDay, ShiftPeriod, AvailabilityStatus, HoursLogged)
       VALUES (@siteId, @userId, @volunteerName, @volunteerType, @roleName, @shiftDay, @shiftPeriod, @availabilityStatus, @hoursLogged)
+      RETURNING *
     `)
 
   const shift = result.recordset[0]

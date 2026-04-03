@@ -13,7 +13,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['family', 'staff'] },
       .input('familyId', sql.Int, familyId)
       .query(`
         SELECT ReturnPassId, FamilyId, SiteId, RequestedDate, CompanionCount, LogisticsNote, Status, CreatedAt
-        FROM dbo.ReturnPasses
+        FROM ReturnPasses
         WHERE FamilyId = @familyId
         ORDER BY CreatedAt DESC
       `)
@@ -26,7 +26,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['family', 'staff'] },
   const familyResult = await pool
     .request()
     .input('familyId', sql.Int, familyId)
-    .query(`SELECT FamilyId, SiteId FROM dbo.Families WHERE FamilyId = @familyId`)
+    .query(`SELECT FamilyId, SiteId FROM Families WHERE FamilyId = @familyId`)
   const family = familyResult.recordset[0]
 
   const result = await pool
@@ -38,9 +38,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['family', 'staff'] },
     .input('logisticsNote', sql.NVarChar(255), req.body.logisticsNote || null)
     .input('status', sql.NVarChar(20), 'enviado')
     .query(`
-      INSERT INTO dbo.ReturnPasses (FamilyId, SiteId, RequestedDate, CompanionCount, LogisticsNote, Status)
-      OUTPUT INSERTED.*
+      INSERT INTO ReturnPasses (FamilyId, SiteId, RequestedDate, CompanionCount, LogisticsNote, Status)
       VALUES (@familyId, @siteId, @requestedDate, @companionCount, @logisticsNote, @status)
+      RETURNING *
     `)
 
   const pass = result.recordset[0]

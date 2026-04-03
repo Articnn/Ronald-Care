@@ -15,10 +15,10 @@ export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => 
     .input('status', sql.NVarChar(20), req.body.status)
     .input('moderatedByUserId', sql.Int, req.auth.sub)
     .query(`
-      UPDATE dbo.CommunityPosts
-      SET Status = @status, ModeratedByUserId = @moderatedByUserId, ModeratedAt = SYSUTCDATETIME()
-      OUTPUT INSERTED.*
+      UPDATE CommunityPosts
+      SET Status = @status, ModeratedByUserId = @moderatedByUserId, ModeratedAt = NOW()
       WHERE CommunityPostId = @communityPostId
+      RETURNING *
     `)
 
   const post = result.recordset[0]

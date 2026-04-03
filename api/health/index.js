@@ -3,7 +3,7 @@ import { withApi } from '../../src/lib/http.js'
 
 export default withApi({ methods: ['GET'], authOptional: true }, async () => {
   const pool = await getPool()
-  const result = await pool.request().query('SELECT 1 AS ok, DB_NAME() AS databaseName')
+  const result = await pool.request().query('SELECT 1 AS ok, current_database() AS "databaseName"')
   return {
     service: 'ronaldcare-serverless-api',
     status: 'healthy',

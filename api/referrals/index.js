@@ -21,9 +21,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff'] 
 
     const result = await dbReq.query(`
       SELECT r.*, u.FullName AS CreatedByName, s.Name AS SiteName
-      FROM dbo.Referrals r
-      INNER JOIN dbo.Users u ON u.UserId = r.CreatedByUserId
-      INNER JOIN dbo.Sites s ON s.SiteId = r.SiteId
+      FROM Referrals r
+      INNER JOIN Users u ON u.UserId = r.CreatedByUserId
+      INNER JOIN Sites s ON s.SiteId = r.SiteId
       ${where}
       ORDER BY r.CreatedAt DESC
     `)
@@ -47,11 +47,11 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff'] 
     .input('logisticsNote', sql.NVarChar(500), req.body.logisticsNote || null)
     .input('eligibilityConfirmed', sql.Bit, Boolean(req.body.eligibilityConfirmed))
     .query(`
-      INSERT INTO dbo.Referrals
+      INSERT INTO Referrals
         (SiteId, CreatedByUserId, ReferralCode, FamilyCode, Status, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed)
-      OUTPUT INSERTED.*
       VALUES
         (@siteId, @createdByUserId, @referralCode, @familyCode, @status, @arrivalDate, @companionCount, @logisticsNote, @eligibilityConfirmed)
+      RETURNING *
     `)
 
   const referral = result.recordset[0]

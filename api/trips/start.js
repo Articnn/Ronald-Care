@@ -12,10 +12,10 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
     .request()
     .input('tripId', sql.Int, toInt(req.body.tripId, 'tripId'))
     .query(`
-      UPDATE dbo.Trips
-      SET Status = 'en_curso', StartedAt = ISNULL(StartedAt, SYSUTCDATETIME())
-      OUTPUT INSERTED.*
+      UPDATE Trips
+      SET Status = 'en_curso', StartedAt = COALESCE(StartedAt, NOW())
       WHERE TripId = @tripId
+      RETURNING *
     `)
 
   const trip = result.recordset[0]

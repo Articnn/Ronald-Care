@@ -16,14 +16,14 @@ export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => 
     .input('assignedUserId', sql.Int, req.body.assignedUserId ? Number(req.body.assignedUserId) : null)
     .input('assignedDisplayName', sql.NVarChar(120), req.body.assignedDisplayName)
     .query(`
-      UPDATE dbo.Requests
+      UPDATE Requests
       SET AssignedRole = @assignedRole,
           AssignedUserId = @assignedUserId,
           AssignedDisplayName = @assignedDisplayName,
           Status = 'asignada',
-          AssignedAt = SYSUTCDATETIME()
-      OUTPUT INSERTED.*
+          AssignedAt = NOW()
       WHERE RequestId = @requestId
+      RETURNING *
     `)
 
   const requestRow = result.recordset[0]

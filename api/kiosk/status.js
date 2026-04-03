@@ -11,7 +11,7 @@ export default withApi({ methods: ['GET'], authOptional: true }, async (req) => 
     .request()
     .input('code', sql.NVarChar(80), code)
     .query(`
-      SELECT TOP 1
+      SELECT
         f.FamilyId,
         f.CaregiverName,
         f.FamilyLastName,
@@ -19,34 +19,40 @@ export default withApi({ methods: ['GET'], authOptional: true }, async (req) => 
         s.Name AS SiteName,
         s.SiteCode,
         r.RoomCode
-      FROM dbo.FamilyAccess fa
-      INNER JOIN dbo.Families f ON f.FamilyId = fa.FamilyId
-      INNER JOIN dbo.Sites s ON s.SiteId = f.SiteId
-      LEFT JOIN dbo.Rooms r ON r.RoomId = f.RoomId
+      FROM FamilyAccess fa
+      INNER JOIN Families f ON f.FamilyId = fa.FamilyId
+      INNER JOIN Sites s ON s.SiteId = f.SiteId
+      LEFT JOIN Rooms r ON r.RoomId = f.RoomId
       WHERE fa.TicketCode = @code OR fa.QrCode = @code
+      LIMIT 1
     `)
 
   const family = familyQuery.recordset[0]
   if (!family) throw new ApiError(404, 'Codigo no encontrado')
 
-  const result = await pool
+  const requestsQuery = await pool
     .request()
     .input('familyId', sql.Int, family.FamilyId)
     .query(`
       SELECT RequestId, Title, RequestType, Urgency, Status, PriorityScore, PriorityLabel, AssignedDisplayName, CreatedAt
-      FROM dbo.Requests
+      FROM Requests
       WHERE FamilyId = @familyId
-      ORDER BY CreatedAt DESC;
+      ORDER BY CreatedAt DESC
+    `)
 
+  const tripsQuery = await pool
+    .request()
+    .input('familyId', sql.Int, family.FamilyId)
+    .query(`
       SELECT TripId, Destination, Shift, Status, DurationMinutes, AssignedDisplayName, CreatedAt
-      FROM dbo.Trips
+      FROM Trips
       WHERE FamilyId = @familyId
-      ORDER BY CreatedAt DESC;
+      ORDER BY CreatedAt DESC
     `)
 
   return {
     family,
-    requests: result.recordsets[0],
-    trips: result.recordsets[1],
+    requests: requestsQuery.recordset,
+    trips: tripsQuery.recordset,
   }
 })

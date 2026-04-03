@@ -10,7 +10,7 @@ export default withApi({ methods: ['GET'], roles: ['hospital', 'staff', 'volunte
       .input('familyId', sql.Int, req.auth.familyId)
       .query(`
         SELECT FamilyId, SiteId, CaregiverName, FamilyLastName, AdmissionStatus
-        FROM dbo.Families
+        FROM Families
         WHERE FamilyId = @familyId
       `)
     return { role: 'family', profile: result.recordset[0] }
@@ -21,8 +21,8 @@ export default withApi({ methods: ['GET'], roles: ['hospital', 'staff', 'volunte
     .input('userId', sql.Int, req.auth.sub)
     .query(`
       SELECT u.UserId, u.FullName, u.Email, u.SiteId, r.RoleCode
-      FROM dbo.Users u
-      INNER JOIN dbo.Roles r ON r.RoleId = u.RoleId
+      FROM Users u
+      INNER JOIN Roles r ON r.RoleId = u.RoleId
       WHERE u.UserId = @userId
     `)
 

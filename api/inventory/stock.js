@@ -11,7 +11,7 @@ export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
     .query(`
       SELECT InventoryItemId, ItemCode, Name, Unit, Stock, MinStock,
              CASE WHEN Stock <= MinStock THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS LowStock
-      FROM dbo.InventoryItems
+      FROM InventoryItems
       WHERE SiteId = @siteId
       ORDER BY Name
     `)

@@ -13,10 +13,11 @@ export default withApi({ methods: ['GET'], roles: ['family', 'staff', 'volunteer
       .request()
       .input('code', sql.NVarChar(80), code)
       .query(`
-        SELECT TOP 1 f.FamilyId
-        FROM dbo.FamilyAccess fa
-        INNER JOIN dbo.Families f ON f.FamilyId = fa.FamilyId
+        SELECT f.FamilyId
+        FROM FamilyAccess fa
+        INNER JOIN Families f ON f.FamilyId = fa.FamilyId
         WHERE fa.TicketCode = @code OR fa.QrCode = @code
+        LIMIT 1
       `)
 
     familyId = familyResult.recordset[0]?.FamilyId
@@ -31,31 +32,47 @@ export default withApi({ methods: ['GET'], roles: ['family', 'staff', 'volunteer
         f.FamilyId, f.CaregiverName, f.FamilyLastName, f.AdmissionStatus,
         s.Name AS SiteName, s.SiteCode,
         r.RoomCode
-      FROM dbo.Families f
-      INNER JOIN dbo.Sites s ON s.SiteId = f.SiteId
-      LEFT JOIN dbo.Rooms r ON r.RoomId = f.RoomId
+      FROM Families f
+      INNER JOIN Sites s ON s.SiteId = f.SiteId
+      LEFT JOIN Rooms r ON r.RoomId = f.RoomId
       WHERE f.FamilyId = @familyId;
+    `)
 
+  const requestsQuery = await pool
+    .request()
+    .input('familyId', sql.Int, familyId)
+    .query(`
       SELECT RequestId, Title, RequestType, Urgency, Status, PriorityScore, PriorityLabel, AssignedDisplayName, CreatedAt
-      FROM dbo.Requests
+      FROM Requests
       WHERE FamilyId = @familyId
-      ORDER BY CreatedAt DESC;
+      ORDER BY CreatedAt DESC
+    `)
 
+  const tripsQuery = await pool
+    .request()
+    .input('familyId', sql.Int, familyId)
+    .query(`
       SELECT TripId, Destination, Shift, Status, DurationMinutes, AssignedDisplayName, CreatedAt
-      FROM dbo.Trips
+      FROM Trips
       WHERE FamilyId = @familyId
-      ORDER BY CreatedAt DESC;
+      ORDER BY CreatedAt DESC
+    `)
 
-      SELECT TOP 5 ReturnPassId, RequestedDate, CompanionCount, LogisticsNote, Status, CreatedAt
-      FROM dbo.ReturnPasses
+  const returnPassesQuery = await pool
+    .request()
+    .input('familyId', sql.Int, familyId)
+    .query(`
+      SELECT ReturnPassId, RequestedDate, CompanionCount, LogisticsNote, Status, CreatedAt
+      FROM ReturnPasses
       WHERE FamilyId = @familyId
-      ORDER BY CreatedAt DESC;
+      ORDER BY CreatedAt DESC
+      LIMIT 5
     `)
 
   return {
-    family: familyQuery.recordsets[0][0],
-    requests: familyQuery.recordsets[1],
-    trips: familyQuery.recordsets[2],
-    returnPasses: familyQuery.recordsets[3],
+    family: familyQuery.recordset[0],
+    requests: requestsQuery.recordset,
+    trips: tripsQuery.recordset,
+    returnPasses: returnPassesQuery.recordset,
   }
 })

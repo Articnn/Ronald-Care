@@ -20,7 +20,7 @@ export async function logAudit({
     .input('entityId', sql.Int, entityId)
     .input('metadataJson', sql.NVarChar(sql.MAX), JSON.stringify(metadata))
     .query(`
-      INSERT INTO dbo.AuditEvents (SiteId, ActorUserId, ActorFamilyId, EventType, EntityType, EntityId, MetadataJson)
+      INSERT INTO AuditEvents (SiteId, ActorUserId, ActorFamilyId, EventType, EntityType, EntityId, MetadataJson)
       VALUES (@siteId, @actorUserId, @actorFamilyId, @eventType, @entityType, @entityId, @metadataJson)
     `)
 }

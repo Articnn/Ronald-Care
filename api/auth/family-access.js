@@ -12,12 +12,13 @@ export default withApi({ methods: ['POST'] }, async (req) => {
     .request()
     .input('code', sql.NVarChar(80), req.body.code)
     .query(`
-      SELECT TOP 1
+      SELECT
         fa.FamilyAccessId, fa.FamilyId, fa.TicketCode, fa.QrCode, fa.PinHash, fa.IsActive,
         f.SiteId, f.CaregiverName, f.FamilyLastName
-      FROM dbo.FamilyAccess fa
-      INNER JOIN dbo.Families f ON f.FamilyId = fa.FamilyId
+      FROM FamilyAccess fa
+      INNER JOIN Families f ON f.FamilyId = fa.FamilyId
       WHERE fa.TicketCode = @code OR fa.QrCode = @code
+      LIMIT 1
     `)
 
   const access = result.recordset[0]
@@ -29,7 +30,7 @@ export default withApi({ methods: ['POST'] }, async (req) => {
   await pool
     .request()
     .input('familyAccessId', sql.Int, access.FamilyAccessId)
-    .query(`UPDATE dbo.FamilyAccess SET LastLoginAt = SYSUTCDATETIME() WHERE FamilyAccessId = @familyAccessId`)
+    .query(`UPDATE FamilyAccess SET LastLoginAt = NOW() WHERE FamilyAccessId = @familyAccessId`)
 
   const token = signJwt({
     familyId: access.FamilyId,

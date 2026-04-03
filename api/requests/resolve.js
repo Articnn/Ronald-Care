@@ -12,10 +12,10 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
     .request()
     .input('requestId', sql.Int, toInt(req.body.requestId, 'requestId'))
     .query(`
-      UPDATE dbo.Requests
-      SET Status = 'resuelta', ResolvedAt = SYSUTCDATETIME()
-      OUTPUT INSERTED.*
+      UPDATE Requests
+      SET Status = 'resuelta', ResolvedAt = NOW()
       WHERE RequestId = @requestId
+      RETURNING *
     `)
 
   const requestRow = result.recordset[0]
@@ -31,7 +31,7 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
     .input('publicDetail', sql.NVarChar(400), `Se completo un apoyo de ${requestRow.RequestType} dentro del flujo operativo.`)
     .input('isPublic', sql.Bit, 1)
     .query(`
-      INSERT INTO dbo.ImpactEvents (SiteId, EventType, SourceEntityType, SourceEntityId, PublicTitle, PublicDetail, IsPublic)
+      INSERT INTO ImpactEvents (SiteId, EventType, SourceEntityType, SourceEntityId, PublicTitle, PublicDetail, IsPublic)
       VALUES (@siteId, @eventType, @sourceEntityType, @sourceEntityId, @publicTitle, @publicDetail, @isPublic)
     `)
 

@@ -33,7 +33,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
     const result = await dbReq.query(`
       SELECT *
-      FROM dbo.Trips
+      FROM Trips
       ${whereClause}
       ORDER BY CreatedAt DESC
     `)
@@ -47,7 +47,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
   const familyResult = await pool
     .request()
     .input('familyId', sql.Int, familyId)
-    .query(`SELECT FamilyId, SiteId FROM dbo.Families WHERE FamilyId = @familyId`)
+    .query(`SELECT FamilyId, SiteId FROM Families WHERE FamilyId = @familyId`)
   const family = familyResult.recordset[0]
 
   const result = await pool
@@ -61,9 +61,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
     .input('assignedDisplayName', sql.NVarChar(120), req.body.assignedDisplayName || 'Pendiente asignacion')
     .input('status', sql.NVarChar(30), 'pendiente')
     .query(`
-      INSERT INTO dbo.Trips (SiteId, FamilyId, RelatedRequestId, Destination, Shift, AssignedUserId, AssignedDisplayName, Status)
-      OUTPUT INSERTED.*
+      INSERT INTO Trips (SiteId, FamilyId, RelatedRequestId, Destination, Shift, AssignedUserId, AssignedDisplayName, Status)
       VALUES (@siteId, @familyId, @relatedRequestId, @destination, @shift, @assignedUserId, @assignedDisplayName, @status)
+      RETURNING *
     `)
 
   const trip = result.recordset[0]

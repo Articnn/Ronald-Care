@@ -14,10 +14,10 @@ export default withApi({ methods: ['PATCH'], roles: ['hospital', 'staff'] }, asy
     .input('referralId', sql.Int, toInt(req.body.referralId, 'referralId'))
     .input('status', sql.NVarChar(30), req.body.status)
     .query(`
-      UPDATE dbo.Referrals
+      UPDATE Referrals
       SET Status = @status
-      OUTPUT INSERTED.*
       WHERE ReferralId = @referralId
+      RETURNING *
     `)
 
   const referral = result.recordset[0]

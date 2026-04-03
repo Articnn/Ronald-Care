@@ -10,15 +10,17 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "seed:hash": "node scripts/hash-password.js"
+    "seed:hash": "node scripts/hash-password.js",
+    "db:schema": "node scripts/run-pg-sql.js sql/001_schema.sql",
+    "db:seed": "node scripts/run-pg-sql.js sql/002_seed.sql",
+    "db:setup": "npm run db:schema && npm run db:seed"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.577.0",
-    "mssql": "^11.0.1",
-    "msnodesqlv8": "^5.1.1",
+    "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.1",

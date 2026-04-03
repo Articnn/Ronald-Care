@@ -1,121 +1,237 @@
 import dotenv from 'dotenv'
-import sql from 'mssql/msnodesqlv8.js'
+import pg from 'pg'
 
 dotenv.config()
 
-let poolPromise = null
+const { Pool } = pg
 
-function readBoolean(value, fallback = false) {
-  if (value === undefined || value === null || value === '') return fallback
-  return String(value).toLowerCase() === 'true'
+let poolInstance = null
+let compatPoolInstance = null
+
+const KEY_ALIASES = {
+  admissionstatus: 'AdmissionStatus',
+  actorfamilyid: 'ActorFamilyId',
+  actoruserid: 'ActorUserId',
+  arrivaldate: 'ArrivalDate',
+  assignedat: 'AssignedAt',
+  assigneddisplayname: 'AssignedDisplayName',
+  assignedrole: 'AssignedRole',
+  assigneduserid: 'AssignedUserId',
+  authoralias: 'AuthorAlias',
+  availabilitystatus: 'AvailabilityStatus',
+  capacity: 'Capacity',
+  caregivername: 'CaregiverName',
+  checkincompletedat: 'CheckInCompletedAt',
+  communitypostid: 'CommunityPostId',
+  companioncount: 'CompanionCount',
+  createdat: 'CreatedAt',
+  createdbyname: 'CreatedByName',
+  createdbyuserid: 'CreatedByUserId',
+  createdbysource: 'CreatedBySource',
+  destination: 'Destination',
+  displayname: 'DisplayName',
+  durationminutes: 'DurationMinutes',
+  eligibilityconfirmed: 'EligibilityConfirmed',
+  email: 'Email',
+  endedat: 'EndedAt',
+  entityid: 'EntityId',
+  entitytype: 'EntityType',
+  eventtype: 'EventType',
+  familyaccessid: 'FamilyAccessId',
+  familycode: 'FamilyCode',
+  familyid: 'FamilyId',
+  familylastname: 'FamilyLastName',
+  fullname: 'FullName',
+  hourslogged: 'HoursLogged',
+  idverified: 'IdVerified',
+  impacteventid: 'ImpactEventId',
+  inventoryitemid: 'InventoryItemId',
+  inventorymovementid: 'InventoryMovementId',
+  isactive: 'IsActive',
+  ispublic: 'IsPublic',
+  lastloginat: 'LastLoginAt',
+  logisticsnote: 'LogisticsNote',
+  lowstock: 'LowStock',
+  message: 'Message',
+  metadatajson: 'MetadataJson',
+  minstock: 'MinStock',
+  moderatedat: 'ModeratedAt',
+  moderatedbyuserid: 'ModeratedByUserId',
+  movementtype: 'MovementType',
+  name: 'Name',
+  occupiedcount: 'OccupiedCount',
+  optionalwindow: 'OptionalWindow',
+  passwordhash: 'PasswordHash',
+  performedbyuserid: 'PerformedByUserId',
+  pinhash: 'PinHash',
+  prioritylabel: 'PriorityLabel',
+  priorityreason: 'PriorityReason',
+  priorityscore: 'PriorityScore',
+  publicdetail: 'PublicDetail',
+  publictitle: 'PublicTitle',
+  qrcode: 'QrCode',
+  quantity: 'Quantity',
+  referralcode: 'ReferralCode',
+  referralid: 'ReferralId',
+  relatedrequestid: 'RelatedRequestId',
+  regulationaccepted: 'RegulationAccepted',
+  reportcount: 'ReportCount',
+  requestid: 'RequestId',
+  requesteddate: 'RequestedDate',
+  requesttype: 'RequestType',
+  resolvedat: 'ResolvedAt',
+  returnpassid: 'ReturnPassId',
+  rolecode: 'RoleCode',
+  roleid: 'RoleId',
+  rolename: 'RoleName',
+  roomcode: 'RoomCode',
+  roomid: 'RoomId',
+  shift: 'Shift',
+  shiftday: 'ShiftDay',
+  shiftperiod: 'ShiftPeriod',
+  simplesignature: 'SimpleSignature',
+  sitecode: 'SiteCode',
+  siteid: 'SiteId',
+  sitename: 'SiteName',
+  sourceentityid: 'SourceEntityId',
+  sourceentitytype: 'SourceEntityType',
+  startedat: 'StartedAt',
+  status: 'Status',
+  stock: 'Stock',
+  ticketcode: 'TicketCode',
+  title: 'Title',
+  tripid: 'TripId',
+  unit: 'Unit',
+  urgency: 'Urgency',
+  userid: 'UserId',
+  volunteername: 'VolunteerName',
+  volunteershiftid: 'VolunteerShiftId',
+  volunteertype: 'VolunteerType',
+  waitingstartedat: 'WaitingStartedAt',
+  itemcode: 'ItemCode',
 }
 
-function getLocalDbPipe() {
-  return process.env.SQL_LOCALDB_PIPE?.trim()
+function transformRow(row) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [KEY_ALIASES[key] || key, value])
+  )
 }
 
-function resolveServer() {
-  const localDbInstance = process.env.SQL_LOCALDB_INSTANCE?.trim()
-  if (localDbInstance) {
-    return '(localdb)'
+function normalizeResult(result) {
+  const rows = result.rows.map(transformRow)
+  return {
+    rows,
+    rowCount: result.rowCount,
+    recordset: rows,
+    recordsets: [rows],
   }
-
-  const configuredServer = process.env.SQL_SERVER?.trim()
-  if (configuredServer?.toLowerCase().startsWith('np:')) {
-    throw new Error(
-      'No uses el pipe dinamico de LocalDB en SQL_SERVER. Configura SQL_LOCALDB_INSTANCE=MentorLink para usar Windows Authentication.'
-    )
-  }
-
-  return configuredServer || 'localhost'
 }
 
-function buildConnectionString({ server, database, trustedConnection }) {
-  const driverName = process.env.SQL_ODBC_DRIVER || 'ODBC Driver 17 for SQL Server'
-  const parts = [
-    `Driver={${driverName}}`,
-    `Server=${server}`,
-    `Database=${database}`,
-    `Trusted_Connection=${trustedConnection ? 'Yes' : 'No'}`
-  ]
+function convertNamedParams(queryText, paramsMap) {
+  const names = []
+  const sqlText = queryText.replace(/@([A-Za-z][A-Za-z0-9_]*)/g, (_, name) => {
+    const existingIndex = names.indexOf(name)
+    if (existingIndex >= 0) return `$${existingIndex + 1}`
+    names.push(name)
+    return `$${names.length}`
+  })
 
-  if (!trustedConnection) {
-    if (process.env.SQL_USER) parts.push(`Uid=${process.env.SQL_USER}`)
-    if (process.env.SQL_PASSWORD) parts.push(`Pwd=${process.env.SQL_PASSWORD}`)
+  const values = names.map((name) => (paramsMap.has(name) ? paramsMap.get(name) : null))
+  return { sqlText, values }
+}
+
+class CompatRequest {
+  constructor(queryable) {
+    this.queryable = queryable
+    this.params = new Map()
   }
 
-  return `${parts.join(';')};`
+  input(name, typeOrValue, maybeValue) {
+    const value = arguments.length >= 3 ? maybeValue : typeOrValue
+    this.params.set(name, value)
+    return this
+  }
+
+  async query(queryText) {
+    const { sqlText, values } = convertNamedParams(queryText, this.params)
+    const result = await this.queryable.query(sqlText, values)
+    return normalizeResult(result)
+  }
+}
+
+class CompatQueryable {
+  constructor(queryable) {
+    this.queryable = queryable
+  }
+
+  request() {
+    return new CompatRequest(this.queryable)
+  }
+
+  async query(queryText, values = []) {
+    const result = await this.queryable.query(queryText, values)
+    return normalizeResult(result)
+  }
 }
 
 function getConfig() {
-  const localDbPipe = getLocalDbPipe()
-  const server = resolveServer()
-  const localDbInstance = process.env.SQL_LOCALDB_INSTANCE?.trim()
-  const trustedConnection = readBoolean(process.env.SQL_TRUSTED_CONNECTION, true)
-  const database = process.env.SQL_DATABASE || 'RonaldCareOps'
-
-  if (localDbPipe) {
-    return {
-      connectionString: buildConnectionString({
-        server: localDbPipe,
-        database,
-        trustedConnection
-      }),
-      driver: 'msnodesqlv8',
-      pool: {
-        max: 5,
-        min: 0,
-        idleTimeoutMillis: 30000
-      }
-    }
+  const connectionString = process.env.DATABASE_URL?.trim()
+  if (!connectionString) {
+    throw new Error('DATABASE_URL no esta configurada. Para Neon define DATABASE_URL en tu .env')
   }
 
   return {
-    server,
-    database,
-    driver: 'msnodesqlv8',
-    user: trustedConnection ? undefined : process.env.SQL_USER,
-    password: trustedConnection ? undefined : process.env.SQL_PASSWORD,
-    port: localDbInstance ? undefined : Number(process.env.SQL_PORT || 1433),
-    options: {
-      encrypt: readBoolean(process.env.SQL_ENCRYPT, false),
-      trustServerCertificate: readBoolean(process.env.SQL_TRUST_CERT, true),
-      trustedConnection,
-      instanceName: localDbInstance || undefined,
-      enableArithAbort: true
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false,
     },
-    pool: {
-      max: 5,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
-  };
+    max: 10,
+    idleTimeoutMillis: 30000,
+  }
 }
 
 export async function getPool() {
-  if (!poolPromise) {
-    const pool = new sql.ConnectionPool(getConfig())
-    poolPromise = pool.connect().catch((error) => {
-      poolPromise = null
-      throw error
-    })
+  if (!poolInstance) {
+    poolInstance = new Pool(getConfig())
+    compatPoolInstance = new CompatQueryable(poolInstance)
   }
-  return poolPromise
+
+  return compatPoolInstance
 }
 
 export async function withTransaction(work) {
-  const pool = await getPool()
-  const transaction = new sql.Transaction(pool)
-  await transaction.begin()
+  if (!poolInstance) {
+    await getPool()
+  }
+
+  const client = await poolInstance.connect()
+  const compatClient = new CompatQueryable(client)
 
   try {
-    const result = await work(transaction)
-    await transaction.commit()
+    await client.query('BEGIN')
+    const result = await work(compatClient)
+    await client.query('COMMIT')
     return result
   } catch (error) {
-    await transaction.rollback()
+    await client.query('ROLLBACK')
     throw error
+  } finally {
+    client.release()
   }
 }
 
-export { sql }
+class CompatSqlRequest {
+  constructor(ctx) {
+    return ctx.request()
+  }
+}
+
+export const sql = {
+  Int: 'int',
+  Bit: 'bit',
+  Date: 'date',
+  Decimal: (...args) => args,
+  NVarChar: (...args) => args,
+  MAX: 'max',
+  Request: CompatSqlRequest,
+}

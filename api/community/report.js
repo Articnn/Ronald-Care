@@ -12,11 +12,11 @@ export default withApi({ methods: ['PATCH'], roles: ['family', 'staff', 'volunte
     .request()
     .input('communityPostId', sql.Int, toInt(req.body.communityPostId, 'communityPostId'))
     .query(`
-      UPDATE dbo.CommunityPosts
+      UPDATE CommunityPosts
       SET ReportCount = ReportCount + 1,
           Status = CASE WHEN ReportCount + 1 >= 1 THEN 'reported' ELSE Status END
-      OUTPUT INSERTED.*
       WHERE CommunityPostId = @communityPostId
+      RETURNING *
     `)
 
   const post = result.recordset[0]

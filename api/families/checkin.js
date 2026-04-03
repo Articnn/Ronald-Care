@@ -19,16 +19,16 @@ export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => 
     .input('regulationAccepted', sql.Bit, Boolean(req.body.regulationAccepted))
     .input('simpleSignature', sql.NVarChar(150), req.body.simpleSignature || null)
     .query(`
-      UPDATE dbo.Families
+      UPDATE Families
       SET
         RoomId = @roomId,
         IdVerified = @idVerified,
         RegulationAccepted = @regulationAccepted,
         SimpleSignature = @simpleSignature,
         AdmissionStatus = 'checkin_completado',
-        CheckInCompletedAt = SYSUTCDATETIME()
-      OUTPUT INSERTED.*
+        CheckInCompletedAt = NOW()
       WHERE FamilyId = @familyId
+      RETURNING *
     `)
 
   const family = result.recordset[0]
@@ -53,7 +53,7 @@ export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => 
     .input('publicDetail', sql.NVarChar(400), 'Check-in operativo completado y ficha familia emitida sin incidencias.')
     .input('isPublic', sql.Bit, 1)
     .query(`
-      INSERT INTO dbo.ImpactEvents (SiteId, EventType, SourceEntityType, SourceEntityId, PublicTitle, PublicDetail, IsPublic)
+      INSERT INTO ImpactEvents (SiteId, EventType, SourceEntityType, SourceEntityId, PublicTitle, PublicDetail, IsPublic)
       VALUES (@siteId, @eventType, @sourceEntityType, @sourceEntityId, @publicTitle, @publicDetail, @isPublic)
     `)
 

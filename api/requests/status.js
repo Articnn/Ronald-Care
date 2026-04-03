@@ -14,10 +14,10 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
     .input('requestId', sql.Int, toInt(req.body.requestId, 'requestId'))
     .input('status', sql.NVarChar(30), req.body.status)
     .query(`
-      UPDATE dbo.Requests
+      UPDATE Requests
       SET Status = @status
-      OUTPUT INSERTED.*
       WHERE RequestId = @requestId
+      RETURNING *
     `)
 
   const requestRow = result.recordset[0]

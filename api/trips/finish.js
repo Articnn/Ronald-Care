@@ -12,13 +12,13 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
     .request()
     .input('tripId', sql.Int, toInt(req.body.tripId, 'tripId'))
     .query(`
-      UPDATE dbo.Trips
+      UPDATE Trips
       SET
         Status = 'finalizado',
-        EndedAt = SYSUTCDATETIME(),
-        DurationMinutes = DATEDIFF(MINUTE, StartedAt, SYSUTCDATETIME())
-      OUTPUT INSERTED.*
+        EndedAt = NOW(),
+        DurationMinutes = FLOOR(EXTRACT(EPOCH FROM (NOW() - StartedAt)) / 60)
       WHERE TripId = @tripId AND StartedAt IS NOT NULL
+      RETURNING *
     `)
 
   const trip = result.recordset[0]

@@ -16,7 +16,7 @@ export default withApi({ methods: ['POST'], roles: ['staff'] }, async (req) => {
     itemReq.input('inventoryItemId', sql.Int, inventoryItemId)
     const itemResult = await itemReq.query(`
       SELECT InventoryItemId, SiteId, Name, Stock
-      FROM dbo.InventoryItems
+      FROM InventoryItems
       WHERE InventoryItemId = @inventoryItemId
     `)
 
@@ -29,7 +29,7 @@ export default withApi({ methods: ['POST'], roles: ['staff'] }, async (req) => {
     updateReq.input('inventoryItemId', sql.Int, inventoryItemId)
     updateReq.input('nextStock', sql.Int, nextStock)
     await updateReq.query(`
-      UPDATE dbo.InventoryItems
+      UPDATE InventoryItems
       SET Stock = @nextStock
       WHERE InventoryItemId = @inventoryItemId
     `)
@@ -44,9 +44,9 @@ export default withApi({ methods: ['POST'], roles: ['staff'] }, async (req) => {
       .input('reason', sql.NVarChar(255), req.body.reason)
 
     const insertResult = await insertReq.query(`
-      INSERT INTO dbo.InventoryMovements (InventoryItemId, SiteId, PerformedByUserId, MovementType, Quantity, Reason)
-      OUTPUT INSERTED.*
+      INSERT INTO InventoryMovements (InventoryItemId, SiteId, PerformedByUserId, MovementType, Quantity, Reason)
       VALUES (@inventoryItemId, @siteId, @performedByUserId, @movementType, @quantity, @reason)
+      RETURNING *
     `)
 
     return { item, movement: insertResult.recordset[0], nextStock }

@@ -22,10 +22,10 @@ export default withApi({ methods: ['GET'], roles: ['staff', 'hospital'] }, async
         fa.QrCode,
         r.RoomCode,
         s.Name AS SiteName
-      FROM dbo.Families f
-      INNER JOIN dbo.Sites s ON s.SiteId = f.SiteId
-      LEFT JOIN dbo.FamilyAccess fa ON fa.FamilyId = f.FamilyId AND fa.IsActive = 1
-      LEFT JOIN dbo.Rooms r ON r.RoomId = f.RoomId
+      FROM Families f
+      INNER JOIN Sites s ON s.SiteId = f.SiteId
+      LEFT JOIN FamilyAccess fa ON fa.FamilyId = f.FamilyId AND fa.IsActive = TRUE
+      LEFT JOIN Rooms r ON r.RoomId = f.RoomId
       WHERE f.SiteId = @siteId
       ORDER BY f.CreatedAt DESC
     `)

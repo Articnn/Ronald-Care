@@ -8,10 +8,11 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['family', 'staff', 'v
 
   if (req.method === 'GET') {
     const result = await pool.request().query(`
-      SELECT TOP 50 CommunityPostId, FamilyId, AuthorAlias, Message, Status, ReportCount, CreatedAt
-      FROM dbo.CommunityPosts
+      SELECT CommunityPostId, FamilyId, AuthorAlias, Message, Status, ReportCount, CreatedAt
+      FROM CommunityPosts
       WHERE Status <> 'hidden'
       ORDER BY CreatedAt DESC
+      LIMIT 50
     `)
     return result.recordset
   }
@@ -27,9 +28,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['family', 'staff', 'v
     .input('message', sql.NVarChar(500), req.body.message)
     .input('status', sql.NVarChar(20), 'active')
     .query(`
-      INSERT INTO dbo.CommunityPosts (FamilyId, AuthorAlias, Message, Status)
-      OUTPUT INSERTED.*
+      INSERT INTO CommunityPosts (FamilyId, AuthorAlias, Message, Status)
       VALUES (@familyId, @authorAlias, @message, @status)
+      RETURNING *
     `)
 
   const post = result.recordset[0]

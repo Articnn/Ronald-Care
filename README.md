@@ -5,27 +5,27 @@ Plataforma no clinica para Casa Ronald enfocada en referencias, check-in, solici
 ## Stack
 
 - Frontend: React + Vite + TypeScript + TailwindCSS
-- Backend: Node.js serverless-style API + `mssql`
-- Base de datos: SQL Server
+- Backend: Node.js serverless-style API + `pg`
+- Base de datos: PostgreSQL en Neon
 
 ## Estructura del repo
 
 ```text
 .
-├─ api/                     # funciones serverless por dominio
-├─ scripts/                 # utilidades de soporte
-├─ sql/                     # schema + seed de SQL Server
-├─ src/                     # frontend React y librerias compartidas del backend
-│  ├─ components/
-│  ├─ context/
-│  ├─ data/
-│  ├─ lib/                  # utilidades backend (db, auth, http, audit, etc.)
-│  ├─ pages/
-│  └─ ...
-├─ server.dev.js            # servidor local para probar API
-├─ .env.example
-├─ package.json
-└─ README.md
+|-- api/                     # funciones serverless por dominio
+|-- scripts/                 # utilidades de soporte
+|-- sql/                     # schema + seed de PostgreSQL
+|-- src/                     # frontend React y librerias compartidas del backend
+|   |-- components/
+|   |-- context/
+|   |-- data/
+|   |-- lib/                 # utilidades backend (db, auth, http, audit, etc.)
+|   |-- pages/
+|   `-- ...
+|-- server.dev.js            # servidor local para probar API
+|-- .env.example
+|-- package.json
+`-- README.md
 ```
 
 ## Setup rapido
@@ -38,14 +38,26 @@ npm install
 
 ### 2. Configurar variables de entorno
 
-Crear `.env` tomando como base `.env.example`.
+Crear `.env` tomando como base `.env.example` y definir:
 
-### 3. Crear base de datos
+```env
+VITE_API_URL=http://localhost:8787/api
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
+JWT_SECRET=...
+```
 
-Ejecutar:
+### 3. Crear schema y seed en Neon
 
-1. `sql/001_schema.sql`
-2. `sql/002_seed.sql`
+```bash
+npm run db:schema
+npm run db:seed
+```
+
+O en un solo paso:
+
+```bash
+npm run db:setup
+```
 
 ## Correr el proyecto
 
@@ -81,6 +93,19 @@ Familias:
 
 - `QR-FAM-3481` o `TKT-3481` con PIN `Family3481!`
 - `QR-FAM-5520` o `TKT-5520` con PIN `Family5520!`
+- `QR-FAM-7781` o `TKT-7781` con PIN `Family5520!`
+
+## Verificaciones utiles
+
+```bash
+curl http://localhost:8787/api/health
+```
+
+```bash
+curl -X POST http://localhost:8787/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"staff@ronaldcare.demo","password":"Demo123!"}'
+```
 
 ## Git recomendado
 
@@ -88,16 +113,10 @@ Familias:
 - `dev`: integracion
 - `feature/<modulo>`: trabajo por funcionalidad
 
-## Primer commit limpio
-
-1. Confirmar que `.env` no este versionado.
-2. Confirmar que `node_modules/` y `dist/` no aparezcan en `git status`.
-3. Hacer commit de schema, seed, backend y frontend juntos.
-
 ## Seguridad para repo publico
 
 - Nunca subir `.env`
-- Nunca subir cadenas de conexion reales
+- Nunca subir `DATABASE_URL` real
 - Nunca subir contrasenas reales
 - Usar solo datos demo / mock
 - Mantener donor con datos agregados sin PII

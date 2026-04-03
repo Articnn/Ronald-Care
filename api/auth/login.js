@@ -17,9 +17,9 @@ export default withApi({ methods: ['POST'] }, async (req) => {
         u.UserId, u.SiteId, u.FullName, u.Email, u.PasswordHash, u.IsActive,
         r.RoleCode,
         s.Name AS SiteName
-      FROM dbo.Users u
-      INNER JOIN dbo.Roles r ON r.RoleId = u.RoleId
-      INNER JOIN dbo.Sites s ON s.SiteId = u.SiteId
+      FROM Users u
+      INNER JOIN Roles r ON r.RoleId = u.RoleId
+      INNER JOIN Sites s ON s.SiteId = u.SiteId
       WHERE u.Email = @email
     `)
 

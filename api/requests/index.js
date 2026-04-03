@@ -39,7 +39,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
     const result = await dbReq.query(`
       SELECT *
-      FROM dbo.Requests
+      FROM Requests
       ${whereClause}
       ORDER BY
         CASE PriorityLabel WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END,
@@ -71,7 +71,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
   const familyResult = await pool
     .request()
     .input('familyId', sql.Int, familyId)
-    .query(`SELECT FamilyId, SiteId FROM dbo.Families WHERE FamilyId = @familyId`)
+    .query(`SELECT FamilyId, SiteId FROM Families WHERE FamilyId = @familyId`)
   const family = familyResult.recordset[0]
 
   const insert = await pool
@@ -91,15 +91,15 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
     .input('assignedRole', sql.NVarChar(30), assignedRole)
     .input('assignedDisplayName', sql.NVarChar(120), assignedDisplayName)
     .query(`
-      INSERT INTO dbo.Requests (
+      INSERT INTO Requests (
         SiteId, FamilyId, CreatedByUserId, CreatedBySource, Title, RequestType, Urgency, OptionalWindow,
         PriorityScore, PriorityLabel, PriorityReason, Status, AssignedRole, AssignedDisplayName
       )
-      OUTPUT INSERTED.*
       VALUES (
         @siteId, @familyId, @createdByUserId, @createdBySource, @title, @requestType, @urgency, @optionalWindow,
         @priorityScore, @priorityLabel, @priorityReason, @status, @assignedRole, @assignedDisplayName
       )
+      RETURNING *
     `)
 
   const requestRow = insert.recordset[0]
