@@ -1,5 +1,6 @@
 import {
   Building2,
+  ChevronDown,
   ClipboardList,
   HeartHandshake,
   LayoutDashboard,
@@ -9,11 +10,10 @@ import {
   UserCircle2,
   Users,
 } from 'lucide-react'
-import type { ReactElement } from 'react'
+import { type ReactElement, useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
 import type { InternalRole, Role } from '../../types'
-import { Button } from '../ui/Button'
 
 const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; to: string; icon: ReactElement }>> = {
   superadmin: [
@@ -82,61 +82,93 @@ export function AppShell() {
   const location = useLocation()
   const links = role === 'family' ? familyNav : role ? navByRole[role as InternalRole] : []
 
+  const [isSiteOpen, setIsSiteOpen] = useState(false)
+  const siteRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (siteRef.current && !siteRef.current.contains(e.target as Node)) {
+        setIsSiteOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const canChange = canChangeSite(role)
+
+  const glassClass = "border border-white/10 bg-white/5 backdrop-blur-md shadow-lg"
+
   return (
-    <div
-      className={`min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(255,211,173,0.85),_transparent_35%),linear-gradient(180deg,_#fff8ef,_#fff4db)] ${
-        easyRead ? 'text-xl' : ''
-      }`}
-    >
+    <div className={`min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(255,211,173,0.85),_transparent_35%),linear-gradient(180deg,_#fff8ef,_#fff4db)] ${easyRead ? 'text-xl' : ''}`}>
       <header className="sticky top-0 z-20 border-b border-warm-200 bg-warm-700 text-white shadow-soft">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
           <Link to="/" className="flex items-center gap-3">
             <HeartHandshake className="h-8 w-8" />
-            <div>
-              <p className="text-xl font-extrabold">RonaldCare</p>
-              <p className="text-sm text-warm-100">RonaldCare · no clínico</p>
-            </div>
+            <p className="text-xl font-extrabold">RonaldCare</p>
           </Link>
 
-          <label className="rounded-full bg-white/15 px-3 py-1 text-sm font-bold">
-            <span className="mr-2">Sede:</span>
-            <select
-              className="bg-transparent text-sm font-bold text-white outline-none"
-              value={site}
-              onChange={(event) => setSite(event.target.value)}
-              disabled={!canChangeSite(role)}
+          <div className="relative" ref={siteRef}>
+            <button
+              disabled={!canChange}
+              onClick={() => setIsSiteOpen(!isSiteOpen)}
+              className={`group flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-300 hover:border-white/30 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50 ${glassClass} ${isSiteOpen ? 'border-white/30 bg-white/10' : ''}`}
+            >
+              <Building2 className="h-4 w-4 shrink-0 text-white/60 transition-colors group-hover:text-white" />
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Sede</span>
+                <span className="font-bold text-white">{site}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-white/40 transition-transform duration-300 ${isSiteOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <div
+              className={`absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[160px] origin-top overflow-hidden rounded-xl border border-white/10 bg-warm-700 p-1 shadow-lg transition-all duration-200 ${
+                isSiteOpen
+                  ? 'visible scale-100 opacity-100'
+                  : 'invisible scale-95 opacity-0 pointer-events-none'
+              }`}
             >
               {availableSites.map((item) => (
-                <option key={item} value={item} className="text-warm-900">
+                <button
+                  key={item}
+                  onClick={() => {
+                    setSite(item)
+                    setIsSiteOpen(false)
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm font-semibold transition-colors rounded-lg hover:bg-white/10 ${
+                    site === item ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'
+                  }`}
+                >
                   {item}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
 
-          {role ? (
+          {role && (
             <span className="rounded-full bg-gold-300 px-3 py-1 text-sm font-bold text-warm-900">Rol: {roleLabels[role]}</span>
-          ) : null}
+          )}
 
           <div className="ml-auto flex gap-2">
-            <Button variant="ghost" onClick={toggleEasyRead} className="text-base">
-              {easyRead ? 'Vista normal' : 'Lectura facil'}
-            </Button>
-            {role ? (
-              <Button variant="ghost" onClick={logout} className="text-base">
+            <button
+              onClick={toggleEasyRead}
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+            >
+              {easyRead ? 'Vista normal' : 'Lectura fácil'}
+            </button>
+            {role && (
+              <button
+                onClick={logout}
+                className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+              >
                 Salir
-              </Button>
-            ) : (
-              <Link to="/login">
-                <Button variant="ghost" className="text-base">
-                  Login
-                </Button>
-              </Link>
+              </button>
             )}
           </div>
         </div>
 
-        {role && links.length > 0 ? (
+        {role && links.length > 0 && (
           <nav className="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 pb-4">
             {links.map((link) => {
               const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`)
@@ -148,13 +180,12 @@ export function AppShell() {
                     active ? 'bg-white text-warm-900' : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
-                  {link.icon}
-                  {link.label}
+                  {link.icon} {link.label}
                 </Link>
               )
             })}
           </nav>
-        ) : null}
+        )}
       </header>
 
       <main className="mx-auto max-w-7xl p-4 md:p-6">

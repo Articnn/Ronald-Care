@@ -36,7 +36,7 @@ export function OperationalAccessPage() {
       <SectionHeader
         eyebrow="Login"
         title="Selecciona tu acceso"
-        subtitle="Donantes no necesitan login. Familias usan QR + PIN. Los roles internos entran desde aquí."
+        subtitle="Accede a los roles internos desde aquí."
       />
 
       <div className="grid gap-4 md:grid-cols-2">

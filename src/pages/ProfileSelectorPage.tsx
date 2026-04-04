@@ -1,4 +1,4 @@
-import { HandHeart, LockKeyhole } from 'lucide-react'
+import { Building2, HeartHandshake, HandHeart, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -12,9 +12,8 @@ export function ProfileSelectorPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="No clinico"
         title="Transparencia pública por sede"
-        subtitle="Selecciona una sede desde el header para ver solo el impacto agregado de esa Casa. Sin diagnósticos, expedientes ni información clínica."
+        subtitle="Selecciona una sede para ver solo el impacto agregado de esa Casa."
       />
 
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
@@ -24,7 +23,7 @@ export function ProfileSelectorPage() {
             <h2 className="text-2xl font-bold text-warm-900">Donantes y transparencia</h2>
           </div>
           <p className="text-lg text-warm-700">
-            Estás viendo la información pública de <span className="font-bold">{site}</span>. Todo el bloque público se filtra por la sede seleccionada en el header.
+            Estás viendo la información pública de <span className="font-bold">{site}</span>.
           </p>
 
           {selectedMetric ? (
@@ -49,23 +48,38 @@ export function ProfileSelectorPage() {
           </div>
         </Card>
 
-        <Card className="space-y-4">
+        <Card className="space-y-6">
           <div className="flex items-center gap-3 text-warm-800">
-            <LockKeyhole className="h-8 w-8" />
+            <HeartHandshake className="h-8 w-8" />
             <h2 className="text-2xl font-bold text-warm-900">Cómo se entra a la app</h2>
           </div>
-          <div className="space-y-3 text-warm-700">
-            <p><span className="font-bold text-warm-900">Hospital, admin, staff y voluntariado:</span> entran por login interno.</p>
-            <p><span className="font-bold text-warm-900">Familias:</span> entran con QR + PIN o son atendidas por staff desde ayuda asistida.</p>
-            <p><span className="font-bold text-warm-900">Donantes:</span> ven transparencia pública sin login.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/login">
-              <Button>Ir a login</Button>
-            </Link>
-            <Link to="/family/login">
-              <Button variant="ghost">Entrar como familia</Button>
-            </Link>
+
+          <div className="space-y-7">
+            <div className="flex flex-col gap-3 rounded-2xl bg-warm-50 p-4 sm:flex-row sm:items-center">
+              <div className="shrink-0 rounded-full bg-warm-100 p-2.5">
+                <Building2 className="h-5 w-5 text-warm-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-warm-900">Hospital, admin, staff y voluntariado</p>
+                <p className="text-sm text-warm-600">Entran por login interno.</p>
+              </div>
+              <Link to="/login" className="shrink-0">
+                <Button>Ir a login</Button>
+              </Link>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl bg-warm-50 p-4 sm:flex-row sm:items-center">
+              <div className="shrink-0 rounded-full bg-warm-100 p-2.5">
+                <Users className="h-5 w-5 text-warm-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-warm-900">Familias</p>
+                <p className="text-sm text-warm-600">Entran con QR + PIN o son atendidas por staff desde ayuda asistida.</p>
+              </div>
+              <Link to="/family/login" className="shrink-0">
+                <Button variant="ghost">Entrar como familia</Button>
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
