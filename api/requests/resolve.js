@@ -1,10 +1,11 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { ensureSameOrGlobalSite } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, async (req) => {
+export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer', 'admin', 'superadmin'] }, async (req) => {
   required(req.body, ['requestId'])
 
   const pool = await getPool()
@@ -20,6 +21,7 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'volunteer'] }, as
 
   const requestRow = result.recordset[0]
   if (!requestRow) throw new ApiError(404, 'Solicitud no encontrada')
+  if (req.auth.role !== 'volunteer') ensureSameOrGlobalSite(req, requestRow.SiteId)
 
   await pool
     .request()

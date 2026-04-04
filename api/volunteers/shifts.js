@@ -1,15 +1,20 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer'] }, async (req) => {
+export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
 
   if (req.method === 'GET') {
-    const siteId = req.query.siteId ? toInt(req.query.siteId, 'siteId') : req.auth.siteId
-    const dbReq = pool.request().input('siteId', sql.Int, siteId)
-    let where = 'WHERE SiteId = @siteId'
+    const siteId = resolveScopedSiteId(req, req.query.siteId)
+    const dbReq = pool.request()
+    let where = 'WHERE 1=1'
+    if (siteId) {
+      dbReq.input('siteId', sql.Int, siteId)
+      where += ' AND SiteId = @siteId'
+    }
 
     if (req.query.shiftDay) {
       dbReq.input('shiftDay', sql.Date, req.query.shiftDay)

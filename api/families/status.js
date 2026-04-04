@@ -2,7 +2,7 @@ import { getPool, sql } from '../../src/lib/db.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 
-export default withApi({ methods: ['GET'], roles: ['family', 'staff', 'volunteer'] }, async (req) => {
+export default withApi({ methods: ['GET'], roles: ['family', 'staff', 'volunteer', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
   let familyId = req.auth.familyId || null
 

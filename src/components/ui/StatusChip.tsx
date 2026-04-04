@@ -1,6 +1,6 @@
 import type { ReferralStatus, RequestStatus, TripStatus } from '../../types'
 
-type Status = ReferralStatus | RequestStatus | TripStatus | 'Pendiente' | 'Check-in completado' | 'Borrador' | 'Enviado'
+type Status = ReferralStatus | RequestStatus | TripStatus | 'Pendiente' | 'Check-in completado' | 'Borrador' | 'Enviado' | 'Completada'
 
 const styles: Record<Status, string> = {
   Enviada: 'bg-blue-100 text-blue-800',
@@ -16,6 +16,7 @@ const styles: Record<Status, string> = {
   'En curso': 'bg-orange-100 text-orange-800',
   Finalizado: 'bg-emerald-100 text-emerald-800',
   'Check-in completado': 'bg-emerald-100 text-emerald-800',
+  Completada: 'bg-emerald-100 text-emerald-800',
 }
 
 export function StatusChip({ status }: { status: Status }) {

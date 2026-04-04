@@ -8,8 +8,9 @@ import { useAppState } from '../../context/AppContext'
 
 export function StaffCheckinPage() {
   const { refId } = useParams()
-  const { referrals, rooms, completeCheckIn } = useAppState()
+  const { referrals, families, rooms, completeCheckIn } = useAppState()
   const referral = useMemo(() => referrals.find((item) => item.id === refId), [refId, referrals])
+  const family = useMemo(() => families.find((item) => item.referralId === refId), [families, refId])
   const availableRooms = rooms.filter((room) => room.site === referral?.site)
   const [caregiverName, setCaregiverName] = useState('Ana')
   const [familyLastName, setFamilyLastName] = useState('Lopez')
@@ -53,9 +54,10 @@ export function StaffCheckinPage() {
           </label>
         </div>
         <Button
-          onClick={() => {
-            completeCheckIn({
-              referralId: referral.id,
+          onClick={async () => {
+            if (!family) return
+            await completeCheckIn({
+              referralId: family.id,
               caregiverName,
               familyLastName,
               site: referral.site,
@@ -63,15 +65,17 @@ export function StaffCheckinPage() {
               idVerified,
               regulationAccepted,
               simpleSignature,
-              kioskCode: referral.ticketCode,
-              qrCode: `QR-${referral.familyCode}`,
-              pin: referral.familyCode.slice(-4),
+              kioskCode: family.kioskCode,
+              qrCode: family.qrCode,
+              pin: '',
             })
             setDone(true)
           }}
+          disabled={!family}
         >
           Generar ficha familia
         </Button>
+        {!family ? <p className="text-sm font-semibold text-red-700">Primero un admin debe activar la familia desde la referencia.</p> : null}
         {done ? (
           <div className="rounded-2xl bg-gold-100 p-4 text-warm-900">
             <p className="font-bold">Ficha Familia generada</p>

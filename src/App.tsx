@@ -2,6 +2,9 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { RequireRole } from './components/auth/RequireRole'
 import { AppShell } from './components/layout/AppShell'
 import { AppProvider } from './context/AppContext'
+import { AccountPage } from './pages/AccountPage'
+import { AdminLoginPage } from './pages/admin/AdminLoginPage'
+import { AdminPanelPage } from './pages/admin/AdminPanelPage'
 import { DonorDonatePage } from './pages/donor/DonorDonatePage'
 import { DonorGalleryPage } from './pages/donor/DonorGalleryPage'
 import { DonorHomePage } from './pages/donor/DonorHomePage'
@@ -15,7 +18,6 @@ import { FamilyReturnPassPage } from './pages/family/FamilyReturnPassPage'
 import { FamilyStatusPage } from './pages/family/FamilyStatusPage'
 import { KioskPage } from './pages/family/KioskPage'
 import { OperationalAccessPage } from './pages/OperationalAccessPage'
-import { StaffAssistPage } from './pages/staff/StaffAssistPage'
 import { HospitalLoginPage } from './pages/hospital/HospitalLoginPage'
 import { HospitalReferralDetailPage } from './pages/hospital/HospitalReferralDetailPage'
 import { HospitalReferralsPage } from './pages/hospital/HospitalReferralsPage'
@@ -40,14 +42,24 @@ function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<ProfileSelectorPage />} />
-            <Route path="/access" element={<OperationalAccessPage />} />
-            <Route path="/kiosk" element={<KioskPage />} />
+            <Route path="/login" element={<OperationalAccessPage />} />
+            <Route path="/access" element={<Navigate to="/login" replace />} />
+
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route
+              path="/admin/panel"
+              element={
+                <RequireRole allowed={['admin', 'superadmin']}>
+                  <AdminPanelPage />
+                </RequireRole>
+              }
+            />
 
             <Route path="/hospital/login" element={<HospitalLoginPage />} />
             <Route
               path="/hospital/referrals"
               element={
-                <RequireRole allowed={['hospital']}>
+                <RequireRole allowed={['hospital', 'admin', 'superadmin']}>
                   <HospitalReferralsPage />
                 </RequireRole>
               }
@@ -55,7 +67,7 @@ function App() {
             <Route
               path="/hospital/referrals/:id"
               element={
-                <RequireRole allowed={['hospital']}>
+                <RequireRole allowed={['hospital', 'admin', 'superadmin']}>
                   <HospitalReferralDetailPage />
                 </RequireRole>
               }
@@ -65,7 +77,7 @@ function App() {
             <Route
               path="/staff/reception"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffReceptionPage />
                 </RequireRole>
               }
@@ -73,23 +85,23 @@ function App() {
             <Route
               path="/staff/checkin/:refId"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffCheckinPage />
                 </RequireRole>
               }
             />
             <Route
-              path="/staff/family-status"
+              path="/staff/kiosk"
               element={
-                <RequireRole allowed={['staff']}>
-                  <StaffAssistPage />
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
+                  <KioskPage />
                 </RequireRole>
               }
             />
             <Route
               path="/staff/rooms"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffRoomsPage />
                 </RequireRole>
               }
@@ -97,7 +109,7 @@ function App() {
             <Route
               path="/staff/requests"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffRequestsPage />
                 </RequireRole>
               }
@@ -105,7 +117,7 @@ function App() {
             <Route
               path="/staff/trips"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffTripsPage />
                 </RequireRole>
               }
@@ -113,7 +125,7 @@ function App() {
             <Route
               path="/staff/volunteers"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffVolunteersPage />
                 </RequireRole>
               }
@@ -121,7 +133,7 @@ function App() {
             <Route
               path="/staff/inventory"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffInventoryPage />
                 </RequireRole>
               }
@@ -129,7 +141,7 @@ function App() {
             <Route
               path="/staff/analytics"
               element={
-                <RequireRole allowed={['staff']}>
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffAnalyticsPage />
                 </RequireRole>
               }
@@ -139,7 +151,7 @@ function App() {
             <Route
               path="/volunteer/requests"
               element={
-                <RequireRole allowed={['volunteer']}>
+                <RequireRole allowed={['volunteer', 'admin', 'superadmin']}>
                   <VolunteerRequestsPage />
                 </RequireRole>
               }
@@ -147,7 +159,7 @@ function App() {
             <Route
               path="/volunteer/trips"
               element={
-                <RequireRole allowed={['volunteer']}>
+                <RequireRole allowed={['volunteer', 'admin', 'superadmin']}>
                   <VolunteerTripsPage />
                 </RequireRole>
               }
@@ -199,6 +211,15 @@ function App() {
               element={
                 <RequireRole allowed={['family']}>
                   <FamilyStatusPage />
+                </RequireRole>
+              }
+            />
+
+            <Route
+              path="/account"
+              element={
+                <RequireRole allowed={['superadmin', 'admin', 'hospital', 'staff', 'volunteer', 'family']}>
+                  <AccountPage />
                 </RequireRole>
               }
             />

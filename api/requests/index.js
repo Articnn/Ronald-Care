@@ -1,10 +1,11 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { calculatePriority } from '../../src/lib/priority.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer', 'family'] }, async (req) => {
+export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer', 'family', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
 
   if (req.method === 'GET') {
@@ -15,9 +16,11 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
       dbReq.input('familyId', sql.Int, req.auth.familyId)
       filters.push('FamilyId = @familyId')
     } else {
-      const siteId = req.query.siteId ? toInt(req.query.siteId, 'siteId') : req.auth.siteId
-      dbReq.input('siteId', sql.Int, siteId)
-      filters.push('SiteId = @siteId')
+      const siteId = resolveScopedSiteId(req, req.query.siteId)
+      if (siteId) {
+        dbReq.input('siteId', sql.Int, siteId)
+        filters.push('SiteId = @siteId')
+      }
 
       if (req.auth.role === 'volunteer') {
         dbReq.input('assignedRole', sql.NVarChar(30), 'volunteer')

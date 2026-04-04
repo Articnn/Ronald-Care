@@ -1,10 +1,11 @@
 import { withTransaction, sql } from '../../src/lib/db.js'
+import { ensureSameOrGlobalSite } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 import { ApiError } from '../../src/lib/errors.js'
 
-export default withApi({ methods: ['POST'], roles: ['staff'] }, async (req) => {
+export default withApi({ methods: ['POST'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   required(req.body, ['inventoryItemId', 'movementType', 'quantity', 'reason'])
   oneOf(req.body.movementType, ['in', 'out'], 'movementType')
 
@@ -22,6 +23,7 @@ export default withApi({ methods: ['POST'], roles: ['staff'] }, async (req) => {
 
     const item = itemResult.recordset[0]
     if (!item) throw new ApiError(404, 'Item no encontrado')
+    ensureSameOrGlobalSite(req, item.SiteId)
     const nextStock = req.body.movementType === 'in' ? item.Stock + quantity : item.Stock - quantity
     if (nextStock < 0) throw new ApiError(400, 'Stock insuficiente')
 

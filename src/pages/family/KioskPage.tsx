@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -16,38 +15,19 @@ export function KioskPage() {
     kioskStatus,
     lookupFamilyStatus,
     toggleEasyRead,
-    setCurrentFamily,
-    setRole,
   } = useAppState()
   const [code, setCode] = useState('TKT-3481')
-  const navigate = useNavigate()
   const family = kioskStatus?.family || null
   const familyRequests = kioskStatus?.requests || []
   const familyTrips = kioskStatus?.trips || []
 
   return (
     <div className={`mx-auto max-w-3xl space-y-5 ${easyRead ? 'text-xl' : ''}`}>
-      <SectionHeader title="Kiosko familiar" subtitle="Consulta minima de admision, solicitudes y viajes. Sin datos clinicos." />
+      <SectionHeader title="Ayuda asistida" subtitle="Vista interna para staff. Consulta minima de admision, solicitudes y viajes sin datos clinicos." />
       <div className="flex flex-wrap gap-3">
         <button className="rounded-2xl bg-gold-300 px-4 py-2 font-bold text-warm-900" onClick={toggleEasyRead}>
           {easyRead ? 'Vista normal' : 'Lectura facil'}
         </button>
-        <button
-          disabled={!family}
-          className="rounded-2xl bg-warm-700 px-4 py-2 font-bold text-white"
-          onClick={() => {
-            if (family) {
-              setCurrentFamily(family)
-              setRole('family')
-              navigate('/family/status')
-            }
-          }}
-        >
-          Continuar como Familia
-        </button>
-        <Link to="/family/login" className="rounded-2xl border border-warm-300 px-4 py-2 font-bold text-warm-800">
-          Entrar con QR + PIN
-        </Link>
       </div>
       <Card className="space-y-4">
         <Input label="Codigo familia/ticket" value={code} onChange={(event) => setCode(event.target.value)} />

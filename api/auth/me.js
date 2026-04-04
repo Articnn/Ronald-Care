@@ -1,7 +1,7 @@
 import { getPool, sql } from '../../src/lib/db.js'
 import { withApi } from '../../src/lib/http.js'
 
-export default withApi({ methods: ['GET'], roles: ['hospital', 'staff', 'volunteer', 'family'] }, async (req) => {
+export default withApi({ methods: ['GET'], roles: ['superadmin', 'admin', 'hospital', 'staff', 'volunteer', 'family'] }, async (req) => {
   const pool = await getPool()
 
   if (req.auth.role === 'family') {
@@ -20,9 +20,10 @@ export default withApi({ methods: ['GET'], roles: ['hospital', 'staff', 'volunte
     .request()
     .input('userId', sql.Int, req.auth.sub)
     .query(`
-      SELECT u.UserId, u.FullName, u.Email, u.SiteId, r.RoleCode
+      SELECT u.UserId, u.FullName, u.Email, u.SiteId, r.RoleCode, s.Name AS SiteName
       FROM Users u
       INNER JOIN Roles r ON r.RoleId = u.RoleId
+      LEFT JOIN Sites s ON s.SiteId = u.SiteId
       WHERE u.UserId = @userId
     `)
 

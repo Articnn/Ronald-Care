@@ -6,7 +6,7 @@ interface ApiEnvelope<T> {
   error: { message: string; details?: string | null } | null
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PATCH'
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 async function apiRequest<T>(path: string, options: { method?: HttpMethod; token?: string | null; body?: unknown } = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -27,15 +27,17 @@ async function apiRequest<T>(path: string, options: { method?: HttpMethod; token
   return payload.data
 }
 
+export type InternalRole = 'superadmin' | 'admin' | 'hospital' | 'staff' | 'volunteer'
+
 export interface InternalLoginResponse {
   token: string
   user: {
     userId: number
     fullName: string
     email: string
-    role: 'hospital' | 'staff' | 'volunteer'
-    siteId: number
-    siteName: string
+    role: InternalRole
+    siteId: number | null
+    siteName: string | null
   }
 }
 
@@ -52,6 +54,8 @@ export interface FamilyLoginResponse {
 export interface BackendReferral {
   ReferralId: number
   SiteId: number
+  CaregiverName: string
+  FamilyLastName: string
   ReferralCode: string
   FamilyCode: string
   Status: 'enviada' | 'en_revision' | 'aceptada'
@@ -76,6 +80,7 @@ export interface BackendFamily {
   QrCode: string | null
   RoomCode: string | null
   SiteName: string
+  IsActive?: boolean
 }
 
 export interface BackendRequest {
@@ -130,19 +135,7 @@ export interface BackendFamilyStatusResponse {
   }>
 }
 
-export interface BackendKioskStatusResponse {
-  family: {
-    FamilyId: number
-    CaregiverName: string
-    FamilyLastName: string
-    AdmissionStatus: 'pendiente' | 'checkin_completado'
-    SiteName: string
-    SiteCode: string
-    RoomCode: string | null
-  }
-  requests: BackendRequest[]
-  trips: BackendTrip[]
-}
+export type BackendKioskStatusResponse = BackendFamilyStatusResponse
 
 export interface DonorImpactResponse {
   bySite: Array<{
@@ -164,6 +157,61 @@ export interface DonorImpactResponse {
   }>
 }
 
+export interface BackendUser {
+  UserId: number
+  FullName: string
+  Email: string
+  SiteId: number | null
+  SiteName: string | null
+  RoleCode: InternalRole | 'hospital'
+  IsActive: boolean
+  CreatedAt: string
+}
+
+export interface PendingReferral extends BackendReferral {}
+
+export interface ActivationResponse {
+  family: BackendFamily
+  access: {
+    FamilyAccessId: number
+    TicketCode: string
+    QrCode: string
+    IsActive: boolean
+  }
+  generatedPin: string
+}
+
+export interface VolunteerTask {
+  VolunteerTaskId: number
+  SiteId: number
+  VolunteerUserId: number
+  VolunteerName?: string
+  AssignedByName?: string
+  FamilyId: number | null
+  RelatedRequestId: number | null
+  Title: string
+  TaskType: 'cocina' | 'lavanderia' | 'traslados' | 'acompanamiento' | 'recepcion' | 'limpieza' | 'inventario'
+  ShiftPeriod: 'AM' | 'PM'
+  TaskDay: string
+  Status: 'pendiente' | 'en_proceso' | 'completada'
+  Notes: string | null
+  CreatedAt: string
+  UpdatedAt: string
+}
+
+export interface VolunteerChangeRequest {
+  VolunteerChangeRequestId: number
+  SiteId: number
+  VolunteerUserId: number
+  VolunteerName?: string
+  RequestedShiftPeriod: 'AM' | 'PM' | null
+  RequestedTaskType: VolunteerTask['TaskType'] | null
+  Reason: string
+  Status: 'pendiente' | 'aprobada' | 'rechazada'
+  CreatedAt: string
+  UpdatedAt: string
+}
+
 export function loginInternal(email: string, password: string) {
   return apiRequest<InternalLoginResponse>('/auth/login', { method: 'POST', body: { email, password } })
 }
@@ -172,13 +220,26 @@ export function loginFamily(code: string, pin: string) {
   return apiRequest<FamilyLoginResponse>('/auth/family-access', { method: 'POST', body: { code, pin } })
 }
 
-export function getReferrals(token: string) {
-  return apiRequest<BackendReferral[]>('/referrals', { token })
+export function getMe(token: string) {
+  return apiRequest<{ role: string; profile: Record<string, unknown> }>('/auth/me', { token })
+}
+
+export function changePassword(token: string, currentPassword: string, newPassword: string) {
+  return apiRequest<{ message: string }>('/auth/change-password', { method: 'PATCH', token, body: { currentPassword, newPassword } })
+}
+
+export function changePin(token: string, currentPin: string, newPin: string) {
+  return apiRequest<{ message: string }>('/auth/change-pin', { method: 'PATCH', token, body: { currentPin, newPin } })
+}
+
+export function getReferrals(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendReferral[]>(`/referrals${query}`, { token })
 }
 
 export function createReferral(
   token: string,
-  payload: { siteId: number; arrivalDate: string; companionCount: number; logisticsNote?: string; eligibilityConfirmed: boolean }
+  payload: { siteId: number; caregiverName: string; familyLastName: string; arrivalDate: string; companionCount: number; logisticsNote?: string; eligibilityConfirmed: boolean }
 ) {
   return apiRequest<BackendReferral>('/referrals', { method: 'POST', token, body: payload })
 }
@@ -187,8 +248,13 @@ export function updateReferralStatus(token: string, referralId: number, status: 
   return apiRequest<BackendReferral>('/referrals/status', { method: 'PATCH', token, body: { referralId, status } })
 }
 
-export function getFamilies(token: string) {
-  return apiRequest<BackendFamily[]>('/families', { token })
+export function getFamilies(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendFamily[]>(`/families${query}`, { token })
+}
+
+export function checkInFamily(token: string, payload: { familyId: number; roomId?: number | null; idVerified: boolean; regulationAccepted: boolean; simpleSignature?: string }) {
+  return apiRequest<BackendFamily>('/families/checkin', { method: 'PATCH', token, body: payload })
 }
 
 export function getFamilyStatus(token: string) {
@@ -199,12 +265,13 @@ export function getFamilyStatusByCode(token: string, code: string) {
   return apiRequest<BackendFamilyStatusResponse>(`/families/status?code=${encodeURIComponent(code)}`, { token })
 }
 
-export function getKioskStatus(code: string) {
-  return apiRequest<BackendKioskStatusResponse>(`/kiosk/status?code=${encodeURIComponent(code)}`)
+export function getKioskStatus(code: string, token?: string | null) {
+  return apiRequest<BackendKioskStatusResponse>(`/kiosk/status?code=${encodeURIComponent(code)}`, { token: token || null })
 }
 
-export function getRequests(token: string) {
-  return apiRequest<BackendRequest[]>('/requests', { token })
+export function getRequests(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendRequest[]>(`/requests${query}`, { token })
 }
 
 export function createRequest(
@@ -229,8 +296,9 @@ export function resolveRequest(token: string, requestId: number) {
   return apiRequest<BackendRequest>('/requests/resolve', { method: 'PATCH', token, body: { requestId } })
 }
 
-export function getTrips(token: string) {
-  return apiRequest<BackendTrip[]>('/trips', { token })
+export function getTrips(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendTrip[]>(`/trips${query}`, { token })
 }
 
 export function createTrip(
@@ -248,6 +316,100 @@ export function finishTrip(token: string, tripId: number) {
   return apiRequest<BackendTrip>('/trips/finish', { method: 'PATCH', token, body: { tripId } })
 }
 
-export function getDonorImpact() {
-  return apiRequest<DonorImpactResponse>('/donor/impact')
+export function getVolunteerShifts(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<Array<Record<string, unknown>>>(`/volunteers/shifts${query}`, { token })
+}
+
+export function getVolunteerTasks(token: string, params: { siteId?: number | null; volunteerUserId?: number | null } = {}) {
+  const query = new URLSearchParams()
+  if (params.siteId) query.set('siteId', String(params.siteId))
+  if (params.volunteerUserId) query.set('volunteerUserId', String(params.volunteerUserId))
+  return apiRequest<VolunteerTask[]>(`/volunteer-tasks${query.toString() ? `?${query.toString()}` : ''}`, { token })
+}
+
+export function createVolunteerTask(token: string, payload: { volunteerUserId: number; title: string; taskType: VolunteerTask['TaskType']; shiftPeriod: 'AM' | 'PM'; taskDay: string; familyId?: number; relatedRequestId?: number; notes?: string }) {
+  return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'POST', token, body: payload })
+}
+
+export function updateVolunteerTask(token: string, payload: Partial<VolunteerTask> & { volunteerTaskId: number }) {
+  return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'PATCH', token, body: payload })
+}
+
+export function getVolunteerChangeRequests(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<VolunteerChangeRequest[]>(`/volunteer-change-requests${query}`, { token })
+}
+
+export function createVolunteerChangeRequest(token: string, payload: { requestedShiftPeriod?: 'AM' | 'PM'; requestedTaskType?: VolunteerTask['TaskType']; reason: string }) {
+  return apiRequest<VolunteerChangeRequest>('/volunteer-change-requests', { method: 'POST', token, body: payload })
+}
+
+export function reviewVolunteerChangeRequest(token: string, volunteerChangeRequestId: number, status: 'aprobada' | 'rechazada') {
+  return apiRequest<VolunteerChangeRequest>('/volunteer-change-requests', { method: 'PATCH', token, body: { volunteerChangeRequestId, status } })
+}
+
+export function getDonorImpact(siteName?: string) {
+  const query = siteName ? `?siteName=${encodeURIComponent(siteName)}` : ''
+  return apiRequest<DonorImpactResponse>(`/donor/impact${query}`)
+}
+
+export function getAdminUsers(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendUser[]>(`/admin/users${query}`, { token })
+}
+
+export function createAdminUser(token: string, payload: { fullName: string; email: string; role: 'admin' | 'staff' | 'volunteer'; siteId: number; password: string }) {
+  return apiRequest<BackendUser>('/admin/users', { method: 'POST', token, body: payload })
+}
+
+export function updateAdminUser(token: string, payload: { userId: number; fullName?: string; role?: 'admin' | 'staff' | 'volunteer'; siteId?: number; isActive?: boolean }) {
+  return apiRequest<BackendUser>('/admin/users', { method: 'PATCH', token, body: payload })
+}
+
+export function deleteAdminUser(token: string, userId: number) {
+  return apiRequest<{ message: string }>('/admin/users', { method: 'DELETE', token, body: { userId } })
+}
+
+export function getPendingReferrals(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<PendingReferral[]>(`/admin/pending-referrals${query}`, { token })
+}
+
+export function activateFamily(token: string, referralId: number) {
+  return apiRequest<ActivationResponse>('/admin/activate-family', { method: 'POST', token, body: { referralId } })
+}
+
+export function updateFamilyAccess(token: string, familyId: number, action: 'pause' | 'reactivate' | 'reset-pin') {
+  return apiRequest<{ message: string; newPin?: string; ticketCode?: string; qrCode?: string }>('/admin/family-access', { method: 'PATCH', token, body: { familyId, action } })
+}
+
+export function getInventoryStock(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<Array<{ InventoryItemId: number; Name: string; Stock: number; MinStock: number; LowStock?: boolean }>>(`/inventory/stock${query}`, { token })
+}
+
+export function getCommunityPosts(token: string) {
+  return apiRequest<Array<{ CommunityPostId: number; AuthorAlias: string; Message: string; CreatedAt: string }>>('/community/posts', { token })
+}
+
+export function createCommunityPostApi(token: string, message: string, authorAlias?: string) {
+  return apiRequest<{ CommunityPostId: number; AuthorAlias: string; Message: string; CreatedAt: string }>('/community/posts', {
+    method: 'POST',
+    token,
+    body: { message, authorAlias },
+  })
+}
+
+export function getReturnPasses(token: string, familyId?: number | null) {
+  const query = familyId ? `?familyId=${familyId}` : ''
+  return apiRequest<Array<{ ReturnPassId: number; FamilyId: number; SiteId: number; RequestedDate: string; CompanionCount: number; LogisticsNote: string | null; Status: 'borrador' | 'enviado'; CreatedAt: string }>>(`/return-passes${query}`, { token })
+}
+
+export function createReturnPassApi(token: string, payload: { familyId: number; requestedDate: string; companionCount: number; logisticsNote?: string }) {
+  return apiRequest<{ ReturnPassId: number; FamilyId: number; SiteId: number; RequestedDate: string; CompanionCount: number; LogisticsNote: string | null; Status: 'borrador' | 'enviado'; CreatedAt: string }>('/return-passes', {
+    method: 'POST',
+    token,
+    body: payload,
+  })
 }

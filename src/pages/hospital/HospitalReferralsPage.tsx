@@ -9,6 +9,8 @@ import { useAppState } from '../../context/AppContext'
 
 export function HospitalReferralsPage() {
   const { referrals, site, availableSites, setSite, createReferral } = useAppState()
+  const [caregiverName, setCaregiverName] = useState('Maria')
+  const [familyLastName, setFamilyLastName] = useState('Lopez')
   const [arrivalDate, setArrivalDate] = useState('2026-03-11')
   const [companions, setCompanions] = useState('2')
   const [logisticsNote, setLogisticsNote] = useState('')
@@ -35,6 +37,8 @@ export function HospitalReferralsPage() {
               ))}
             </select>
           </label>
+          <Input label="Nombre cuidador" value={caregiverName} onChange={(event) => setCaregiverName(event.target.value)} />
+          <Input label="Apellido familia" value={familyLastName} onChange={(event) => setFamilyLastName(event.target.value)} />
           <Input label="Fecha llegada" type="date" value={arrivalDate} onChange={(event) => setArrivalDate(event.target.value)} />
           <Input
             label="Numero de acompanantes"
@@ -50,10 +54,12 @@ export function HospitalReferralsPage() {
           Elegibilidad confirmada
         </label>
         <Button
-          onClick={() => {
-            const id = createReferral({
+          onClick={async () => {
+            const id = await createReferral({
               hospitalWorker: 'Trabajo Social',
               site,
+              caregiverName,
+              familyLastName,
               arrivalDate,
               companions: Number(companions),
               logisticsNote,

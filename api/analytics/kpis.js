@@ -1,22 +1,24 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 
-export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
+export default withApi({ methods: ['GET'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
-  const siteId = req.query.siteId ? Number(req.query.siteId) : req.auth.siteId
+  const siteId = resolveScopedSiteId(req, req.query.siteId)
+  const whereClause = siteId ? 'WHERE SiteId = @siteId' : ''
+  const withSite = (dbReq) => {
+    if (siteId) dbReq.input('siteId', sql.Int, siteId)
+    return dbReq
+  }
 
-  const avgAssignmentResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const avgAssignmentResult = await withSite(pool.request())
     .query(`
       SELECT AVG(EXTRACT(EPOCH FROM (AssignedAt - CreatedAt)) / 60) AS "avgAssignmentMinutes"
       FROM Requests
-      WHERE SiteId = @siteId
+      ${whereClause}
     `)
 
-  const urgentResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const urgentResult = await withSite(pool.request())
     .query(`
       SELECT
         SUM(CASE WHEN Urgency = 'alta' THEN 1 ELSE 0 END) AS "totalUrgent",
@@ -28,57 +30,48 @@ export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
           END
         ) AS "urgentWithinSla"
       FROM Requests
-      WHERE SiteId = @siteId
+      ${whereClause}
     `)
 
-  const backlogResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const backlogResult = await withSite(pool.request())
     .query(`
       SELECT
         day_series.day::date AS "day",
         (
           SELECT COUNT(*)
           FROM Requests r
-          WHERE r.SiteId = @siteId
-            AND r.CreatedAt::date <= day_series.day::date
+          WHERE (${siteId ? 'r.SiteId = @siteId AND' : ''} r.CreatedAt::date <= day_series.day::date)
             AND (r.ResolvedAt IS NULL OR r.ResolvedAt::date > day_series.day::date)
         ) AS backlog
       FROM generate_series(current_date - interval '6 days', current_date, interval '1 day') AS day_series(day)
       ORDER BY day_series.day
     `)
 
-  const tripsByDestinationResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const tripsByDestinationResult = await withSite(pool.request())
     .query(`
       SELECT Destination, AVG(COALESCE(DurationMinutes, 0)::float) AS "avgDurationMinutes"
       FROM Trips
-      WHERE SiteId = @siteId
+      ${whereClause}
       GROUP BY Destination
       ORDER BY Destination
     `)
 
-  const tripsByShiftResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const tripsByShiftResult = await withSite(pool.request())
     .query(`
       SELECT Shift, AVG(COALESCE(DurationMinutes, 0)::float) AS "avgDurationMinutes"
       FROM Trips
-      WHERE SiteId = @siteId
+      ${whereClause}
       GROUP BY Shift
     `)
 
-  const volunteerCoverageResult = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
+  const volunteerCoverageResult = await withSite(pool.request())
     .query(`
       SELECT
         COUNT(*) AS "totalShifts",
         SUM(CASE WHEN AvailabilityStatus = 'disponible' THEN 1 ELSE 0 END) AS "coveredShifts",
         SUM(HoursLogged) AS "totalHours"
       FROM VolunteerShifts
-      WHERE SiteId = @siteId
+      ${whereClause}
     `)
 
   const avgAssignment = Math.round(Number(avgAssignmentResult.recordset[0].avgAssignmentMinutes || 0))

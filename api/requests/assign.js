@@ -1,10 +1,11 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { ensureSameOrGlobalSite } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => {
+export default withApi({ methods: ['PATCH'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   required(req.body, ['requestId', 'assignedRole', 'assignedDisplayName'])
   oneOf(req.body.assignedRole, ['staff', 'volunteer'], 'assignedRole')
 
@@ -28,6 +29,7 @@ export default withApi({ methods: ['PATCH'], roles: ['staff'] }, async (req) => 
 
   const requestRow = result.recordset[0]
   if (!requestRow) throw new ApiError(404, 'Solicitud no encontrada')
+  ensureSameOrGlobalSite(req, requestRow.SiteId)
 
   await logAudit({
     siteId: requestRow.SiteId,

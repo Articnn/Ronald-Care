@@ -1,18 +1,22 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 
-export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
+export default withApi({ methods: ['GET'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
-  const siteId = req.query.siteId ? Number(req.query.siteId) : req.auth.siteId
+  const siteId = resolveScopedSiteId(req, req.query.siteId)
+  const dbReq = pool.request()
+  let where = 'WHERE 1=1'
+  if (siteId) {
+    dbReq.input('siteId', sql.Int, siteId)
+    where += ' AND SiteId = @siteId'
+  }
 
-  const result = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
-    .query(`
+  const result = await dbReq.query(`
       SELECT InventoryItemId, ItemCode, Name, Unit, Stock, MinStock,
-             CASE WHEN Stock <= MinStock THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS LowStock
+             CASE WHEN Stock <= MinStock THEN TRUE ELSE FALSE END AS LowStock
       FROM InventoryItems
-      WHERE SiteId = @siteId
+      ${where}
       ORDER BY Name
     `)
 
