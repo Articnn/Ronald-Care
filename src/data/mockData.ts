@@ -17,6 +17,7 @@ import type {
 const now = new Date().toISOString()
 
 export const sites = [
+  'Todas',
   'Casa Ronald McDonald Ciudad de Mexico',
   'Casa Ronald McDonald Puebla',
   'Casa Ronald McDonald Tlalnepantla',

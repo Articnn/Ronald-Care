@@ -46,7 +46,7 @@ const navByRole: Record<Exclude<Role, null>, Array<{ label: string; to: string; 
   donor: [
     { label: 'Inicio', to: '/donor/home', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Galeria', to: '/donor/gallery', icon: <HeartHandshake className="h-4 w-4" /> },
-    { label: 'Impacto', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Eventos', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Donar', to: '/donor/donate', icon: <HeartHandshake className="h-4 w-4" /> },
   ],
 }
@@ -59,9 +59,9 @@ const publicNav = [
 ]
 
 const donorPublicNav = [
-  { label: 'Inicio donor', to: '/donor/home', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: 'Inicio', to: '/donor/home', icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: 'Galeria', to: '/donor/gallery', icon: <HeartHandshake className="h-4 w-4" /> },
-  { label: 'Impacto', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Eventos', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
   { label: 'Donar', to: '/donor/donate', icon: <HeartHandshake className="h-4 w-4" /> },
 ]
 
