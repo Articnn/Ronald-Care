@@ -1,10 +1,11 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { ensureSameOrGlobalSite } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['PATCH'], roles: ['hospital', 'staff'] }, async (req) => {
+export default withApi({ methods: ['PATCH'], roles: ['hospital', 'staff', 'admin', 'superadmin'] }, async (req) => {
   required(req.body, ['referralId', 'status'])
   oneOf(req.body.status, ['enviada', 'en_revision', 'aceptada'], 'status')
 
@@ -22,6 +23,7 @@ export default withApi({ methods: ['PATCH'], roles: ['hospital', 'staff'] }, asy
 
   const referral = result.recordset[0]
   if (!referral) throw new ApiError(404, 'Referencia no encontrada')
+  ensureSameOrGlobalSite(req, referral.SiteId)
 
   await logAudit({
     siteId: referral.SiteId,

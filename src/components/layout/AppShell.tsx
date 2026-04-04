@@ -1,115 +1,174 @@
 import {
   Building2,
+  ChevronDown,
   ClipboardList,
   HeartHandshake,
   LayoutDashboard,
-  MenuSquare,
   Package,
   Route,
   ShieldCheck,
-  Ticket,
+  UserCircle2,
   Users,
 } from 'lucide-react'
-import type { ReactElement } from 'react'
+import { type ReactElement, useState, useRef, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
-import type { Role } from '../../types'
-import { Button } from '../ui/Button'
+import type { InternalRole, Role } from '../../types'
 
-const navByRole: Record<Exclude<Role, null>, Array<{ label: string; to: string; icon: ReactElement }>> = {
-  hospital: [
-    { label: 'Login', to: '/hospital/login', icon: <Building2 className="h-4 w-4" /> },
+const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; to: string; icon: ReactElement }>> = {
+  superadmin: [
+    { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Referencias', to: '/hospital/referrals', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
+    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
+  ],
+  admin: [
+    { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
+    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
+    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
+  ],
+  hospital: [
+    { label: 'Referencias', to: '/hospital/referrals', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   staff: [
-    { label: 'Recepcion', to: '/staff/reception', icon: <MenuSquare className="h-4 w-4" /> },
-    { label: 'Ayuda asistida', to: '/staff/family-status', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Habitaciones', to: '/staff/rooms', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Viajes', to: '/staff/trips', icon: <Route className="h-4 w-4" /> },
     { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
     { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Analitica', to: '/staff/analytics', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   volunteer: [
     { label: 'Solicitudes', to: '/volunteer/requests', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Viajes', to: '/volunteer/trips', icon: <Route className="h-4 w-4" /> },
-  ],
-  family: [
-    { label: 'Mi estatus', to: '/family/status', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Solicitar apoyo', to: '/family/request', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Guia Express', to: '/family/guide', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Pausa 60s', to: '/family/pause', icon: <HeartHandshake className="h-4 w-4" /> },
-    { label: 'Return Pass', to: '/family/return-pass', icon: <Route className="h-4 w-4" /> },
-    { label: 'Comunidad', to: '/family/community', icon: <Users className="h-4 w-4" /> },
-  ],
-  donor: [
-    { label: 'Inicio', to: '/donor/home', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Galeria', to: '/donor/gallery', icon: <HeartHandshake className="h-4 w-4" /> },
-    { label: 'Eventos', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Donar', to: '/donor/donate', icon: <HeartHandshake className="h-4 w-4" /> },
+    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
 }
 
-const publicNav = [
-  { label: 'Inicio', to: '/', icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: 'Acceso operativo', to: '/access', icon: <ShieldCheck className="h-4 w-4" /> },
-  { label: 'Kiosko familiar', to: '/kiosk', icon: <Ticket className="h-4 w-4" /> },
-  { label: 'Donantes', to: '/donor/home', icon: <HeartHandshake className="h-4 w-4" /> },
-]
-
-const donorPublicNav = [
-  { label: 'Inicio', to: '/donor/home', icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: 'Galeria', to: '/donor/gallery', icon: <HeartHandshake className="h-4 w-4" /> },
-  { label: 'Eventos', to: '/donor/impact', icon: <ClipboardList className="h-4 w-4" /> },
-  { label: 'Donar', to: '/donor/donate', icon: <HeartHandshake className="h-4 w-4" /> },
+const familyNav = [
+  { label: 'Mi estatus', to: '/family/status', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Solicitar apoyo', to: '/family/request', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Guia Express', to: '/family/guide', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Pausa 60s', to: '/family/pause', icon: <HeartHandshake className="h-4 w-4" /> },
+  { label: 'Return Pass', to: '/family/return-pass', icon: <Route className="h-4 w-4" /> },
+  { label: 'Comunidad', to: '/family/community', icon: <Users className="h-4 w-4" /> },
+  { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
 ]
 
 const roleLabels: Record<Exclude<Role, null>, string> = {
+  superadmin: 'superadmin',
+  admin: 'admin',
   hospital: 'hospital',
   staff: 'staff',
   volunteer: 'voluntario',
   family: 'familia',
-  donor: 'donante',
+}
+
+function canChangeSite(role: Role) {
+  return !role || role === 'superadmin' || role === 'admin'
 }
 
 export function AppShell() {
-  const { role, site, easyRead, toggleEasyRead, logout } = useAppState()
+  const { role, site, easyRead, availableSites, setSite, toggleEasyRead, logout } = useAppState()
   const location = useLocation()
-  const isDonorPublicView = !role && location.pathname.startsWith('/donor')
-  const links = role ? navByRole[role] : isDonorPublicView ? donorPublicNav : publicNav
+  const links = role === 'family' ? familyNav : role ? navByRole[role as InternalRole] : []
+
+  const [isSiteOpen, setIsSiteOpen] = useState(false)
+  const siteRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (siteRef.current && !siteRef.current.contains(e.target as Node)) {
+        setIsSiteOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const canChange = canChangeSite(role)
+
+  const glassClass = "border border-white/10 bg-white/5 backdrop-blur-md shadow-lg"
 
   return (
-    <div
-      className={`min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(255,211,173,0.85),_transparent_35%),linear-gradient(180deg,_#fff8ef,_#fff4db)] ${
-        easyRead ? 'text-xl' : ''
-      }`}
-    >
+    <div className={`min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(255,211,173,0.85),_transparent_35%),linear-gradient(180deg,_#fff8ef,_#fff4db)] ${easyRead ? 'text-xl' : ''}`}>
       <header className="sticky top-0 z-20 border-b border-warm-200 bg-warm-700 text-white shadow-soft">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
           <Link to="/" className="flex items-center gap-3">
             <HeartHandshake className="h-8 w-8" />
-            <div>
-              <p className="text-xl font-extrabold">RonaldCare</p>
-              <p className="text-sm text-warm-100">RonaldCare · no clínico</p>
-            </div>
+            <p className="text-xl font-extrabold">RonaldCare</p>
           </Link>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-bold">Sede: {site}</span>
-          {role ? (
+
+          <div className="relative" ref={siteRef}>
+            <button
+              disabled={!canChange}
+              onClick={() => setIsSiteOpen(!isSiteOpen)}
+              className={`group flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-300 hover:border-white/30 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50 ${glassClass} ${isSiteOpen ? 'border-white/30 bg-white/10' : ''}`}
+            >
+              <Building2 className="h-4 w-4 shrink-0 text-white/60 transition-colors group-hover:text-white" />
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Sede</span>
+                <span className="font-bold text-white">{site}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-white/40 transition-transform duration-300 ${isSiteOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <div
+              className={`absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[160px] origin-top overflow-hidden rounded-xl border border-white/10 bg-warm-700 p-1 shadow-lg transition-all duration-200 ${
+                isSiteOpen
+                  ? 'visible scale-100 opacity-100'
+                  : 'invisible scale-95 opacity-0 pointer-events-none'
+              }`}
+            >
+              {availableSites.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => {
+                    setSite(item)
+                    setIsSiteOpen(false)
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm font-semibold transition-colors rounded-lg hover:bg-white/10 ${
+                    site === item ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {role && (
             <span className="rounded-full bg-gold-300 px-3 py-1 text-sm font-bold text-warm-900">Rol: {roleLabels[role]}</span>
-          ) : null}
+          )}
+
           <div className="ml-auto flex gap-2">
-            <Button variant="ghost" onClick={toggleEasyRead} className="text-base">
-              {easyRead ? 'Vista normal' : 'Lectura facil'}
-            </Button>
-            {role ? (
-              <Button variant="ghost" onClick={logout} className="text-base">
+            <button
+              onClick={toggleEasyRead}
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+            >
+              {easyRead ? 'Vista normal' : 'Lectura fácil'}
+            </button>
+            {role && (
+              <button
+                onClick={logout}
+                className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition-all duration-200 hover:border-white/40 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+              >
                 Salir
-              </Button>
-            ) : null}
+              </button>
+            )}
           </div>
         </div>
-        {links.length > 0 ? (
+
+        {role && links.length > 0 && (
           <nav className="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 pb-4">
             {links.map((link) => {
               const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`)
@@ -121,14 +180,14 @@ export function AppShell() {
                     active ? 'bg-white text-warm-900' : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
-                  {link.icon}
-                  {link.label}
+                  {link.icon} {link.label}
                 </Link>
               )
             })}
           </nav>
-        ) : null}
+        )}
       </header>
+
       <main className="mx-auto max-w-7xl p-4 md:p-6">
         <Outlet />
       </main>

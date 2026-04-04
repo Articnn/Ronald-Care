@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS volunteerchangerequests CASCADE;
+DROP TABLE IF EXISTS volunteertasks CASCADE;
 DROP TABLE IF EXISTS auditevents CASCADE;
 DROP TABLE IF EXISTS communityposts CASCADE;
 DROP TABLE IF EXISTS returnpasses CASCADE;
@@ -31,19 +33,22 @@ CREATE TABLE roles (
 
 CREATE TABLE users (
   userid SERIAL PRIMARY KEY,
-  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  siteid INTEGER REFERENCES sites(siteid),
   roleid INTEGER NOT NULL REFERENCES roles(roleid),
   fullname VARCHAR(120) NOT NULL,
   email VARCHAR(160) NOT NULL UNIQUE,
   passwordhash VARCHAR(255) NOT NULL,
   isactive BOOLEAN NOT NULL DEFAULT TRUE,
-  createdat TIMESTAMP NOT NULL DEFAULT NOW()
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE referrals (
   referralid SERIAL PRIMARY KEY,
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   createdbyuserid INTEGER NOT NULL REFERENCES users(userid),
+  caregivername VARCHAR(100) NOT NULL,
+  familylastname VARCHAR(100) NOT NULL,
   referralcode VARCHAR(30) NOT NULL UNIQUE,
   familycode VARCHAR(30) NOT NULL UNIQUE,
   status VARCHAR(30) NOT NULL CHECK (status IN ('enviada', 'en_revision', 'aceptada')),
@@ -67,7 +72,7 @@ CREATE TABLE rooms (
 
 CREATE TABLE families (
   familyid SERIAL PRIMARY KEY,
-  referralid INTEGER REFERENCES referrals(referralid),
+  referralid INTEGER UNIQUE REFERENCES referrals(referralid),
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   roomid INTEGER REFERENCES rooms(roomid),
   caregivername VARCHAR(100) NOT NULL,
@@ -77,7 +82,8 @@ CREATE TABLE families (
   regulationaccepted BOOLEAN NOT NULL DEFAULT FALSE,
   simplesignature VARCHAR(150),
   checkincompletedat TIMESTAMP,
-  createdat TIMESTAMP NOT NULL DEFAULT NOW()
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE familyaccess (
@@ -88,7 +94,8 @@ CREATE TABLE familyaccess (
   pinhash VARCHAR(255) NOT NULL,
   isactive BOOLEAN NOT NULL DEFAULT TRUE,
   lastloginat TIMESTAMP,
-  createdat TIMESTAMP NOT NULL DEFAULT NOW()
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE requests (
@@ -136,12 +143,42 @@ CREATE TABLE volunteershifts (
   userid INTEGER REFERENCES users(userid),
   volunteername VARCHAR(120) NOT NULL,
   volunteertype VARCHAR(30) NOT NULL CHECK (volunteertype IN ('individual', 'escolar', 'empresarial')),
-  rolename VARCHAR(40) NOT NULL CHECK (rolename IN ('traslados', 'recepcion', 'acompanamiento')),
+  rolename VARCHAR(40) NOT NULL CHECK (rolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia')),
   shiftday DATE NOT NULL,
   shiftperiod VARCHAR(20) NOT NULL CHECK (shiftperiod IN ('AM', 'PM')),
   availabilitystatus VARCHAR(30) NOT NULL CHECK (availabilitystatus IN ('disponible', 'cupo_limitado', 'no_disponible')),
   hourslogged NUMERIC(5,2) NOT NULL DEFAULT 0,
   createdat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE volunteertasks (
+  volunteertaskid SERIAL PRIMARY KEY,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  volunteeruserid INTEGER NOT NULL REFERENCES users(userid),
+  assignedbyuserid INTEGER NOT NULL REFERENCES users(userid),
+  familyid INTEGER REFERENCES families(familyid),
+  relatedrequestid INTEGER REFERENCES requests(requestid),
+  title VARCHAR(160) NOT NULL,
+  tasktype VARCHAR(40) NOT NULL CHECK (tasktype IN ('cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario')),
+  shiftperiod VARCHAR(20) NOT NULL CHECK (shiftperiod IN ('AM', 'PM')),
+  taskday DATE NOT NULL,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'en_proceso', 'completada')),
+  notes VARCHAR(255),
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE volunteerchangerequests (
+  volunteerchangerequestid SERIAL PRIMARY KEY,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  volunteeruserid INTEGER NOT NULL REFERENCES users(userid),
+  requestedshiftperiod VARCHAR(20) CHECK (requestedshiftperiod IN ('AM', 'PM')),
+  requestedtasktype VARCHAR(40) CHECK (requestedtasktype IN ('cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario')),
+  reason VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
+  reviewedbyuserid INTEGER REFERENCES users(userid),
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE inventoryitems (
@@ -215,6 +252,7 @@ CREATE TABLE auditevents (
 );
 
 CREATE INDEX ix_users_email ON users(email);
+CREATE INDEX ix_users_site_role ON users(siteid, roleid);
 CREATE INDEX ix_referrals_site_status ON referrals(siteid, status);
 CREATE INDEX ix_families_site_admissionstatus ON families(siteid, admissionstatus);
 CREATE INDEX ix_familyaccess_ticketcode ON familyaccess(ticketcode);
@@ -224,6 +262,9 @@ CREATE INDEX ix_requests_assigneduserid_status ON requests(assigneduserid, statu
 CREATE INDEX ix_trips_site_shift_status ON trips(siteid, shift, status);
 CREATE INDEX ix_trips_familyid ON trips(familyid);
 CREATE INDEX ix_volunteershifts_site_day ON volunteershifts(siteid, shiftday);
+CREATE INDEX ix_volunteertasks_site_day ON volunteertasks(siteid, taskday);
+CREATE INDEX ix_volunteertasks_volunteer_status ON volunteertasks(volunteeruserid, status);
+CREATE INDEX ix_volunteerchanges_volunteer_status ON volunteerchangerequests(volunteeruserid, status);
 CREATE INDEX ix_inventoryitems_site_stock ON inventoryitems(siteid, stock);
 CREATE INDEX ix_inventorymovements_item_createdat ON inventorymovements(inventoryitemid, createdat);
 CREATE INDEX ix_impactevents_site_public_createdat ON impactevents(siteid, ispublic, createdat);

@@ -17,7 +17,6 @@ import type {
 const now = new Date().toISOString()
 
 export const sites = [
-  'Todas',
   'Casa Ronald McDonald Ciudad de Mexico',
   'Casa Ronald McDonald Puebla',
   'Casa Ronald McDonald Tlalnepantla',
@@ -28,6 +27,8 @@ export const initialReferrals: Referral[] = [
     id: 'ref-1001',
     hospitalWorker: 'Trabajo Social Norte',
     site: 'Casa Ronald McDonald Ciudad de Mexico',
+    caregiverName: 'Maria',
+    familyLastName: 'Lopez',
     arrivalDate: '2026-03-11',
     companions: 2,
     logisticsNote: 'Llegada por autobus, requiere orientacion de acceso.',
@@ -41,6 +42,8 @@ export const initialReferrals: Referral[] = [
     id: 'ref-1002',
     hospitalWorker: 'Trabajo Social Sur',
     site: 'Casa Ronald McDonald Puebla',
+    caregiverName: 'Carlos',
+    familyLastName: 'Ramirez',
     arrivalDate: '2026-03-12',
     companions: 1,
     logisticsNote: 'Ingreso vespertino, confirmar espacio.',

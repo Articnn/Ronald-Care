@@ -1,9 +1,10 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer', 'family'] }, async (req) => {
+export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer', 'family', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
 
   if (req.method === 'GET') {
@@ -17,8 +18,11 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
       dbReq.input('assignedUserId', sql.Int, req.auth.sub)
       filters.push('(AssignedUserId = @assignedUserId OR AssignedUserId IS NULL)')
     } else {
-      dbReq.input('siteId', sql.Int, req.query.siteId ? toInt(req.query.siteId, 'siteId') : req.auth.siteId)
-      filters.push('SiteId = @siteId')
+      const siteId = resolveScopedSiteId(req, req.query.siteId)
+      if (siteId) {
+        dbReq.input('siteId', sql.Int, siteId)
+        filters.push('SiteId = @siteId')
+      }
     }
 
     if (req.query.shift) {

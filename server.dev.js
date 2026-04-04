@@ -7,6 +7,10 @@ import authLogin from './api/auth/login.js'
 import authFamilyAccess from './api/auth/family-access.js'
 import authLogout from './api/auth/logout.js'
 import authMe from './api/auth/me.js'
+import authChangePassword from './api/auth/change-password.js'
+import authChangePin from './api/auth/change-pin.js'
+import adminUsers from './api/admin/users.js'
+import { activateFamilyHandler, familyAccessAdminHandler, pendingReferralsHandler } from './api/admin/families.js'
 import referralsIndex from './api/referrals/index.js'
 import referralsStatus from './api/referrals/status.js'
 import familiesCheckin from './api/families/checkin.js'
@@ -21,6 +25,8 @@ import tripsStart from './api/trips/start.js'
 import tripsFinish from './api/trips/finish.js'
 import volunteersShifts from './api/volunteers/shifts.js'
 import volunteersCoverage from './api/volunteers/coverage.js'
+import volunteerTasks from './api/volunteer-tasks/index.js'
+import volunteerChangeRequests from './api/volunteer-change-requests/index.js'
 import inventoryStock from './api/inventory/stock.js'
 import inventoryMovements from './api/inventory/movements.js'
 import kioskStatus from './api/kiosk/status.js'
@@ -37,6 +43,15 @@ const routes = {
   'POST /api/auth/family-access': authFamilyAccess,
   'POST /api/auth/logout': authLogout,
   'GET /api/auth/me': authMe,
+  'PATCH /api/auth/change-password': authChangePassword,
+  'PATCH /api/auth/change-pin': authChangePin,
+  'GET /api/admin/users': adminUsers,
+  'POST /api/admin/users': adminUsers,
+  'PATCH /api/admin/users': adminUsers,
+  'DELETE /api/admin/users': adminUsers,
+  'GET /api/admin/pending-referrals': pendingReferralsHandler,
+  'POST /api/admin/activate-family': activateFamilyHandler,
+  'PATCH /api/admin/family-access': familyAccessAdminHandler,
   'GET /api/referrals': referralsIndex,
   'POST /api/referrals': referralsIndex,
   'PATCH /api/referrals/status': referralsStatus,
@@ -56,6 +71,12 @@ const routes = {
   'GET /api/volunteers/shifts': volunteersShifts,
   'POST /api/volunteers/shifts': volunteersShifts,
   'GET /api/volunteers/coverage': volunteersCoverage,
+  'GET /api/volunteer-tasks': volunteerTasks,
+  'POST /api/volunteer-tasks': volunteerTasks,
+  'PATCH /api/volunteer-tasks': volunteerTasks,
+  'GET /api/volunteer-change-requests': volunteerChangeRequests,
+  'POST /api/volunteer-change-requests': volunteerChangeRequests,
+  'PATCH /api/volunteer-change-requests': volunteerChangeRequests,
   'GET /api/inventory/stock': inventoryStock,
   'POST /api/inventory/movements': inventoryMovements,
   'GET /api/analytics/kpis': analyticsKpis,

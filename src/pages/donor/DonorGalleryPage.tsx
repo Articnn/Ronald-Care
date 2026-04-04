@@ -22,7 +22,7 @@ interface GalleryMonth {
   images: GalleryImage[]
 }
 
-const GALLERY_MONTHS: GalleryMonth[] = [
+export const GALLERY_MONTHS: GalleryMonth[] = [
   {
     id: 'abril-2026',
     month_name: 'Abril 2026',

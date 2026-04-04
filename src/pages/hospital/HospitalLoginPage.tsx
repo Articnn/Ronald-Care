@@ -23,8 +23,8 @@ export function HospitalLoginPage() {
           fullWidth
           disabled={isSyncing}
           onClick={async () => {
-            await loginInternalUser(email, password)
-            navigate('/hospital/referrals')
+            const nextRole = await loginInternalUser(email, password)
+            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/hospital/referrals')
           }}
         >
           {isSyncing ? 'Entrando...' : 'Entrar'}

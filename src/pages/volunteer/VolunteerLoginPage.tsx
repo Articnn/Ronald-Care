@@ -23,8 +23,8 @@ export function VolunteerLoginPage() {
           fullWidth
           disabled={isSyncing}
           onClick={async () => {
-            await loginInternalUser(email, password)
-            navigate('/volunteer/requests')
+            const nextRole = await loginInternalUser(email, password)
+            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/volunteer/requests')
           }}
         >
           {isSyncing ? 'Entrando...' : 'Entrar'}

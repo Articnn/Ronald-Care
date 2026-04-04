@@ -16,7 +16,7 @@ interface UpcomingEvent {
   imageUrl: string
 }
 
-const UPCOMING_EVENTS: UpcomingEvent[] = [
+export const UPCOMING_EVENTS: UpcomingEvent[] = [
   {
     id: 'event-1',
     title: 'Cena Benéfica Primavera',
@@ -145,8 +145,7 @@ function EventsEmptyState({ site }: { site: string }) {
 export function DonorImpactPage() {
   const { site } = useAppState()
 
-  const filteredEvents =
-    site === 'Todas' ? UPCOMING_EVENTS : UPCOMING_EVENTS.filter((e) => e.site === site)
+  const filteredEvents = UPCOMING_EVENTS.filter((e) => e.site === site)
 
   return (
     <div className="space-y-5">

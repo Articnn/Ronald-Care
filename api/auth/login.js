@@ -19,7 +19,7 @@ export default withApi({ methods: ['POST'] }, async (req) => {
         s.Name AS SiteName
       FROM Users u
       INNER JOIN Roles r ON r.RoleId = u.RoleId
-      INNER JOIN Sites s ON s.SiteId = u.SiteId
+      LEFT JOIN Sites s ON s.SiteId = u.SiteId
       WHERE u.Email = @email
     `)
 

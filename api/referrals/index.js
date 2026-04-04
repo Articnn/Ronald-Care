@@ -1,18 +1,23 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { makeCode } from '../../src/lib/sql-helpers.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff'] }, async (req) => {
+export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
 
   if (req.method === 'GET') {
     const status = req.query.status || null
-    const siteId = req.query.siteId ? toInt(req.query.siteId, 'siteId') : req.auth.siteId
+    const siteId = resolveScopedSiteId(req, req.query.siteId)
+    const dbReq = pool.request()
+    let where = 'WHERE 1=1'
 
-    const dbReq = pool.request().input('siteId', sql.Int, siteId)
-    let where = 'WHERE r.SiteId = @siteId'
+    if (siteId) {
+      dbReq.input('siteId', sql.Int, siteId)
+      where += ' AND r.SiteId = @siteId'
+    }
 
     if (status) {
       dbReq.input('status', sql.NVarChar(30), status)
@@ -31,14 +36,17 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff'] 
     return result.recordset
   }
 
-  required(req.body, ['siteId', 'arrivalDate', 'companionCount'])
+  required(req.body, ['siteId', 'arrivalDate', 'companionCount', 'caregiverName', 'familyLastName'])
   const referralCode = makeCode('REF')
   const familyCode = makeCode('FAM')
+  const siteId = resolveScopedSiteId(req, req.body.siteId || req.auth.siteId)
 
   const result = await pool
     .request()
-    .input('siteId', sql.Int, toInt(req.body.siteId, 'siteId'))
+    .input('siteId', sql.Int, siteId)
     .input('createdByUserId', sql.Int, req.auth.sub)
+    .input('caregiverName', sql.NVarChar(100), req.body.caregiverName)
+    .input('familyLastName', sql.NVarChar(100), req.body.familyLastName)
     .input('referralCode', sql.NVarChar(30), referralCode)
     .input('familyCode', sql.NVarChar(30), familyCode)
     .input('status', sql.NVarChar(30), 'enviada')
@@ -48,9 +56,9 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['hospital', 'staff'] 
     .input('eligibilityConfirmed', sql.Bit, Boolean(req.body.eligibilityConfirmed))
     .query(`
       INSERT INTO Referrals
-        (SiteId, CreatedByUserId, ReferralCode, FamilyCode, Status, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed)
+        (SiteId, CreatedByUserId, CaregiverName, FamilyLastName, ReferralCode, FamilyCode, Status, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed)
       VALUES
-        (@siteId, @createdByUserId, @referralCode, @familyCode, @status, @arrivalDate, @companionCount, @logisticsNote, @eligibilityConfirmed)
+        (@siteId, @createdByUserId, @caregiverName, @familyLastName, @referralCode, @familyCode, @status, @arrivalDate, @companionCount, @logisticsNote, @eligibilityConfirmed)
       RETURNING *
     `)
 

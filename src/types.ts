@@ -1,4 +1,5 @@
-export type Role = 'hospital' | 'staff' | 'volunteer' | 'family' | 'donor' | null
+export type InternalRole = 'superadmin' | 'admin' | 'hospital' | 'staff' | 'volunteer'
+export type Role = InternalRole | 'family' | null
 
 export type ReferralStatus = 'Enviada' | 'En revision' | 'Aceptada'
 export type RequestStatus = 'Nueva' | 'Asignada' | 'En proceso' | 'Resuelta'
@@ -7,11 +8,23 @@ export type RequestPriorityLabel = 'Alta' | 'Media' | 'Baja'
 export type TripStatus = 'Pendiente' | 'En curso' | 'Finalizado'
 export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepcion'
 export type TripShift = 'AM' | 'PM'
+export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepcion' | 'Limpieza' | 'Inventario'
+
+export interface CurrentUser {
+  userId: number
+  fullName: string
+  email: string
+  role: InternalRole | 'family'
+  siteId: number | null
+  siteName: string | null
+}
 
 export interface Referral {
   id: string
   hospitalWorker: string
   site: string
+  caregiverName: string
+  familyLastName: string
   arrivalDate: string
   companions: number
   logisticsNote: string
@@ -36,6 +49,7 @@ export interface FamilyProfile {
   qrCode: string
   pin: string
   admissionStatus: 'Pendiente' | 'Check-in completado'
+  isActive?: boolean
 }
 
 export interface Room {
@@ -83,11 +97,43 @@ export interface Trip {
 export interface VolunteerShift {
   id: string
   kind: 'Individual' | 'Escolar' | 'Empresarial'
-  role: 'Traslados' | 'Recepcion' | 'Acompanamiento'
+  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia'
   day: string
   volunteerName: string
   hours: number
   availability: 'Disponible' | 'Cupo limitado' | 'No disponible'
+  volunteerUserId?: number
+}
+
+export interface VolunteerTask {
+  id: string
+  volunteerUserId: number
+  volunteerName: string
+  title: string
+  type: VolunteerTaskType
+  shift: 'AM' | 'PM'
+  day: string
+  status: 'Pendiente' | 'En proceso' | 'Completada'
+  notes: string
+}
+
+export interface VolunteerChangeRequest {
+  id: string
+  volunteerUserId: number
+  volunteerName: string
+  requestedShift: 'AM' | 'PM' | ''
+  requestedTask: VolunteerTaskType | ''
+  reason: string
+  status: 'Pendiente' | 'Aprobada' | 'Rechazada'
+}
+
+export interface InternalUserRecord {
+  id: string
+  fullName: string
+  email: string
+  role: 'Admin' | 'Staff' | 'Voluntario' | 'Hospital'
+  site: string | null
+  isActive: boolean
 }
 
 export interface InventoryItem {

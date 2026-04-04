@@ -1,20 +1,24 @@
 import { getPool, sql } from '../../src/lib/db.js'
+import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 
-export default withApi({ methods: ['GET'], roles: ['staff'] }, async (req) => {
+export default withApi({ methods: ['GET'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   const pool = await getPool()
-  const siteId = req.query.siteId ? Number(req.query.siteId) : req.auth.siteId
+  const siteId = resolveScopedSiteId(req, req.query.siteId)
+  const dbReq = pool.request()
+  let where = 'WHERE 1=1'
+  if (siteId) {
+    dbReq.input('siteId', sql.Int, siteId)
+    where += ' AND SiteId = @siteId'
+  }
 
-  const result = await pool
-    .request()
-    .input('siteId', sql.Int, siteId)
-    .query(`
+  const result = await dbReq.query(`
       SELECT
         COUNT(*) AS totalShifts,
         SUM(CASE WHEN AvailabilityStatus = 'disponible' THEN 1 ELSE 0 END) AS coveredShifts,
         SUM(HoursLogged) AS totalHours
       FROM VolunteerShifts
-      WHERE SiteId = @siteId
+      ${where}
     `)
 
   const row = result.recordset[0]
