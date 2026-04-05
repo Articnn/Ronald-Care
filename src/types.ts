@@ -6,9 +6,9 @@ export type RequestStatus = 'Nueva' | 'Asignada' | 'En proceso' | 'Resuelta'
 export type RequestUrgency = 'Baja' | 'Media' | 'Alta'
 export type RequestPriorityLabel = 'Alta' | 'Media' | 'Baja'
 export type TripStatus = 'Pendiente' | 'En curso' | 'Finalizado'
-export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepcion'
+export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepción'
 export type TripShift = 'AM' | 'PM'
-export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepcion' | 'Limpieza' | 'Inventario'
+export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepción' | 'Limpieza' | 'Inventario'
 
 export interface CurrentUser {
   userId: number

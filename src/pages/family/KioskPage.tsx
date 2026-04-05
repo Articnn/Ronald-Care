@@ -23,14 +23,14 @@ export function KioskPage() {
 
   return (
     <div className={`mx-auto max-w-3xl space-y-5 ${easyRead ? 'text-xl' : ''}`}>
-      <SectionHeader title="Ayuda asistida" subtitle="Vista interna para staff. Consulta minima de admision, solicitudes y viajes sin datos clinicos." />
+      <SectionHeader title="Ayuda asistida" subtitle="Vista interna para staff. Consulta mínima de admisión, solicitudes y viajes sin datos clínicos." />
       <div className="flex flex-wrap gap-3">
         <button className="rounded-2xl bg-gold-300 px-4 py-2 font-bold text-warm-900" onClick={toggleEasyRead}>
-          {easyRead ? 'Vista normal' : 'Lectura facil'}
+          {easyRead ? 'Vista normal' : 'Lectura fácil'}
         </button>
       </div>
       <Card className="space-y-4">
-        <Input label="Codigo familia/ticket" value={code} onChange={(event) => setCode(event.target.value)} />
+        <Input label="Código familia/ticket" value={code} onChange={(event) => setCode(event.target.value)} />
         <div className="flex flex-wrap gap-2">
           <Button
             disabled={isSyncing}
@@ -38,7 +38,7 @@ export function KioskPage() {
               await lookupFamilyStatus(code)
             }}
           >
-            {isSyncing ? 'Consultando...' : 'Consultar codigo'}
+            {isSyncing ? 'Consultando...' : 'Consultar código'}
           </Button>
           <Button
             variant="ghost"
@@ -53,7 +53,7 @@ export function KioskPage() {
         {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <div className="rounded-2xl bg-warm-50 p-4">
           <p className="font-bold text-warm-900">Admision</p>
-          {family ? <StatusChip status={family.admissionStatus} /> : <p className="text-warm-700">Ingresa un codigo para consultar.</p>}
+          {family ? <StatusChip status={family.admissionStatus} /> : <p className="text-warm-700">Ingresa un código para consultar.</p>}
         </div>
       </Card>
 

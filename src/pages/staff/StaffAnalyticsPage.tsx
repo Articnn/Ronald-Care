@@ -50,7 +50,7 @@ export function StaffAnalyticsPage() {
     <div className="space-y-6">
       <SectionHeader title="Analytics operativo" subtitle="Graficas mock derivadas de solicitudes y viajes." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Tiempo promedio asignacion" value={`${avgAssignment} min`} caption="Tiempo desde creacion hasta toma operativa." icon={<Clock3 className="h-5 w-5" />} />
+        <MetricCard title="Tiempo promedio asignación" value={`${avgAssignment} min`} caption="Tiempo desde creación hasta toma operativa." icon={<Clock3 className="h-5 w-5" />} />
         <MetricCard title="Backlog activo" value={`${requests.filter((item) => item.status !== 'Resuelta').length}`} caption="Solicitudes no resueltas." icon={<BarChart3 className="h-5 w-5" />} />
         <MetricCard title="Viajes registrados" value={`${trips.length}`} caption="Pendientes, en curso y finalizados." icon={<Route className="h-5 w-5" />} />
         <MetricCard title="% SLA urgentes" value={`${slaPct}%`} caption="Meta operativa de urgentes." icon={<TimerReset className="h-5 w-5" />} />
@@ -59,7 +59,7 @@ export function StaffAnalyticsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="h-80">
-          <h2 className="mb-4 text-xl font-bold text-warm-900">Tiempo promedio a asignacion</h2>
+          <h2 className="mb-4 text-xl font-bold text-warm-900">Tiempo promedio a asignación</h2>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={requests.map((item) => ({ name: item.type, mins: Math.max(8, Math.round(item.waitingMinutes * 0.35)) }))}>
               <CartesianGrid strokeDasharray="3 3" />

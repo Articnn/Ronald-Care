@@ -12,10 +12,10 @@ export function StaffReceptionPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Recepcion" subtitle="Escaneo QR o captura de ticket para iniciar check-in." />
+      <SectionHeader title="Recepción" subtitle="Escaneo QR o captura de ticket para iniciar check-in." />
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="space-y-4">
-          <h2 className="text-xl font-bold text-warm-900">Escaneo rapido</h2>
+          <h2 className="text-xl font-bold text-warm-900">Escaneo rápido</h2>
           <p className="text-warm-700">Demo visual: se detecta automaticamente la referencia aceptada mas reciente.</p>
           {accepted[0] ? (
             <Button onClick={() => navigate(`/staff/checkin/${accepted[0].id}`)}>Abrir {accepted[0].id}</Button>
@@ -24,7 +24,7 @@ export function StaffReceptionPage() {
           )}
         </Card>
         <Card className="space-y-4">
-          <Input label="Codigo de referencia o ticket" placeholder="ref-1001 / TKT-3481" />
+          <Input label="Código de referencia o ticket" placeholder="ref-1001 / TKT-3481" />
           <Button variant="secondary" onClick={() => accepted[0] && navigate(`/staff/checkin/${accepted[0].id}`)}>
             Buscar
           </Button>
