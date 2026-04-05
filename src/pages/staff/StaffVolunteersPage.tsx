@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -8,20 +8,59 @@ import type { VolunteerTaskType } from '../../types'
 
 const taskTypes: VolunteerTaskType[] = ['Cocina', 'Lavanderia', 'Traslados', 'Acompanamiento', 'Recepcion', 'Limpieza', 'Inventario']
 
+function formatDisplayDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    const safeDate = new Date(`${value}T00:00:00`)
+    if (Number.isNaN(safeDate.getTime())) return value
+    return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(safeDate)
+  }
+  return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+}
+
+function workloadMeta(taskCount: number) {
+  if (taskCount >= 4) return { label: 'Muy ocupado', className: 'bg-red-100 text-red-700' }
+  if (taskCount >= 2) return { label: 'Ocupado', className: 'bg-amber-100 text-amber-700' }
+  return { label: 'Disponible', className: 'bg-emerald-100 text-emerald-700' }
+}
+
 export function StaffVolunteersPage() {
-  const { volunteerShifts, volunteerTasks, volunteerChangeRequests, createVolunteerTaskForUser, reviewVolunteerChange } = useAppState()
+  const {
+    volunteerRoster,
+    volunteerTasks,
+    volunteerChangeRequests,
+    createVolunteerTaskForUser,
+    updateVolunteerTaskForUser,
+    reviewVolunteerChange,
+    refreshConnectedData,
+  } = useAppState()
+
   const volunteerOptions = useMemo(
     () =>
-      volunteerShifts
-        .filter((shift) => shift.volunteerUserId)
-        .map((shift) => ({
-          userId: shift.volunteerUserId as number,
-          label: `${shift.volunteerName} · ${shift.role} · ${shift.availability}`,
-        })),
-    [volunteerShifts],
+      volunteerRoster.map((user) => ({
+        userId: user.userId,
+        name: user.fullName,
+        label: `${user.fullName} · ${user.role} · ${user.availability}`,
+      })),
+    [volunteerRoster],
   )
 
+  useEffect(() => {
+    void refreshConnectedData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [volunteerUserId, setVolunteerUserId] = useState<number>(volunteerOptions[0]?.userId || 0)
+  useEffect(() => {
+    if (volunteerOptions.length === 0) {
+      setVolunteerUserId(0)
+      return
+    }
+    if (!volunteerOptions.some((item) => item.userId === volunteerUserId)) {
+      setVolunteerUserId(volunteerOptions[0].userId)
+    }
+  }, [volunteerOptions, volunteerUserId])
+
   const [title, setTitle] = useState('Apoyo en recepcion')
   const [taskType, setTaskType] = useState<VolunteerTaskType>('Recepcion')
   const [taskDay, setTaskDay] = useState('2026-04-04')
@@ -37,6 +76,7 @@ export function StaffVolunteersPage() {
           <label className="block space-y-2">
             <span className="text-base font-semibold text-warm-900">Voluntario</span>
             <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerUserId} onChange={(event) => setVolunteerUserId(Number(event.target.value))}>
+              {volunteerOptions.length === 0 ? <option value={0}>Sin voluntarios activos</option> : null}
               {volunteerOptions.map((item) => (
                 <option key={item.userId} value={item.userId}>
                   {item.label}
@@ -96,27 +136,68 @@ export function StaffVolunteersPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="space-y-3">
           <h2 className="text-xl font-bold text-warm-900">Voluntarios activos</h2>
-          {volunteerShifts.map((shift) => (
-            <div key={shift.id} className="rounded-2xl bg-warm-50 p-4">
-              <p className="font-bold text-warm-900">{shift.volunteerName}</p>
-              <p className="text-warm-700">{shift.role} · {shift.day} · {shift.hours} hrs</p>
-              <p className="text-sm font-semibold text-warm-600">{shift.availability}</p>
-              <p className="mt-2 text-sm text-warm-700">
-                Tareas actuales: {volunteerTasks.filter((task) => task.volunteerUserId === shift.volunteerUserId && task.status !== 'Completada').length}
-              </p>
-            </div>
-          ))}
+          {volunteerRoster.length > 0 ? (
+            volunteerRoster.map((volunteer) => {
+              const workload = workloadMeta(volunteer.currentTasks)
+              return (
+                <div key={volunteer.userId} className="rounded-2xl bg-warm-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-warm-900">{volunteer.fullName}</p>
+                      <p className="text-warm-700">
+                        {volunteer.role} · {volunteer.workDays.join(', ') || 'Sin dias'} · {volunteer.startTime} - {volunteer.endTime}
+                      </p>
+                      <p className="text-sm font-semibold text-warm-600">
+                        {volunteer.shiftLabel} · {volunteer.availability}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-warm-700">Tareas activas: {volunteer.currentTasks}</p>
+                </div>
+              )
+            })
+          ) : (
+            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay voluntarios activos cargados para la sede seleccionada.</div>
+          )}
         </Card>
 
         <Card className="space-y-3">
           <h2 className="text-xl font-bold text-warm-900">Tareas asignadas</h2>
-          {volunteerTasks.map((task) => (
-            <div key={task.id} className="rounded-2xl bg-warm-50 p-4">
-              <p className="font-bold text-warm-900">{task.title}</p>
-              <p className="text-warm-700">{task.volunteerName} · {task.type} · {task.shift} · {task.day}</p>
-              <p className="text-sm font-semibold text-warm-600">{task.status}</p>
-            </div>
-          ))}
+          {volunteerTasks.length > 0 ? (
+            volunteerTasks.map((task) => (
+              <div key={task.id} className="space-y-3 rounded-2xl bg-warm-50 p-4">
+                <div>
+                  <p className="font-bold text-warm-900">{task.title}</p>
+                  <p className="text-warm-700">{task.volunteerName} · {task.type} · {formatDisplayDate(task.day)} · turno {task.shift}</p>
+                  <p className="text-sm font-semibold text-warm-600">{task.status}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="block space-y-2">
+                    <span className="text-sm font-semibold text-warm-900">Reasignar a</span>
+                    <select
+                      className="w-full rounded-2xl border border-warm-200 px-4 py-2 text-sm"
+                      defaultValue={String(task.volunteerUserId)}
+                      onChange={async (event) => {
+                        const nextUserId = Number(event.target.value)
+                        if (nextUserId !== task.volunteerUserId) {
+                          await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
+                        }
+                      }}
+                    >
+                      {volunteerOptions.map((item) => (
+                        <option key={`${task.id}-${item.userId}`} value={item.userId}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay tareas asignadas para la sede seleccionada.</div>
+          )}
         </Card>
       </div>
 

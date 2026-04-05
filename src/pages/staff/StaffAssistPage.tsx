@@ -18,13 +18,13 @@ export function StaffAssistPage() {
     <div className="space-y-5">
       <SectionHeader
         title="Ayuda asistida para familias"
-        subtitle="Consulta asistida por codigo en menos de 30 segundos para admision, solicitudes y transporte."
+        subtitle="Consulta asistida por código en menos de 30 segundos para admisión, solicitudes y transporte."
       />
       <Card className="space-y-4">
-        <Input label="Codigo familia o ticket" value={code} onChange={(event) => setCode(event.target.value)} />
+        <Input label="Código familia o ticket" value={code} onChange={(event) => setCode(event.target.value)} />
         <div className="rounded-2xl bg-warm-50 p-4">
           <p className="mb-2 font-bold text-warm-900">Admision</p>
-          {family ? <StatusChip status={family.admissionStatus} /> : referral ? <StatusChip status="Pendiente" /> : <p className="text-warm-700">Codigo no encontrado.</p>}
+          {family ? <StatusChip status={family.admissionStatus} /> : referral ? <StatusChip status="Pendiente" /> : <p className="text-warm-700">Código no encontrado.</p>}
         </div>
       </Card>
       <div className="grid gap-4 lg:grid-cols-2">

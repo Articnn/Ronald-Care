@@ -3,12 +3,16 @@ import { ensureSameOrGlobalSite, isGlobalRole, resolveScopedSiteId } from '../..
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
+import { createNotification, ensureNotificationTable } from '../../src/lib/notifications.js'
+import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
 const TASK_TYPES = ['cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario']
 
 export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin', 'admin', 'staff', 'volunteer'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   const pool = await getPool()
+  await ensureNotificationTable()
 
   if (req.method === 'GET') {
     const dbReq = pool.request()
@@ -84,6 +88,15 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       `)
 
     const task = result.recordset[0]
+    await createNotification({
+      siteId: volunteer.SiteId,
+      userId: volunteerUserId,
+      type: 'task_assigned',
+      title: 'Nueva tarea asignada',
+      message: `Se te asigno la tarea ${task.Title} para el dia ${req.body.taskDay} turno ${task.ShiftPeriod}`,
+      relatedEntityType: 'volunteer_task',
+      relatedEntityId: task.VolunteerTaskId,
+    })
     await logAudit({
       siteId: volunteer.SiteId,
       actorUserId: req.auth.sub,
@@ -114,7 +127,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
     ensureSameOrGlobalSite(req, task.SiteId)
   }
 
-  const nextStatus = req.body.status || task.Status
+  const nextStatus = req.body.status || req.body.Status || task.Status
   const nextVolunteerUserId = req.body.volunteerUserId ? Number(req.body.volunteerUserId) : task.VolunteerUserId
   const nextShiftPeriod = req.body.shiftPeriod || task.ShiftPeriod
   const nextTitle = req.body.title || task.Title
@@ -143,6 +156,24 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       WHERE VolunteerTaskId = @volunteerTaskId
       RETURNING *
     `)
+
+  if (Number(nextVolunteerUserId) !== Number(task.VolunteerUserId)) {
+    const volunteerResult = await pool
+      .request()
+      .input('userId', sql.Int, nextVolunteerUserId)
+      .query(`SELECT FullName FROM Users WHERE UserId = @userId`)
+    const nextVolunteerName = volunteerResult.recordset[0]?.FullName || 'Voluntariado'
+    await createNotification({
+      siteId: task.SiteId,
+      userId: nextVolunteerUserId,
+      type: 'task_reassigned',
+      title: 'Tarea reasignada',
+      message: `Se te reasigno la tarea ${nextTitle}.`,
+      relatedEntityType: 'volunteer_task',
+      relatedEntityId: volunteerTaskId,
+    })
+    result.recordset[0].VolunteerName = nextVolunteerName
+  }
 
   await logAudit({
     siteId: task.SiteId,

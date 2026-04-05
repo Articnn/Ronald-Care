@@ -31,7 +31,7 @@ export const initialReferrals: Referral[] = [
     familyLastName: 'Lopez',
     arrivalDate: '2026-03-11',
     companions: 2,
-    logisticsNote: 'Llegada por autobus, requiere orientacion de acceso.',
+    logisticsNote: 'Llegada por autobus, requiere orientación de acceso.',
     eligible: true,
     status: 'Aceptada',
     familyCode: 'FAM-3481',
@@ -113,7 +113,7 @@ export const initialRequests: SupportRequest[] = [
     site: 'Casa Ronald McDonald Puebla',
     familyId: 'family-1',
     title: 'Apoyo de recepcion',
-    type: 'Recepcion',
+    type: 'Recepción',
     urgency: 'Baja',
     waitingMinutes: 10,
     status: 'En proceso',
@@ -153,7 +153,7 @@ export const initialTrips: Trip[] = [
 export const initialVolunteerShifts: VolunteerShift[] = [
   { id: 'shift-1', kind: 'Individual', role: 'Traslados', day: 'Lunes', volunteerName: 'Carlos R.', hours: 4, availability: 'Disponible' },
   { id: 'shift-2', kind: 'Empresarial', role: 'Recepcion', day: 'Martes', volunteerName: 'Laura V.', hours: 3, availability: 'Cupo limitado' },
-  { id: 'shift-3', kind: 'Escolar', role: 'Acompanamiento', day: 'Miercoles', volunteerName: 'Diego T.', hours: 5, availability: 'Disponible' },
+  { id: 'shift-3', kind: 'Escolar', role: 'Acompanamiento', day: 'Miércoles', volunteerName: 'Diego T.', hours: 5, availability: 'Disponible' },
 ]
 
 export const initialInventory: InventoryItem[] = [
@@ -166,7 +166,7 @@ export const initialStories: DonorStory[] = [
   {
     id: 'story-1',
     title: 'Llegada mas simple',
-    summary: 'Una familia pudo completar admision y traslado en menos de una hora gracias a coordinacion operativa.',
+    summary: 'Una familia pudo completar admisión y traslado en menos de una hora gracias a coordinación operativa.',
     image: 'https://placehold.co/800x500/f7b733/7a2a1d?text=RonaldCare+Ops',
   },
   {
@@ -181,26 +181,30 @@ export const initialImpactFeed: ImpactFeedItem[] = [
   {
     id: 'impact-1',
     site: 'Casa Ronald McDonald Ciudad de Mexico',
-    title: 'Recepcion agilizada',
-    detail: '3 familias completaron check-in sin incidencias durante la manana.',
+    title: 'Recepción agilizada',
+    detail: '3 familias completaron check-in sin incidencias durante la mañana.',
     createdAt: now,
   },
 ]
 
 export const guideSteps: GuideStep[] = [
-  { id: 'guide-1', title: 'Ubicate rapido', detail: 'Recepcion te comparte codigo, habitacion y horarios clave del dia.' },
-  { id: 'guide-2', title: 'Solicita apoyo', detail: 'Puedes pedir transporte, kit o ayuda de recepcion desde tu codigo o con apoyo del staff.' },
-  { id: 'guide-3', title: 'Revisa tus viajes', detail: 'Consulta si tu traslado esta pendiente, en curso o finalizado sin datos clinicos.' },
+  { id: 'guide-1', title: 'Estatus actual', detail: 'Recepción te comparte código, habitación y horarios clave del día.' },
+  { id: 'guide-2', title: 'Solicita apoyo', detail: 'Puedes pedir transporte, kit o ayuda de recepción desde tu código o con apoyo del staff.' },
+  { id: 'guide-3', title: 'Realiza una pausa', detail: 'Toma un momento para relajarte y recargar energías.' },
+  { id: 'guide-4', title: 'Solicita permiso', detail: 'Puedes solicitar permiso para salir o realizar actividades fuera del área.' },
+  { id: 'guide-5', title: 'Conéctate con la comunidad', detail: 'Comparte experiencias y consejos con otras familias en el mural de la comunidad.' },
+  { id: 'guide-6', title: 'Visita tu perfil', detail: 'Aquí puedes revisar y actualizar tu información personal y preferencias.' },
+
 ]
 
 export const supportMessages: SupportMessage[] = [
-  { id: 'msg-1', title: 'No estas sola', body: 'El equipo puede ayudarte con orientacion, traslados y necesidades basicas durante tu estancia.' },
-  { id: 'msg-2', title: 'Pide ayuda a tiempo', body: 'Si algo cambia en tu horario, acude a recepcion o usa tu codigo para revisar el estatus.' },
+  { id: 'msg-1', title: 'No estás sola', body: 'El equipo puede ayudarte con orientación, traslados y necesidades básicas durante tu estancia.' },
+  { id: 'msg-2', title: 'Pide ayuda a tiempo', body: 'Si algo cambia en tu horario, acude a recepción para solicitar soporte.' },
 ]
 
 export const initialCommunityPosts: CommunityPost[] = [
   { id: 'post-1', authorAlias: 'Familia Horizonte', message: 'Traer una carpeta pequeña para tickets y horarios nos ayudo mucho.', createdAt: now },
-  { id: 'post-2', authorAlias: 'Familia Norte', message: 'La consulta asistida en recepcion fue rapidisima cuando no tuvimos bateria.', createdAt: now },
+  { id: 'post-2', authorAlias: 'Familia Norte', message: 'La consulta asistida en recepción fue rapidísima cuando no tuvimos batería.', createdAt: now },
 ]
 
 export const initialReturnPasses: ReturnPass[] = [

@@ -4,8 +4,8 @@ import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 
 export function VolunteerTripsPage() {
-  const { trips, startTrip, finishTrip } = useAppState()
-  const assignedTrips = trips.filter((trip) => ['Carlos R.', 'Sara M.'].includes(trip.assignedTo))
+  const { currentUser, trips, startTrip, finishTrip } = useAppState()
+  const assignedTrips = trips.filter((trip) => trip.assignedTo === currentUser?.fullName)
 
   return (
     <div className="space-y-5">

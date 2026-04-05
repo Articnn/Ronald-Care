@@ -17,17 +17,17 @@ export function HospitalReferralDetailPage() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title={`Detalle ${referral.id}`} subtitle="Gestion de referencia y generacion de codigo para recepcion." />
+      <SectionHeader title={`Detalle ${referral.id}`} subtitle="Gestión de referencia y generación de código para recepción." />
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <StatusChip status={referral.status} />
           <p className="text-warm-700">Sede {referral.site} · ticket {referral.ticketCode}</p>
         </div>
-        <p className="text-lg text-warm-800">Nota: {referral.logisticsNote || 'Sin nota logistica.'}</p>
+        <p className="text-lg text-warm-800">Nota: {referral.logisticsNote || 'Sin nota logística.'}</p>
         <div className="rounded-2xl bg-gold-100 p-4 text-warm-900">
-          <p className="font-bold">QR/Codigo para recepcion</p>
+          <p className="font-bold">QR/Código para recepción</p>
           <p className="text-lg">QR-{referral.ticketCode}</p>
-          <p>Codigo familia: {referral.familyCode}</p>
+          <p>Código familia: {referral.familyCode}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" onClick={() => updateReferralStatus(referral.id, 'En revision')}>Marcar En revision</Button>

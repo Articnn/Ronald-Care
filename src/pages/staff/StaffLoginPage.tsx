@@ -14,7 +14,7 @@ export function StaffLoginPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <SectionHeader title="Login staff" subtitle="Recepcion, operacion, inventario y analytics." />
+      <SectionHeader title="Login staff" subtitle="Recepción, operación, inventario y analytics." />
       <Card className="space-y-4">
         <Input label="Usuario" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="staff@ronaldcare.org" />
         <Input label="Contrasena" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
@@ -24,7 +24,7 @@ export function StaffLoginPage() {
           disabled={isSyncing}
           onClick={async () => {
             const nextRole = await loginInternalUser(email, password)
-            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/staff/reception')
+            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/staff/dashboard')
           }}
         >
           {isSyncing ? 'Entrando...' : 'Entrar'}

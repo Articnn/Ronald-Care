@@ -6,9 +6,9 @@ export type RequestStatus = 'Nueva' | 'Asignada' | 'En proceso' | 'Resuelta'
 export type RequestUrgency = 'Baja' | 'Media' | 'Alta'
 export type RequestPriorityLabel = 'Alta' | 'Media' | 'Baja'
 export type TripStatus = 'Pendiente' | 'En curso' | 'Finalizado'
-export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepcion'
+export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepción'
 export type TripShift = 'AM' | 'PM'
-export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepcion' | 'Limpieza' | 'Inventario'
+export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepción' | 'Limpieza' | 'Inventario'
 
 export interface CurrentUser {
   userId: number
@@ -103,6 +103,10 @@ export interface VolunteerShift {
   hours: number
   availability: 'Disponible' | 'Cupo limitado' | 'No disponible'
   volunteerUserId?: number
+  workDays?: string[]
+  startTime?: string
+  endTime?: string
+  shiftLabel?: 'Manana' | 'Tarde' | 'Noche'
 }
 
 export interface VolunteerTask {
@@ -115,6 +119,32 @@ export interface VolunteerTask {
   day: string
   status: 'Pendiente' | 'En proceso' | 'Completada'
   notes: string
+}
+
+export interface VolunteerNotification {
+  id: string
+  volunteerTaskId: number
+  title: string
+  message: string
+  day: string
+  shift: 'AM' | 'PM'
+  isRead: boolean
+  createdAt: string
+}
+
+export interface VolunteerRosterItem {
+  userId: number
+  fullName: string
+  site: string
+  email: string
+  volunteerType: 'Individual' | 'Escolar' | 'Empresarial'
+  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia'
+  workDays: string[]
+  startTime: string
+  endTime: string
+  shiftLabel: 'Manana' | 'Tarde' | 'Noche'
+  availability: 'Disponible' | 'Cupo limitado' | 'No disponible'
+  currentTasks: number
 }
 
 export interface VolunteerChangeRequest {
@@ -134,6 +164,13 @@ export interface InternalUserRecord {
   role: 'Admin' | 'Staff' | 'Voluntario' | 'Hospital'
   site: string | null
   isActive: boolean
+}
+
+export interface StaffDashboardSummary {
+  pendingRequestsToday: number
+  availableVolunteersNow: number
+  familiesInHouse: number
+  unassignedTasks: number
 }
 
 export interface InventoryItem {
