@@ -10,6 +10,8 @@
   ShieldCheck,
   UserCircle2,
   Users,
+  InfoIcon,
+  HandHelpingIcon,
 } from 'lucide-react'
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
@@ -21,7 +23,7 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Referencias', to: '/hospital/referrals', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
@@ -29,7 +31,7 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   admin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
@@ -41,7 +43,7 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   ],
   staff: [
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Recepcion', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Habitaciones', to: '/staff/rooms', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
@@ -59,9 +61,9 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
 }
 
 const familyNav = [
-  { label: 'Mi estatus', to: '/family/status', icon: <ClipboardList className="h-4 w-4" /> },
-  { label: 'Solicitar apoyo', to: '/family/request', icon: <ClipboardList className="h-4 w-4" /> },
-  { label: 'Guia Express', to: '/family/guide', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Guía Express', to: '/family/guide', icon: <ClipboardList className="h-4 w-4" /> },
+  { label: 'Mi estatus', to: '/family/status', icon: <InfoIcon className="h-4 w-4" /> },
+  { label: 'Solicitar apoyo', to: '/family/request', icon: <HandHelpingIcon className="h-4 w-4" /> },
   { label: 'Pausa 60s', to: '/family/pause', icon: <HeartHandshake className="h-4 w-4" /> },
   { label: 'Return Pass', to: '/family/return-pass', icon: <Route className="h-4 w-4" /> },
   { label: 'Comunidad', to: '/family/community', icon: <Users className="h-4 w-4" /> },

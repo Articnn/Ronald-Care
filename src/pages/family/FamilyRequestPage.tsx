@@ -7,7 +7,7 @@ import { SectionHeader } from '../../components/ui/SectionHeader'
 import { useAppState } from '../../context/AppContext'
 import type { RequestType, RequestUrgency } from '../../types'
 
-const requestTypes: RequestType[] = ['Transporte', 'Kit', 'Alimento']
+const requestTypes: RequestType[] = ['Transporte', 'Kit', 'Alimento', 'Recepción']
 const urgencyOptions: RequestUrgency[] = ['Baja', 'Media', 'Alta']
 
 export function FamilyRequestPage() {
@@ -25,11 +25,11 @@ export function FamilyRequestPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <SectionHeader title="Solicitar apoyo" subtitle="Familias con telefono pueden crear solicitudes basicas en pocos pasos." />
+      <SectionHeader title="Solicitar apoyo" subtitle="Crea solicitudes básicas en pocos pasos." />
       <Card className="space-y-5">
         <div>
           <p className="mb-2 text-base font-semibold text-warm-900">Tipo de apoyo</p>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-4">
             {requestTypes.map((item) => (
               <button
                 key={item}

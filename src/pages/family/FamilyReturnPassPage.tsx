@@ -22,13 +22,13 @@ export function FamilyReturnPassPage() {
     <div className="space-y-5">
       <SectionHeader
         title="Return Pass"
-        subtitle="Reingreso rapido con aviso logistico sin repetir todo el proceso desde cero."
+        subtitle="Solicita un pase de regreso para salir del hospital por un periodo corto sin perder tu lugar en la casa."
       />
       <Card className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <Input label="Fecha de regreso" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           <Input label="Acompanantes" type="number" min="1" value={companions} onChange={(event) => setCompanions(event.target.value)} />
-          <Input label="Nota logistica" value={note} onChange={(event) => setNote(event.target.value)} />
+          <Input label="Nota logística" value={note} onChange={(event) => setNote(event.target.value)} />
         </div>
         <Button
           onClick={() =>

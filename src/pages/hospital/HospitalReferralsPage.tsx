@@ -19,7 +19,7 @@ export function HospitalReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Referencias hospitalarias" subtitle="Captura sede, llegada, acompanantes y nota logistica." />
+      <SectionHeader title="Referencias hospitalarias" subtitle="Captura sede, llegada, acompañantes y nota logística." />
 
       <Card className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
@@ -41,13 +41,13 @@ export function HospitalReferralsPage() {
           <Input label="Apellido familia" value={familyLastName} onChange={(event) => setFamilyLastName(event.target.value)} />
           <Input label="Fecha llegada" type="date" value={arrivalDate} onChange={(event) => setArrivalDate(event.target.value)} />
           <Input
-            label="Numero de acompanantes"
+            label="Número de acompañantes"
             type="number"
             min="1"
             value={companions}
             onChange={(event) => setCompanions(event.target.value)}
           />
-          <Input label="Nota logistica" value={logisticsNote} onChange={(event) => setLogisticsNote(event.target.value)} placeholder="Traslado, horario o acceso" />
+          <Input label="Nota logística" value={logisticsNote} onChange={(event) => setLogisticsNote(event.target.value)} placeholder="Traslado, horario o acceso" />
         </div>
         <label className="flex items-center gap-3 rounded-2xl border border-warm-200 p-4 text-lg font-semibold text-warm-900">
           <input type="checkbox" className="h-5 w-5" checked={eligible} onChange={(event) => setEligible(event.target.checked)} />
@@ -77,7 +77,7 @@ export function HospitalReferralsPage() {
           <Card key={referral.id} className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-xl font-bold text-warm-900">{referral.id}</h3>
-              <p className="text-warm-700">{referral.site} · llegada {referral.arrivalDate} · acompanantes {referral.companions}</p>
+              <p className="text-warm-700">{referral.site} · llegada {referral.arrivalDate} · acompañantes {referral.companions}</p>
             </div>
             <div className="flex items-center gap-3">
               <StatusChip status={referral.status} />

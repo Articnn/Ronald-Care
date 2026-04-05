@@ -32,7 +32,7 @@ export function StaffCheckinPage() {
           <Input label="Nombre cuidador" value={caregiverName} onChange={(event) => setCaregiverName(event.target.value)} />
           <Input label="Apellido familiar" value={familyLastName} onChange={(event) => setFamilyLastName(event.target.value)} />
           <label className="block space-y-2">
-            <span className="text-base font-semibold text-warm-900">Habitacion</span>
+            <span className="text-base font-semibold text-warm-900">Habitación</span>
             <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={room} onChange={(event) => setRoom(event.target.value)}>
               {availableRooms.map((item) => (
                 <option key={item.id} value={item.label}>
@@ -79,7 +79,7 @@ export function StaffCheckinPage() {
         {done ? (
           <div className="rounded-2xl bg-gold-100 p-4 text-warm-900">
             <p className="font-bold">Ficha Familia generada</p>
-            <p>Codigo : {referral.ticketCode}</p>
+            <p>Código: {referral.ticketCode}</p>
             <p>QR familia: QR-{referral.familyCode}</p>
           </div>
         ) : null}

@@ -16,7 +16,7 @@ export function AccountPage() {
     <div className="mx-auto max-w-2xl space-y-5">
       <SectionHeader
         title="Mi perfil"
-        subtitle={isFamily ? 'Desde aquí la familia puede cambiar su PIN confirmando el actual.' : 'Desde aquí puedes cambiar tu contraseña confirmando la actual.'}
+        subtitle={isFamily ? 'Desde aquí puedes cambiar tu PIN confirmando el actual. ¡Asegúrate de recordarlo!' : 'Desde aquí puedes cambiar tu contraseña confirmando la actual. No lo olvides!'}
       />
 
       <Card className="space-y-3">
@@ -30,13 +30,13 @@ export function AccountPage() {
 
       <Card className="space-y-4">
         <Input
-          label={isFamily ? 'PIN actual' : 'Contrasena actual'}
+          label={isFamily ? 'PIN actual' : 'Contrasenia actual'}
           type="password"
           value={currentSecret}
           onChange={(event) => setCurrentSecret(event.target.value)}
         />
         <Input
-          label={isFamily ? 'Nuevo PIN' : 'Nueva contrasena'}
+          label={isFamily ? 'Nuevo PIN' : 'Nueva contrasenia'}
           type="password"
           value={nextSecret}
           onChange={(event) => setNextSecret(event.target.value)}
@@ -52,7 +52,7 @@ export function AccountPage() {
             setNextSecret('')
           }}
         >
-          {isFamily ? 'Cambiar PIN' : 'Cambiar contrasena'}
+          {isFamily ? 'Cambiar PIN' : 'Cambiar contrasenia'}
         </Button>
       </Card>
     </div>

@@ -9,7 +9,7 @@ export function StaffRoomsPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Room planning" subtitle="Habitaciones, ocupacion y familias esperadas por referencias aceptadas." />
+      <SectionHeader title="Room planning" subtitle="Habitaciones, ocupación y familias esperadas por referencias aceptadas." />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {rooms.map((room) => (
           <Card key={room.id} className="space-y-3">
