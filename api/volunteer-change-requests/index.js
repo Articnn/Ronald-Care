@@ -3,12 +3,16 @@ import { ensureSameOrGlobalSite, resolveScopedSiteId } from '../../src/lib/acces
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
+import { createNotification, ensureNotificationTable } from '../../src/lib/notifications.js'
+import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
 const TASK_TYPES = ['cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario']
 
 export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin', 'admin', 'staff', 'volunteer'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   const pool = await getPool()
+  await ensureNotificationTable()
 
   if (req.method === 'GET') {
     const dbReq = pool.request()
@@ -42,6 +46,8 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
     required(req.body, ['reason'])
     if (req.body.requestedTaskType) oneOf(req.body.requestedTaskType, TASK_TYPES, 'requestedTaskType')
     if (req.body.requestedShiftPeriod) oneOf(req.body.requestedShiftPeriod, ['AM', 'PM'], 'requestedShiftPeriod')
+    if (req.body.requestedRoleName) oneOf(req.body.requestedRoleName, ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia'], 'requestedRoleName')
+    if (req.body.requestedShiftLabel) oneOf(req.body.requestedShiftLabel, ['manana', 'tarde', 'noche'], 'requestedShiftLabel')
 
     const userResult = await pool
       .request()
@@ -55,11 +61,16 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       .input('volunteerUserId', sql.Int, req.auth.sub)
       .input('requestedShiftPeriod', sql.NVarChar(20), req.body.requestedShiftPeriod || null)
       .input('requestedTaskType', sql.NVarChar(40), req.body.requestedTaskType || null)
+      .input('requestedRoleName', sql.NVarChar(40), req.body.requestedRoleName || null)
+      .input('requestedWorkDays', sql.NVarChar(120), Array.isArray(req.body.requestedWorkDays) ? req.body.requestedWorkDays.join(',') : null)
+      .input('requestedStartTime', sql.NVarChar(5), req.body.requestedStartTime || null)
+      .input('requestedEndTime', sql.NVarChar(5), req.body.requestedEndTime || null)
+      .input('requestedShiftLabel', sql.NVarChar(20), req.body.requestedShiftLabel || null)
       .input('reason', sql.NVarChar(255), req.body.reason)
       .input('status', sql.NVarChar(20), 'pendiente')
       .query(`
-        INSERT INTO VolunteerChangeRequests (SiteId, VolunteerUserId, RequestedShiftPeriod, RequestedTaskType, Reason, Status, CreatedAt, UpdatedAt)
-        VALUES (@siteId, @volunteerUserId, @requestedShiftPeriod, @requestedTaskType, @reason, @status, NOW(), NOW())
+        INSERT INTO VolunteerChangeRequests (SiteId, VolunteerUserId, RequestedShiftPeriod, RequestedTaskType, RequestedRoleName, RequestedWorkDays, RequestedStartTime, RequestedEndTime, RequestedShiftLabel, Reason, Status, CreatedAt, UpdatedAt)
+        VALUES (@siteId, @volunteerUserId, @requestedShiftPeriod, @requestedTaskType, @requestedRoleName, @requestedWorkDays, @requestedStartTime, @requestedEndTime, @requestedShiftLabel, @reason, @status, NOW(), NOW())
         RETURNING *
       `)
 
@@ -101,7 +112,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       RETURNING *
     `)
 
-  if (req.body.status === 'aprobada' && (changeRequest.RequestedShiftPeriod || changeRequest.RequestedTaskType)) {
+  if (req.body.status === 'aprobada' && (changeRequest.RequestedShiftPeriod || changeRequest.RequestedTaskType || changeRequest.RequestedRoleName || changeRequest.RequestedWorkDays || changeRequest.RequestedStartTime || changeRequest.RequestedEndTime || changeRequest.RequestedShiftLabel)) {
     await pool
       .request()
       .input('userId', sql.Int, changeRequest.VolunteerUserId)
@@ -114,7 +125,43 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
             UpdatedAt = NOW()
         WHERE VolunteerUserId = @userId AND Status IN ('pendiente', 'en_proceso')
       `)
+
+    await pool
+      .request()
+      .input('userId', sql.Int, changeRequest.VolunteerUserId)
+      .input('roleName', sql.NVarChar(40), changeRequest.RequestedRoleName)
+      .input('workDays', sql.NVarChar(120), changeRequest.RequestedWorkDays)
+      .input('startTime', sql.NVarChar(5), changeRequest.RequestedStartTime)
+      .input('endTime', sql.NVarChar(5), changeRequest.RequestedEndTime)
+      .input('shiftLabel', sql.NVarChar(20), changeRequest.RequestedShiftLabel)
+      .input('shiftPeriod', sql.NVarChar(20), changeRequest.RequestedShiftPeriod)
+      .query(`
+        UPDATE VolunteerShifts
+        SET RoleName = COALESCE(@roleName, RoleName),
+            WorkDays = COALESCE(@workDays, WorkDays),
+            StartTime = COALESCE(@startTime, StartTime),
+            EndTime = COALESCE(@endTime, EndTime),
+            ShiftLabel = COALESCE(@shiftLabel, ShiftLabel),
+            ShiftPeriod = COALESCE(@shiftPeriod, ShiftPeriod)
+        WHERE VolunteerShiftId = (
+          SELECT VolunteerShiftId
+          FROM VolunteerShifts
+          WHERE UserId = @userId
+          ORDER BY CreatedAt DESC
+          LIMIT 1
+        )
+      `)
   }
+
+  await createNotification({
+    siteId: changeRequest.SiteId,
+    userId: changeRequest.VolunteerUserId,
+    type: req.body.status === 'aprobada' ? 'change_approved' : 'change_rejected',
+    title: req.body.status === 'aprobada' ? 'Solicitud aprobada' : 'Solicitud rechazada',
+    message: req.body.status === 'aprobada' ? 'Tu solicitud de cambio fue aprobada.' : 'Tu solicitud de cambio fue rechazada.',
+    relatedEntityType: 'volunteer_change_request',
+    relatedEntityId: volunteerChangeRequestId,
+  })
 
   await logAudit({
     siteId: changeRequest.SiteId,

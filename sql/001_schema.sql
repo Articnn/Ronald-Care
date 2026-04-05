@@ -1,4 +1,7 @@
+DROP TABLE IF EXISTS volunteeralerts CASCADE;
+DROP TABLE IF EXISTS appnotifications CASCADE;
 DROP TABLE IF EXISTS volunteerchangerequests CASCADE;
+DROP TABLE IF EXISTS volunteernotificationreads CASCADE;
 DROP TABLE IF EXISTS volunteertasks CASCADE;
 DROP TABLE IF EXISTS auditevents CASCADE;
 DROP TABLE IF EXISTS communityposts CASCADE;
@@ -145,7 +148,11 @@ CREATE TABLE volunteershifts (
   volunteertype VARCHAR(30) NOT NULL CHECK (volunteertype IN ('individual', 'escolar', 'empresarial')),
   rolename VARCHAR(40) NOT NULL CHECK (rolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia')),
   shiftday DATE NOT NULL,
+  workdays TEXT NOT NULL DEFAULT '',
+  starttime VARCHAR(5) NOT NULL DEFAULT '08:00',
+  endtime VARCHAR(5) NOT NULL DEFAULT '14:00',
   shiftperiod VARCHAR(20) NOT NULL CHECK (shiftperiod IN ('AM', 'PM')),
+  shiftlabel VARCHAR(20) NOT NULL DEFAULT 'manana' CHECK (shiftlabel IN ('manana', 'tarde', 'noche')),
   availabilitystatus VARCHAR(30) NOT NULL CHECK (availabilitystatus IN ('disponible', 'cupo_limitado', 'no_disponible')),
   hourslogged NUMERIC(5,2) NOT NULL DEFAULT 0,
   createdat TIMESTAMP NOT NULL DEFAULT NOW()
@@ -168,12 +175,38 @@ CREATE TABLE volunteertasks (
   updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE volunteernotificationreads (
+  notificationreadid SERIAL PRIMARY KEY,
+  volunteertaskid INTEGER NOT NULL REFERENCES volunteertasks(volunteertaskid) ON DELETE CASCADE,
+  userid INTEGER NOT NULL REFERENCES users(userid) ON DELETE CASCADE,
+  readat TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE (volunteertaskid, userid)
+);
+
+CREATE TABLE appnotifications (
+  notificationid SERIAL PRIMARY KEY,
+  siteid INTEGER REFERENCES sites(siteid),
+  userid INTEGER NOT NULL REFERENCES users(userid) ON DELETE CASCADE,
+  type VARCHAR(40) NOT NULL,
+  title VARCHAR(160) NOT NULL,
+  message VARCHAR(255) NOT NULL,
+  relatedentitytype VARCHAR(50),
+  relatedentityid INTEGER,
+  isread BOOLEAN NOT NULL DEFAULT FALSE,
+  createdat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE volunteerchangerequests (
   volunteerchangerequestid SERIAL PRIMARY KEY,
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   volunteeruserid INTEGER NOT NULL REFERENCES users(userid),
   requestedshiftperiod VARCHAR(20) CHECK (requestedshiftperiod IN ('AM', 'PM')),
   requestedtasktype VARCHAR(40) CHECK (requestedtasktype IN ('cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario')),
+  requestedrolename VARCHAR(40) CHECK (requestedrolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia')),
+  requestedworkdays VARCHAR(120),
+  requestedstarttime VARCHAR(5),
+  requestedendtime VARCHAR(5),
+  requestedshiftlabel VARCHAR(20) CHECK (requestedshiftlabel IN ('manana', 'tarde', 'noche')),
   reason VARCHAR(255) NOT NULL,
   status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'aprobada', 'rechazada')),
   reviewedbyuserid INTEGER REFERENCES users(userid),
@@ -264,6 +297,8 @@ CREATE INDEX ix_trips_familyid ON trips(familyid);
 CREATE INDEX ix_volunteershifts_site_day ON volunteershifts(siteid, shiftday);
 CREATE INDEX ix_volunteertasks_site_day ON volunteertasks(siteid, taskday);
 CREATE INDEX ix_volunteertasks_volunteer_status ON volunteertasks(volunteeruserid, status);
+CREATE INDEX ix_volunteernotificationreads_userid ON volunteernotificationreads(userid);
+CREATE INDEX ix_appnotifications_userid_isread_createdat ON appnotifications(userid, isread, createdat);
 CREATE INDEX ix_volunteerchanges_volunteer_status ON volunteerchangerequests(volunteeruserid, status);
 CREATE INDEX ix_inventoryitems_site_stock ON inventoryitems(siteid, stock);
 CREATE INDEX ix_inventorymovements_item_createdat ON inventorymovements(inventoryitemid, createdat);

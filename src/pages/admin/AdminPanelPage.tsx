@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -7,6 +7,17 @@ import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 
 const userRoles = ['admin', 'staff', 'volunteer'] as const
+const volunteerTypes = ['individual', 'escolar', 'empresarial'] as const
+const volunteerRoleOptions = ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia'] as const
+const volunteerAvailabilityOptions = ['disponible', 'cupo_limitado', 'no_disponible'] as const
+const weekDays = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'] as const
+
+function inferShiftLabel(startTime: string) {
+  const hour = Number(startTime.split(':')[0] || 8)
+  if (hour >= 18) return 'noche' as const
+  if (hour >= 13) return 'tarde' as const
+  return 'manana' as const
+}
 
 export function AdminPanelPage() {
   const {
@@ -27,7 +38,23 @@ export function AdminPanelPage() {
   const [password, setPassword] = useState('Demo123!')
   const [role, setRole] = useState<(typeof userRoles)[number]>('staff')
   const [siteId, setSiteId] = useState(1)
+  const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>(['Lunes', 'Miercoles', 'Viernes'])
+  const [volunteerType, setVolunteerType] = useState<(typeof volunteerTypes)[number]>('individual')
+  const [volunteerRole, setVolunteerRole] = useState<(typeof volunteerRoleOptions)[number]>('recepcion')
+  const [volunteerShiftDay, setVolunteerShiftDay] = useState('2026-04-04')
+  const [startTime, setStartTime] = useState('08:00')
+  const [endTime, setEndTime] = useState('14:00')
+  const [volunteerShiftPeriod, setVolunteerShiftPeriod] = useState<'AM' | 'PM'>('AM')
+  const [shiftLabel, setShiftLabel] = useState<'manana' | 'tarde' | 'noche'>('manana')
+  const [volunteerAvailability, setVolunteerAvailability] = useState<(typeof volunteerAvailabilityOptions)[number]>('disponible')
+  const [volunteerHours, setVolunteerHours] = useState('6')
   const [generatedAccess, setGeneratedAccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    const inferred = inferShiftLabel(startTime)
+    setShiftLabel(inferred)
+    setVolunteerShiftPeriod(inferred === 'manana' ? 'AM' : 'PM')
+  }, [startTime])
 
   return (
     <div className="space-y-6">
@@ -60,9 +87,100 @@ export function AdminPanelPage() {
             </select>
           </label>
         </div>
+
+        {role === 'volunteer' ? (
+          <div className="space-y-4 rounded-2xl bg-warm-50 p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Tipo de voluntariado</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerType} onChange={(event) => setVolunteerType(event.target.value as (typeof volunteerTypes)[number])}>
+                  {volunteerTypes.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Rol de trabajo</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerRole} onChange={(event) => setVolunteerRole(event.target.value as (typeof volunteerRoleOptions)[number])}>
+                  {volunteerRoleOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input label="Hora de inicio" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
+              <Input label="Hora de fin" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Turno</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={shiftLabel} onChange={(event) => setShiftLabel(event.target.value as 'manana' | 'tarde' | 'noche')}>
+                  <option value="manana">Mañana</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noche">Noche</option>
+                </select>
+              </label>
+              <Input label="Dia base de captura" type="date" value={volunteerShiftDay} onChange={(event) => setVolunteerShiftDay(event.target.value)} />
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Disponibilidad</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerAvailability} onChange={(event) => setVolunteerAvailability(event.target.value as (typeof volunteerAvailabilityOptions)[number])}>
+                  {volunteerAvailabilityOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Input label="Horas registradas" type="number" min="0" step="0.5" value={volunteerHours} onChange={(event) => setVolunteerHours(event.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-base font-semibold text-warm-900">Dias de trabajo</p>
+              <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
+                {weekDays.map((day) => (
+                  <label key={day} className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-3 py-2 text-sm font-semibold text-warm-800">
+                    <input
+                      type="checkbox"
+                      checked={selectedWorkDays.includes(day)}
+                      onChange={(event) => {
+                        setSelectedWorkDays((current) =>
+                          event.target.checked ? [...current, day] : current.filter((item) => item !== day),
+                        )
+                      }}
+                    />
+                    {day}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <Button
           onClick={async () => {
-            await createInternalUser({ fullName, email, role, siteId, password })
+            await createInternalUser({
+              fullName,
+              email,
+              role,
+              siteId,
+              password,
+              volunteerShift:
+                role === 'volunteer'
+                  ? {
+                      volunteerType,
+                      roleName: volunteerRole,
+                      shiftDay: volunteerShiftDay,
+                      workDays: selectedWorkDays,
+                      startTime,
+                      endTime,
+                      shiftPeriod: volunteerShiftPeriod,
+                      shiftLabel,
+                      availabilityStatus: volunteerAvailability,
+                      hoursLogged: Number(volunteerHours || 0),
+                    }
+                  : undefined,
+            })
             setFullName('')
             setEmail('')
             setPassword('Demo123!')

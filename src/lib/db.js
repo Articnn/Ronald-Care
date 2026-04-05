@@ -124,7 +124,21 @@ const KEY_ALIASES = {
   volunteertype: 'VolunteerType',
   waitingstartedat: 'WaitingStartedAt',
   itemcode: 'ItemCode',
+  isread: 'IsRead',
   updatedat: 'UpdatedAt',
+  notificationid: 'NotificationId',
+  relatedentityid: 'RelatedEntityId',
+  relatedentitytype: 'RelatedEntityType',
+  type: 'Type',
+  workdays: 'WorkDays',
+  starttime: 'StartTime',
+  endtime: 'EndTime',
+  shiftlabel: 'ShiftLabel',
+  requestedrolename: 'RequestedRoleName',
+  requestedworkdays: 'RequestedWorkDays',
+  requestedstarttime: 'RequestedStartTime',
+  requestedendtime: 'RequestedEndTime',
+  requestedshiftlabel: 'RequestedShiftLabel',
 }
 
 function transformRow(row) {

@@ -22,9 +22,23 @@ export default withApi({ methods: ['POST'] }, async (req) => {
     `)
 
   const access = result.recordset[0]
+  console.log('[family-access] lookup', {
+    code: req.body.code,
+    found: Boolean(access),
+    familyAccessId: access?.FamilyAccessId ?? null,
+    familyId: access?.FamilyId ?? null,
+    ticketCode: access?.TicketCode ?? null,
+    qrCode: access?.QrCode ?? null,
+    isActive: access?.IsActive ?? null,
+  })
   if (!access || !access.IsActive) throw new ApiError(401, 'Codigo/PIN invalidos')
 
   const matches = await comparePassword(req.body.pin, access.PinHash)
+  console.log('[family-access] compare', {
+    code: req.body.code,
+    familyAccessId: access.FamilyAccessId,
+    matches,
+  })
   if (!matches) throw new ApiError(401, 'Codigo/PIN invalidos')
 
   await pool

@@ -24,7 +24,7 @@ export function StaffLoginPage() {
           disabled={isSyncing}
           onClick={async () => {
             const nextRole = await loginInternalUser(email, password)
-            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/staff/reception')
+            navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/staff/dashboard')
           }}
         >
           {isSyncing ? 'Entrando...' : 'Entrar'}

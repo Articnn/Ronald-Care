@@ -12,7 +12,8 @@ import {
   createRequest as createRequestApi,
   createReturnPassApi,
   createTrip as createTripApi,
-  createVolunteerChangeRequest,
+  createDetailedVolunteerChangeRequest,
+  createVolunteerShift,
   createVolunteerTask,
   deleteAdminUser,
   finishTrip as finishTripApi,
@@ -24,18 +25,23 @@ import {
   getFamilyStatusByCode,
   getInventoryStock,
   getMe,
+  markNotificationRead,
+  getNotifications,
   getPendingReferrals,
   getReferrals,
   getRequests,
   getReturnPasses,
+  getStaffDashboard,
   getTrips,
   getVolunteerChangeRequests,
+  getVolunteerRoster,
   getVolunteerShifts,
   getVolunteerTasks,
   loginFamily,
   loginInternal,
   resolveRequest,
   reviewVolunteerChangeRequest,
+  sendVolunteerAlert as sendVolunteerAlertApi,
   startTrip as startTripApi,
   updateAdminUser,
   updateFamilyAccess,
@@ -51,6 +57,9 @@ import {
   type BackendTrip,
   type BackendUser,
   type PendingReferral,
+  type BackendVolunteerNotification,
+  type BackendVolunteerRosterItem,
+  type StaffDashboardResponse,
   type VolunteerChangeRequest as BackendVolunteerChangeRequest,
   type VolunteerTask as BackendVolunteerTask,
 } from '../lib/api'
@@ -62,7 +71,6 @@ import {
   initialReturnPasses,
   initialRooms,
   initialStories,
-  initialVolunteerShifts,
   sites,
   supportMessages,
 } from '../data/mockData'
@@ -82,7 +90,10 @@ import type {
   Room,
   SupportMessage,
   SupportRequest,
+  StaffDashboardSummary,
   Trip,
+  VolunteerNotification,
+  VolunteerRosterItem,
   VolunteerChangeRequest,
   VolunteerShift,
   VolunteerTask,
@@ -102,6 +113,13 @@ interface DonorImpactSiteMetric {
   totalRequests: number
 }
 
+const emptyStaffDashboard: StaffDashboardSummary = {
+  pendingRequestsToday: 0,
+  availableVolunteersNow: 0,
+  familiesInHouse: 0,
+  unassignedTasks: 0,
+}
+
 interface AppContextValue {
   role: Role
   site: string
@@ -119,6 +137,7 @@ interface AppContextValue {
   requests: SupportRequest[]
   trips: Trip[]
   volunteerShifts: VolunteerShift[]
+  volunteerRoster: VolunteerRosterItem[]
   volunteerTasks: VolunteerTask[]
   volunteerChangeRequests: VolunteerChangeRequest[]
   internalUsers: InternalUserRecord[]
@@ -130,6 +149,9 @@ interface AppContextValue {
   donorStories: typeof initialStories
   impactFeed: ImpactFeedItem[]
   donorImpactBySite: DonorImpactSiteMetric[]
+  staffDashboard: StaffDashboardSummary
+  notifications: VolunteerNotification[]
+  unreadNotifications: number
   availableSites: string[]
   setRole: (role: Role) => void
   setSite: (site: string) => void
@@ -164,15 +186,52 @@ interface AppContextValue {
   createReturnPass: (payload: Omit<ReturnPass, 'id' | 'status'>) => Promise<void>
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<void>
   changeOwnPin: (currentPin: string, newPin: string) => Promise<void>
-  createInternalUser: (payload: { fullName: string; email: string; role: 'admin' | 'staff' | 'volunteer'; siteId: number; password: string }) => Promise<void>
+  createInternalUser: (payload: {
+    fullName: string
+    email: string
+    role: 'admin' | 'staff' | 'volunteer'
+    siteId: number
+    password: string
+    volunteerShift?: {
+      volunteerType: 'individual' | 'escolar' | 'empresarial'
+      roleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+      shiftDay: string
+      workDays: string[]
+      startTime: string
+      endTime: string
+      shiftPeriod: 'AM' | 'PM'
+      shiftLabel: 'manana' | 'tarde' | 'noche'
+      availabilityStatus: 'disponible' | 'cupo_limitado' | 'no_disponible'
+      hoursLogged: number
+    }
+  }) => Promise<void>
   updateInternalUser: (payload: { userId: number; fullName?: string; role?: 'admin' | 'staff' | 'volunteer'; siteId?: number; isActive?: boolean }) => Promise<void>
   deleteInternalUser: (userId: number) => Promise<void>
   activateReferralFamily: (referralId: number) => Promise<ActivationResponse>
   setFamilyAccessState: (familyId: number, action: 'pause' | 'reactivate' | 'reset-pin') => Promise<{ newPin?: string }>
   createVolunteerTaskForUser: (payload: { volunteerUserId: number; title: string; taskType: 'cocina' | 'lavanderia' | 'traslados' | 'acompanamiento' | 'recepcion' | 'limpieza' | 'inventario'; shiftPeriod: 'AM' | 'PM'; taskDay: string; notes?: string }) => Promise<void>
-  updateVolunteerTaskForUser: (payload: Partial<BackendVolunteerTask> & { volunteerTaskId: number }) => Promise<void>
-  requestVolunteerChange: (payload: { requestedShiftPeriod?: 'AM' | 'PM'; requestedTaskType?: BackendVolunteerTask['TaskType']; reason: string }) => Promise<void>
+  updateVolunteerTaskForUser: (payload: {
+    volunteerTaskId: number
+    volunteerUserId?: number
+    title?: string
+    taskType?: BackendVolunteerTask['TaskType']
+    shiftPeriod?: 'AM' | 'PM'
+    status?: BackendVolunteerTask['Status']
+    notes?: string | null
+  }) => Promise<void>
+  requestVolunteerChange: (payload: {
+    requestedShiftPeriod?: 'AM' | 'PM'
+    requestedTaskType?: BackendVolunteerTask['TaskType']
+    requestedRoleName?: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+    requestedWorkDays?: string[]
+    requestedStartTime?: string
+    requestedEndTime?: string
+    requestedShiftLabel?: 'manana' | 'tarde' | 'noche'
+    reason: string
+  }) => Promise<void>
   reviewVolunteerChange: (id: number, status: 'aprobada' | 'rechazada') => Promise<void>
+  sendVolunteerAlertToPeer: (toVolunteerUserId: number, alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me') => Promise<void>
+  markNotificationAsRead: (notificationId: number) => Promise<void>
 }
 
 const ROLE_STORAGE_KEY = 'ops-role'
@@ -354,6 +413,18 @@ function mapVolunteerShift(item: Record<string, unknown>): VolunteerShift {
     day: String(item.ShiftDay || ''),
     volunteerName: String(item.VolunteerName || 'Voluntariado'),
     hours: Number(item.HoursLogged || 0),
+    workDays: String(item.WorkDays || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    startTime: String(item.StartTime || '08:00'),
+    endTime: String(item.EndTime || '14:00'),
+    shiftLabel:
+      String(item.ShiftLabel || 'manana') === 'tarde'
+        ? 'Tarde'
+        : String(item.ShiftLabel || 'manana') === 'noche'
+          ? 'Noche'
+          : 'Manana',
     availability:
       String(item.AvailabilityStatus || 'disponible') === 'cupo_limitado'
         ? 'Cupo limitado'
@@ -361,6 +432,39 @@ function mapVolunteerShift(item: Record<string, unknown>): VolunteerShift {
           ? 'No disponible'
           : 'Disponible',
     volunteerUserId: item.UserId ? Number(item.UserId) : undefined,
+  }
+}
+
+function mapVolunteerRoster(item: BackendVolunteerRosterItem): VolunteerRosterItem {
+  const typeMap: Record<string, VolunteerRosterItem['volunteerType']> = {
+    individual: 'Individual',
+    escolar: 'Escolar',
+    empresarial: 'Empresarial',
+  }
+  const roleMap: Record<string, VolunteerRosterItem['role']> = {
+    traslados: 'Traslados',
+    recepcion: 'Recepcion',
+    acompanamiento: 'Acompanamiento',
+    cocina: 'Cocina',
+    lavanderia: 'Lavanderia',
+  }
+  return {
+    userId: item.UserId,
+    fullName: item.FullName,
+    email: item.Email,
+    site: normalizeSite(item.SiteName),
+    volunteerType: typeMap[item.VolunteerType] || 'Individual',
+    role: roleMap[item.RoleName] || 'Recepcion',
+    workDays: String(item.WorkDays || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    startTime: item.StartTime,
+    endTime: item.EndTime,
+    shiftLabel: item.ShiftLabel === 'tarde' ? 'Tarde' : item.ShiftLabel === 'noche' ? 'Noche' : 'Manana',
+    availability:
+      item.AvailabilityStatus === 'cupo_limitado' ? 'Cupo limitado' : item.AvailabilityStatus === 'no_disponible' ? 'No disponible' : 'Disponible',
+    currentTasks: Number(item.CurrentTasks || 0),
   }
 }
 
@@ -436,6 +540,19 @@ function mapInventoryItem(item: { InventoryItemId: number; Name: string; Stock: 
   }
 }
 
+function mapVolunteerNotification(item: BackendVolunteerNotification): VolunteerNotification {
+  return {
+    id: String(item.NotificationId),
+    volunteerTaskId: Number(item.VolunteerTaskId || 0),
+    title: item.Title,
+    message: item.Message,
+    day: item.TaskDay,
+    shift: item.ShiftPeriod,
+    isRead: Boolean(item.IsRead),
+    createdAt: item.CreatedAt,
+  }
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>(() => (localStorage.getItem(ROLE_STORAGE_KEY) as Role) || null)
   const [site, setSiteState] = useState<string>(() => localStorage.getItem(SITE_STORAGE_KEY) || sites[0])
@@ -452,13 +569,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rooms] = useState<Room[]>(initialRooms)
   const [requests, setRequests] = useState<SupportRequest[]>([])
   const [trips, setTrips] = useState<Trip[]>([])
-  const [volunteerShifts, setVolunteerShifts] = useState<VolunteerShift[]>(initialVolunteerShifts)
+  const [volunteerShifts, setVolunteerShifts] = useState<VolunteerShift[]>([])
+  const [volunteerRoster, setVolunteerRoster] = useState<VolunteerRosterItem[]>([])
   const [volunteerTasks, setVolunteerTasks] = useState<VolunteerTask[]>([])
   const [volunteerChangeRequests, setVolunteerChangeRequests] = useState<VolunteerChangeRequest[]>([])
   const [internalUsers, setInternalUsers] = useState<InternalUserRecord[]>([])
   const [inventory, setInventory] = useState<InventoryItem[]>(initialInventory)
   const [impactFeed, setImpactFeed] = useState<ImpactFeedItem[]>(initialImpactFeed)
   const [donorImpactBySite, setDonorImpactBySite] = useState<DonorImpactSiteMetric[]>([])
+  const [staffDashboard, setStaffDashboard] = useState<StaffDashboardSummary>(emptyStaffDashboard)
+  const [notifications, setNotifications] = useState<VolunteerNotification[]>([])
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>(initialCommunityPosts)
   const [returnPasses, setReturnPasses] = useState<ReturnPass[]>(initialReturnPasses)
 
@@ -489,6 +610,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (authToken && role) void refreshConnectedData()
   }, [authToken, role, site])
+
+  useEffect(() => {
+    if (!authToken || role !== 'volunteer') {
+      setNotifications([])
+      setUnreadNotifications(0)
+      return
+    }
+
+    let cancelled = false
+    const loadNotifications = async () => {
+      try {
+        const payload = await getNotifications(authToken)
+        if (!cancelled) {
+          setNotifications(payload.notifications.map(mapVolunteerNotification))
+          setUnreadNotifications(payload.unreadCount)
+        }
+      } catch {
+        if (!cancelled) {
+          setNotifications([])
+          setUnreadNotifications(0)
+        }
+      }
+    }
+
+    void loadNotifications()
+    const intervalId = window.setInterval(() => {
+      void loadNotifications()
+    }, 15000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [authToken, role])
 
   async function loadDonorImpact(selectedSite: string) {
     try {
@@ -585,16 +740,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : sites.findIndex((item) => item === site) + 1
           : resolvedUser.siteId
 
-      const [backendReferrals, backendFamilies, backendRequests, backendTrips, backendShifts, backendTasks, backendChangeRequests, backendInventory, backendPosts] = await Promise.all([
+      const [backendReferrals, backendFamilies, backendRequests, backendTrips, backendShifts, backendRoster, backendTasks, backendChangeRequests, backendInventory, backendPosts] = await Promise.all([
         role === 'hospital' || role === 'staff' || role === 'admin' || role === 'superadmin' ? getReferrals(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' ? getFamilies(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getRequests(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getTrips(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getVolunteerShifts(authToken, selectedSiteId) : Promise.resolve([]),
+        role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getVolunteerRoster(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getVolunteerTasks(authToken, { siteId: selectedSiteId ?? undefined, volunteerUserId: role === 'volunteer' ? resolvedUser.userId : undefined }) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' || role === 'volunteer' ? getVolunteerChangeRequests(authToken, selectedSiteId) : Promise.resolve([]),
         role === 'staff' || role === 'admin' || role === 'superadmin' ? getInventoryStock(authToken, selectedSiteId) : Promise.resolve([]),
-        role ? getCommunityPosts(authToken) : Promise.resolve([]),
+        role ? getCommunityPosts(authToken).catch(() => []) : Promise.resolve([]),
       ])
 
       const mappedFamilies = (backendFamilies as BackendFamily[]).map(mapFamily)
@@ -605,6 +761,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRequests((backendRequests as BackendRequest[]).map((item) => mapRequest(item, familySiteById.get(String(item.FamilyId)) || resolvedUser.siteName || '')))
       setTrips((backendTrips as BackendTrip[]).map((item) => mapTrip(item, familySiteById.get(String(item.FamilyId)) || resolvedUser.siteName || '')))
       setVolunteerShifts((backendShifts as Array<Record<string, unknown>>).map(mapVolunteerShift))
+      setVolunteerRoster((backendRoster as BackendVolunteerRosterItem[]).map(mapVolunteerRoster))
       setVolunteerTasks((backendTasks as BackendVolunteerTask[]).map(mapVolunteerTask))
       setVolunteerChangeRequests((backendChangeRequests as BackendVolunteerChangeRequest[]).map(mapVolunteerChange))
       setInventory((backendInventory as Array<{ InventoryItemId: number; Name: string; Stock: number; MinStock: number }>).map(mapInventoryItem))
@@ -619,9 +776,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const [users, pending] = await Promise.all([getAdminUsers(authToken, selectedSiteId), getPendingReferrals(authToken, selectedSiteId)])
         setInternalUsers(users.map(mapInternalUser))
         setPendingReferrals((pending as PendingReferral[]).map(mapReferral))
+      } else if (role === 'staff') {
+        const users = await getAdminUsers(authToken, selectedSiteId)
+        setInternalUsers(users.map(mapInternalUser))
+        setPendingReferrals([])
       } else {
         setInternalUsers([])
         setPendingReferrals([])
+      }
+
+      if (role === 'staff' || role === 'admin' || role === 'superadmin') {
+        const dashboard = await getStaffDashboard(authToken, selectedSiteId)
+        setStaffDashboard(dashboard as StaffDashboardResponse)
+      } else {
+        setStaffDashboard(emptyStaffDashboard)
       }
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'No se pudo sincronizar la informacion')
@@ -637,6 +805,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuthToken(null)
     setKioskStatus(null)
     setAuthError(null)
+    setNotifications([])
+    setUnreadNotifications(0)
+    setStaffDashboard(emptyStaffDashboard)
   }
 
   const loginInternalUser = async (email: string, password: string) => {
@@ -828,7 +999,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const createInternalUserHandler: AppContextValue['createInternalUser'] = async (payload) => {
     if (!authToken) return
-    await createAdminUser(authToken, payload)
+    const createdUser = await createAdminUser(authToken, {
+      fullName: payload.fullName,
+      email: payload.email,
+      role: payload.role,
+      siteId: payload.siteId,
+      password: payload.password,
+    })
+
+    if (payload.role === 'volunteer' && payload.volunteerShift) {
+      await createVolunteerShift(authToken, {
+        siteId: payload.siteId,
+        userId: createdUser.UserId,
+        volunteerName: createdUser.FullName,
+        volunteerType: payload.volunteerShift.volunteerType,
+        roleName: payload.volunteerShift.roleName,
+        shiftDay: payload.volunteerShift.shiftDay,
+        workDays: payload.volunteerShift.workDays,
+        startTime: payload.volunteerShift.startTime,
+        endTime: payload.volunteerShift.endTime,
+        shiftPeriod: payload.volunteerShift.shiftPeriod,
+        shiftLabel: payload.volunteerShift.shiftLabel,
+        availabilityStatus: payload.volunteerShift.availabilityStatus,
+        hoursLogged: payload.volunteerShift.hoursLogged,
+      })
+    }
+
     await refreshConnectedData()
   }
 
@@ -864,15 +1060,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshConnectedData()
   }
 
-  const updateVolunteerTaskForUser = async (payload: Partial<BackendVolunteerTask> & { volunteerTaskId: number }) => {
+  const updateVolunteerTaskForUser = async (payload: {
+    volunteerTaskId: number
+    volunteerUserId?: number
+    title?: string
+    taskType?: BackendVolunteerTask['TaskType']
+    shiftPeriod?: 'AM' | 'PM'
+    status?: BackendVolunteerTask['Status']
+    notes?: string | null
+  }) => {
     if (!authToken) return
     await updateVolunteerTask(authToken, payload)
     await refreshConnectedData()
   }
 
-  const requestVolunteerChange = async (payload: { requestedShiftPeriod?: 'AM' | 'PM'; requestedTaskType?: BackendVolunteerTask['TaskType']; reason: string }) => {
+  const requestVolunteerChange = async (payload: {
+    requestedShiftPeriod?: 'AM' | 'PM'
+    requestedTaskType?: BackendVolunteerTask['TaskType']
+    requestedRoleName?: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+    requestedWorkDays?: string[]
+    requestedStartTime?: string
+    requestedEndTime?: string
+    requestedShiftLabel?: 'manana' | 'tarde' | 'noche'
+    reason: string
+  }) => {
     if (!authToken) return
-    await createVolunteerChangeRequest(authToken, payload)
+    await createDetailedVolunteerChangeRequest(authToken, payload)
     await refreshConnectedData()
   }
 
@@ -880,6 +1093,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!authToken) return
     await reviewVolunteerChangeRequest(authToken, id, status)
     await refreshConnectedData()
+  }
+
+  const sendVolunteerAlertToPeer = async (toVolunteerUserId: number, alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me') => {
+    if (!authToken || role !== 'volunteer') return
+    await sendVolunteerAlertApi(authToken, { toVolunteerUserId, alertType })
+    const payload = await getNotifications(authToken)
+    setNotifications(payload.notifications.map(mapVolunteerNotification))
+    setUnreadNotifications(payload.unreadCount)
+  }
+
+  const markNotificationAsRead = async (notificationId: number) => {
+    if (!authToken || role !== 'volunteer') return
+    await markNotificationRead(authToken, notificationId)
+    const payload = await getNotifications(authToken)
+    setNotifications(payload.notifications.map(mapVolunteerNotification))
+    setUnreadNotifications(payload.unreadCount)
   }
   return (
     <AppContext.Provider
@@ -900,6 +1129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         requests,
         trips,
         volunteerShifts,
+        volunteerRoster,
         volunteerTasks,
         volunteerChangeRequests,
         internalUsers,
@@ -911,6 +1141,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         donorStories: initialStories,
         impactFeed,
         donorImpactBySite,
+        staffDashboard,
+        notifications,
+        unreadNotifications,
         availableSites,
         setRole,
         setSite,
@@ -945,6 +1178,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateVolunteerTaskForUser,
         requestVolunteerChange,
         reviewVolunteerChange,
+        sendVolunteerAlertToPeer,
+        markNotificationAsRead,
       }}
     >
       {children}

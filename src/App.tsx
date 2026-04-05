@@ -24,6 +24,7 @@ import { HospitalReferralsPage } from './pages/hospital/HospitalReferralsPage'
 import { ProfileSelectorPage } from './pages/ProfileSelectorPage'
 import { StaffAnalyticsPage } from './pages/staff/StaffAnalyticsPage'
 import { StaffCheckinPage } from './pages/staff/StaffCheckinPage'
+import { StaffDashboardPage } from './pages/staff/StaffDashboardPage'
 import { StaffInventoryPage } from './pages/staff/StaffInventoryPage'
 import { StaffLoginPage } from './pages/staff/StaffLoginPage'
 import { StaffReceptionPage } from './pages/staff/StaffReceptionPage'
@@ -74,6 +75,14 @@ function App() {
             />
 
             <Route path="/staff/login" element={<StaffLoginPage />} />
+            <Route
+              path="/staff/dashboard"
+              element={
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
+                  <StaffDashboardPage />
+                </RequireRole>
+              }
+            />
             <Route
               path="/staff/reception"
               element={

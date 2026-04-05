@@ -24,13 +24,17 @@ import tripsIndex from './api/trips/index.js'
 import tripsStart from './api/trips/start.js'
 import tripsFinish from './api/trips/finish.js'
 import volunteersShifts from './api/volunteers/shifts.js'
+import volunteersRoster from './api/volunteers/roster.js'
 import volunteersCoverage from './api/volunteers/coverage.js'
 import volunteerTasks from './api/volunteer-tasks/index.js'
 import volunteerChangeRequests from './api/volunteer-change-requests/index.js'
+import volunteerAlerts from './api/volunteer-alerts/index.js'
+import notificationsIndex from './api/notifications/index.js'
 import inventoryStock from './api/inventory/stock.js'
 import inventoryMovements from './api/inventory/movements.js'
 import kioskStatus from './api/kiosk/status.js'
 import analyticsKpis from './api/analytics/kpis.js'
+import staffDashboard from './api/staff/dashboard.js'
 import donorImpact from './api/donor/impact.js'
 import communityPosts from './api/community/posts.js'
 import communityReport from './api/community/report.js'
@@ -70,6 +74,7 @@ const routes = {
   'PATCH /api/trips/finish': tripsFinish,
   'GET /api/volunteers/shifts': volunteersShifts,
   'POST /api/volunteers/shifts': volunteersShifts,
+  'GET /api/volunteers/roster': volunteersRoster,
   'GET /api/volunteers/coverage': volunteersCoverage,
   'GET /api/volunteer-tasks': volunteerTasks,
   'POST /api/volunteer-tasks': volunteerTasks,
@@ -77,8 +82,12 @@ const routes = {
   'GET /api/volunteer-change-requests': volunteerChangeRequests,
   'POST /api/volunteer-change-requests': volunteerChangeRequests,
   'PATCH /api/volunteer-change-requests': volunteerChangeRequests,
+  'POST /api/volunteer-alerts': volunteerAlerts,
+  'GET /api/notifications': notificationsIndex,
+  'PATCH /api/notifications': notificationsIndex,
   'GET /api/inventory/stock': inventoryStock,
   'POST /api/inventory/movements': inventoryMovements,
+  'GET /api/staff/dashboard': staffDashboard,
   'GET /api/analytics/kpis': analyticsKpis,
   'GET /api/donor/impact': donorImpact,
   'GET /api/community/posts': communityPosts,

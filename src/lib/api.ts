@@ -212,6 +212,41 @@ export interface VolunteerChangeRequest {
   UpdatedAt: string
 }
 
+export interface BackendVolunteerNotification {
+  NotificationId: number
+  VolunteerTaskId: number | null
+  Title: string
+  Message: string
+  TaskDay: string
+  ShiftPeriod: 'AM' | 'PM'
+  IsRead: boolean
+  CreatedAt: string
+}
+
+export interface BackendVolunteerRosterItem {
+  UserId: number
+  FullName: string
+  Email: string
+  SiteId: number
+  SiteName: string
+  VolunteerType: 'individual' | 'escolar' | 'empresarial'
+  RoleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+  WorkDays: string
+  StartTime: string
+  EndTime: string
+  ShiftLabel: 'manana' | 'tarde' | 'noche'
+  AvailabilityStatus: 'disponible' | 'cupo_limitado' | 'no_disponible'
+  HoursLogged: number
+  CurrentTasks: number
+}
+
+export interface StaffDashboardResponse {
+  pendingRequestsToday: number
+  availableVolunteersNow: number
+  familiesInHouse: number
+  unassignedTasks: number
+}
+
 export function loginInternal(email: string, password: string) {
   return apiRequest<InternalLoginResponse>('/auth/login', { method: 'POST', body: { email, password } })
 }
@@ -321,6 +356,32 @@ export function getVolunteerShifts(token: string, siteId?: number | null) {
   return apiRequest<Array<Record<string, unknown>>>(`/volunteers/shifts${query}`, { token })
 }
 
+export function createVolunteerShift(
+  token: string,
+  payload: {
+    siteId: number
+    userId: number
+    volunteerName: string
+    volunteerType: 'individual' | 'escolar' | 'empresarial'
+    roleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+    shiftDay: string
+    workDays: string[]
+    startTime: string
+    endTime: string
+    shiftPeriod: 'AM' | 'PM'
+    shiftLabel: 'manana' | 'tarde' | 'noche'
+    availabilityStatus: 'disponible' | 'cupo_limitado' | 'no_disponible'
+    hoursLogged: number
+  },
+) {
+  return apiRequest<Record<string, unknown>>('/volunteers/shifts', { method: 'POST', token, body: payload })
+}
+
+export function getVolunteerRoster(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendVolunteerRosterItem[]>(`/volunteers/roster${query}`, { token })
+}
+
 export function getVolunteerTasks(token: string, params: { siteId?: number | null; volunteerUserId?: number | null } = {}) {
   const query = new URLSearchParams()
   if (params.siteId) query.set('siteId', String(params.siteId))
@@ -332,7 +393,18 @@ export function createVolunteerTask(token: string, payload: { volunteerUserId: n
   return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'POST', token, body: payload })
 }
 
-export function updateVolunteerTask(token: string, payload: Partial<VolunteerTask> & { volunteerTaskId: number }) {
+export function updateVolunteerTask(
+  token: string,
+  payload: {
+    volunteerTaskId: number
+    volunteerUserId?: number
+    title?: string
+    taskType?: VolunteerTask['TaskType']
+    shiftPeriod?: 'AM' | 'PM'
+    status?: VolunteerTask['Status']
+    notes?: string | null
+  },
+) {
   return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'PATCH', token, body: payload })
 }
 
@@ -345,8 +417,41 @@ export function createVolunteerChangeRequest(token: string, payload: { requested
   return apiRequest<VolunteerChangeRequest>('/volunteer-change-requests', { method: 'POST', token, body: payload })
 }
 
+export function createDetailedVolunteerChangeRequest(
+  token: string,
+  payload: {
+    requestedShiftPeriod?: 'AM' | 'PM'
+    requestedTaskType?: VolunteerTask['TaskType']
+    requestedRoleName?: BackendVolunteerRosterItem['RoleName']
+    requestedWorkDays?: string[]
+    requestedStartTime?: string
+    requestedEndTime?: string
+    requestedShiftLabel?: BackendVolunteerRosterItem['ShiftLabel']
+    reason: string
+  },
+) {
+  return apiRequest<VolunteerChangeRequest>('/volunteer-change-requests', { method: 'POST', token, body: payload })
+}
+
 export function reviewVolunteerChangeRequest(token: string, volunteerChangeRequestId: number, status: 'aprobada' | 'rechazada') {
   return apiRequest<VolunteerChangeRequest>('/volunteer-change-requests', { method: 'PATCH', token, body: { volunteerChangeRequestId, status } })
+}
+
+export function getNotifications(token: string) {
+  return apiRequest<{ unreadCount: number; notifications: BackendVolunteerNotification[] }>('/notifications', { token })
+}
+
+export function markNotificationRead(token: string, notificationId: number) {
+  return apiRequest<{ message: string }>('/notifications', { method: 'PATCH', token, body: { notificationId } })
+}
+
+export function getStaffDashboard(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<StaffDashboardResponse>(`/staff/dashboard${query}`, { token })
+}
+
+export function sendVolunteerAlert(token: string, payload: { toVolunteerUserId: number; alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me' }) {
+  return apiRequest<{ message: string }>('/volunteer-alerts', { method: 'POST', token, body: payload })
 }
 
 export function getDonorImpact(siteName?: string) {

@@ -50,17 +50,17 @@ INSERT INTO trips (tripid, siteid, familyid, relatedrequestid, destination, shif
   (1, 1, 1, 1, 'Hospital Infantil', 'AM', 5, 'Voluntario Demo', 'pendiente', NULL, NULL, NULL, NOW()),
   (2, 1, 1, NULL, 'Terminal Norte', 'PM', 5, 'Voluntario Demo', 'finalizado', NOW() - interval '42 minutes', NOW() - interval '4 minutes', 38, NOW() - interval '3 hours');
 
-INSERT INTO volunteershifts (volunteershiftid, siteid, userid, volunteername, volunteertype, rolename, shiftday, shiftperiod, availabilitystatus, hourslogged, createdat) VALUES
-  (1, 1, 5, 'Voluntario Demo', 'individual', 'traslados', CURRENT_DATE, 'AM', 'disponible', 4.00, NOW()),
-  (2, 2, 6, 'Staff Puebla', 'empresarial', 'recepcion', CURRENT_DATE, 'PM', 'cupo_limitado', 3.50, NOW()),
-  (3, 3, 7, 'Voluntaria Tlalnepantla', 'individual', 'acompanamiento', CURRENT_DATE, 'AM', 'disponible', 5.00, NOW());
+INSERT INTO volunteershifts (volunteershiftid, siteid, userid, volunteername, volunteertype, rolename, shiftday, workdays, starttime, endtime, shiftperiod, shiftlabel, availabilitystatus, hourslogged, createdat) VALUES
+  (1, 1, 5, 'Voluntario Demo', 'individual', 'traslados', CURRENT_DATE, 'Lunes,Martes,Miercoles,Jueves,Viernes', '08:00', '14:00', 'AM', 'manana', 'disponible', 4.00, NOW()),
+  (2, 2, 6, 'Staff Puebla', 'empresarial', 'recepcion', CURRENT_DATE, 'Martes,Jueves', '13:00', '18:00', 'PM', 'tarde', 'cupo_limitado', 3.50, NOW()),
+  (3, 3, 7, 'Voluntaria Tlalnepantla', 'individual', 'acompanamiento', CURRENT_DATE, 'Lunes,Miercoles,Viernes', '09:00', '15:00', 'AM', 'manana', 'disponible', 5.00, NOW());
 
 INSERT INTO volunteertasks (volunteertaskid, siteid, volunteeruserid, assignedbyuserid, familyid, relatedrequestid, title, tasktype, shiftperiod, taskday, status, notes, createdat, updatedat) VALUES
   (1, 1, 5, 4, 1, 1, 'Traslado matutino a cita', 'traslados', 'AM', CURRENT_DATE, 'pendiente', 'Recoger a la familia a las 07:15', NOW(), NOW()),
   (2, 1, 5, 4, NULL, NULL, 'Apoyo en recepcion de mediodia', 'recepcion', 'PM', CURRENT_DATE, 'en_proceso', 'Cubrir por 2 horas', NOW(), NOW());
 
-INSERT INTO volunteerchangerequests (volunteerchangerequestid, siteid, volunteeruserid, requestedshiftperiod, requestedtasktype, reason, status, reviewedbyuserid, createdat, updatedat) VALUES
-  (1, 1, 5, 'PM', 'acompanamiento', 'Necesito cambiar mi turno por clases matutinas.', 'pendiente', NULL, NOW(), NOW());
+INSERT INTO volunteerchangerequests (volunteerchangerequestid, siteid, volunteeruserid, requestedshiftperiod, requestedtasktype, requestedrolename, requestedworkdays, requestedstarttime, requestedendtime, requestedshiftlabel, reason, status, reviewedbyuserid, createdat, updatedat) VALUES
+  (1, 1, 5, 'PM', 'acompanamiento', 'acompanamiento', 'Lunes,Martes,Jueves', '14:00', '19:00', 'tarde', 'Necesito cambiar mi turno por clases matutinas.', 'pendiente', NULL, NOW(), NOW());
 
 INSERT INTO inventoryitems (inventoryitemid, siteid, itemcode, name, unit, stock, minstock, createdat) VALUES
   (1, 1, 'KIT-BIENV', 'Kit bienvenida', 'pieza', 7, 8, NOW()),
