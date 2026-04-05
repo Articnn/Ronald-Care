@@ -66,7 +66,7 @@ export function FamilyPausePage() {
     <div className="space-y-5">
       <SectionHeader
         title="Pausa 60s"
-        subtitle="Microespacio de autocuidado no terapeutico para bajar incertidumbre y volver al flujo del dia."
+        subtitle="Microespacio de autocuidado para bajar incertidumbre y volver al flujo del dia."
       />
 
       <div className="grid items-start gap-4 lg:grid-cols-[1fr_1.4fr_1fr]">
