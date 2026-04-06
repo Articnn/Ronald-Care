@@ -54,13 +54,13 @@ export function DonorHomePage() {
       <Tabs items={tabs} activeItem={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'Impacto por sede' ? (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className={`grid gap-6 ${impactItems.length > 1 ? 'md:grid-cols-3' : ''}`}>
           {impactItems.map((item) => (
             <div
               key={item.name}
               className="group overflow-hidden rounded-3xl bg-white shadow-soft transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              <div className="relative h-48 overflow-hidden bg-warm-100">
+              <div className="relative h-72 overflow-hidden bg-warm-100">
                 <img
                   src={SITE_IMAGES[item.name] ?? '/public/images/image-9.png'}
                   alt={item.name}
