@@ -19,6 +19,7 @@ export function StaffCheckinPage() {
   const [simpleSignature, setSimpleSignature] = useState('Ana Lopez')
   const [room, setRoom] = useState(availableRooms[0]?.label || '')
   const [done, setDone] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   if (!referral) {
     return <Card><p className="text-lg text-warm-700">Referencia no encontrada.</p></Card>
@@ -54,22 +55,28 @@ export function StaffCheckinPage() {
           </label>
         </div>
         <Button
+          isLoading={isLoading}
           onClick={async () => {
             if (!family) return
-            await completeCheckIn({
-              referralId: family.id,
-              caregiverName,
-              familyLastName,
-              site: referral.site,
-              room,
-              idVerified,
-              regulationAccepted,
-              simpleSignature,
-              kioskCode: family.kioskCode,
-              qrCode: family.qrCode,
-              pin: '',
-            })
-            setDone(true)
+            setIsLoading(true)
+            try {
+              await completeCheckIn({
+                referralId: family.id,
+                caregiverName,
+                familyLastName,
+                site: referral.site,
+                room,
+                idVerified,
+                regulationAccepted,
+                simpleSignature,
+                kioskCode: family.kioskCode,
+                qrCode: family.qrCode,
+                pin: '',
+              })
+              setDone(true)
+            } finally {
+              setIsLoading(false)
+            }
           }}
           disabled={!family}
         >

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -10,6 +10,7 @@ export function HospitalReferralDetailPage() {
   const { id } = useParams()
   const { referrals, updateReferralStatus } = useAppState()
   const referral = useMemo(() => referrals.find((item) => item.id === id), [id, referrals])
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
   if (!referral) {
     return <Card><p className="text-lg text-warm-700">Referencia no encontrada.</p></Card>
@@ -30,8 +31,8 @@ export function HospitalReferralDetailPage() {
           <p>Código familia: {referral.familyCode}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => updateReferralStatus(referral.id, 'En revision')}>Marcar En revision</Button>
-          <Button variant="secondary" onClick={() => updateReferralStatus(referral.id, 'Aceptada')}>Marcar Aceptada</Button>
+          <Button variant="ghost" isLoading={loadingId === 'revision'} onClick={async () => { setLoadingId('revision'); try { await updateReferralStatus(referral.id, 'En revision') } finally { setLoadingId(null) } }}>Marcar En revision</Button>
+          <Button variant="secondary" isLoading={loadingId === 'aceptada'} onClick={async () => { setLoadingId('aceptada'); try { await updateReferralStatus(referral.id, 'Aceptada') } finally { setLoadingId(null) } }}>Marcar Aceptada</Button>
         </div>
       </Card>
     </div>

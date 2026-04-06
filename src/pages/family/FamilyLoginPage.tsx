@@ -21,13 +21,13 @@ export function FamilyLoginPage() {
         {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <Button
           fullWidth
-          disabled={isSyncing}
+          isLoading={isSyncing}
           onClick={async () => {
             await loginFamilyUser(qrCode, pin)
             navigate('/family/status')
           }}
         >
-          {isSyncing ? 'Validando...' : 'Ver mi estatus'}
+          Ver mi estatus
         </Button>
       </Card>
     </div>

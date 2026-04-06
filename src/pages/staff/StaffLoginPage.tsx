@@ -21,13 +21,13 @@ export function StaffLoginPage() {
         {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <Button
           fullWidth
-          disabled={isSyncing}
+          isLoading={isSyncing}
           onClick={async () => {
             const nextRole = await loginInternalUser(email, password)
             navigate(nextRole === 'admin' || nextRole === 'superadmin' ? '/admin/panel' : '/staff/dashboard')
           }}
         >
-          {isSyncing ? 'Entrando...' : 'Entrar'}
+          Entrar
         </Button>
       </Card>
     </div>

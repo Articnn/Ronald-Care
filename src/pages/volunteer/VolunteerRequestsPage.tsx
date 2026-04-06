@@ -56,6 +56,10 @@ export function VolunteerRequestsPage() {
   const [reason, setReason] = useState('Cambio de disponibilidad')
   const [selectedCoworkerId, setSelectedCoworkerId] = useState<number>(0)
   const [selectedAlertType, setSelectedAlertType] = useState<(typeof coworkerAlerts)[number]['value']>('need_help')
+  const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null)
+  const [isSendingAlert, setIsSendingAlert] = useState(false)
+  const [isSendingRequest, setIsSendingRequest] = useState(false)
+  const [loadingRequestId, setLoadingRequestId] = useState<string | null>(null)
 
   useEffect(() => {
     void refreshConnectedData()
@@ -104,12 +108,12 @@ export function VolunteerRequestsPage() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <StatusChip status={task.status} />
                 {task.status === 'Pendiente' ? (
-                  <Button variant="ghost" onClick={async () => updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), status: 'en_proceso' })}>
+                  <Button variant="ghost" isLoading={loadingTaskId === task.id} onClick={async () => { setLoadingTaskId(task.id); try { await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), status: 'en_proceso' }) } finally { setLoadingTaskId(null) } }}>
                     Marcar en proceso
                   </Button>
                 ) : null}
                 {task.status !== 'Completada' ? (
-                  <Button variant="secondary" onClick={async () => updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), status: 'completada' })}>
+                  <Button variant="secondary" isLoading={loadingTaskId === task.id} onClick={async () => { setLoadingTaskId(task.id); try { await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), status: 'completada' }) } finally { setLoadingTaskId(null) } }}>
                     Marcar como completada
                   </Button>
                 ) : null}
@@ -183,7 +187,7 @@ export function VolunteerRequestsPage() {
                   </select>
                 </label>
               </div>
-              <Button variant="secondary" onClick={async () => sendVolunteerAlertToPeer(selectedCoworkerId, selectedAlertType)}>
+              <Button variant="secondary" isLoading={isSendingAlert} onClick={async () => { setIsSendingAlert(true); try { await sendVolunteerAlertToPeer(selectedCoworkerId, selectedAlertType) } finally { setIsSendingAlert(false) } }}>
                 Enviar alerta
               </Button>
             </div>
@@ -262,31 +266,37 @@ export function VolunteerRequestsPage() {
           </div>
         </div>
         <Button
-          onClick={async () =>
-            requestVolunteerChange({
-              requestedShiftPeriod: requestedShift,
-              requestedTaskType:
-                requestedTask === 'Cocina'
-                  ? 'cocina'
-                  : requestedTask === 'Lavanderia'
-                    ? 'lavanderia'
-                    : requestedTask === 'Traslados'
-                      ? 'traslados'
-                      : requestedTask === 'Acompanamiento'
-                        ? 'acompanamiento'
-                        : requestedTask === 'Recepcion'
-                          ? 'recepcion'
-                          : requestedTask === 'Limpieza'
-                            ? 'limpieza'
-                            : 'inventario',
-              requestedRoleName: requestedRole,
-              requestedWorkDays,
-              requestedStartTime,
-              requestedEndTime,
-              requestedShiftLabel,
-              reason,
-            })
-          }
+          isLoading={isSendingRequest}
+          onClick={async () => {
+            setIsSendingRequest(true)
+            try {
+              await requestVolunteerChange({
+                requestedShiftPeriod: requestedShift,
+                requestedTaskType:
+                  requestedTask === 'Cocina'
+                    ? 'cocina'
+                    : requestedTask === 'Lavanderia'
+                      ? 'lavanderia'
+                      : requestedTask === 'Traslados'
+                        ? 'traslados'
+                        : requestedTask === 'Acompanamiento'
+                          ? 'acompanamiento'
+                          : requestedTask === 'Recepcion'
+                            ? 'recepcion'
+                            : requestedTask === 'Limpieza'
+                              ? 'limpieza'
+                              : 'inventario',
+                requestedRoleName: requestedRole,
+                requestedWorkDays,
+                requestedStartTime,
+                requestedEndTime,
+                requestedShiftLabel,
+                reason,
+              })
+            } finally {
+              setIsSendingRequest(false)
+            }
+          }}
         >
           Enviar solicitud
         </Button>
@@ -305,13 +315,13 @@ export function VolunteerRequestsPage() {
             <p className="text-warm-700">{request.priority.reason}</p>
             <div className="flex gap-2">
               {request.status === 'Nueva' || request.status === 'Asignada' ? (
-                <button className="rounded-xl bg-gold-300 px-4 py-2 font-semibold text-warm-900" onClick={async () => updateRequestStatus(request.id, 'En proceso')}>
+                <Button variant="ghost" isLoading={loadingRequestId === request.id} onClick={async () => { setLoadingRequestId(request.id); try { await updateRequestStatus(request.id, 'En proceso') } finally { setLoadingRequestId(null) } }}>
                   Tomar solicitud
-                </button>
+                </Button>
               ) : null}
-              <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white" onClick={async () => updateRequestStatus(request.id, 'Resuelta')}>
+              <Button variant="secondary" isLoading={loadingRequestId === request.id} onClick={async () => { setLoadingRequestId(request.id); try { await updateRequestStatus(request.id, 'Resuelta') } finally { setLoadingRequestId(null) } }}>
                 Marcar resuelta
-              </button>
+              </Button>
             </div>
           </Card>
         ))}

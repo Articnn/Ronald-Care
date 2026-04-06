@@ -16,6 +16,7 @@ export function HospitalReferralsPage() {
   const [logisticsNote, setLogisticsNote] = useState('')
   const [eligible, setEligible] = useState(true)
   const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -54,18 +55,24 @@ export function HospitalReferralsPage() {
           Elegibilidad confirmada
         </label>
         <Button
+          isLoading={isLoading}
           onClick={async () => {
-            const id = await createReferral({
-              hospitalWorker: 'Trabajo Social',
-              site,
-              caregiverName,
-              familyLastName,
-              arrivalDate,
-              companions: Number(companions),
-              logisticsNote,
-              eligible,
-            })
-            navigate(`/hospital/referrals/${id}`)
+            setIsLoading(true)
+            try {
+              const id = await createReferral({
+                hospitalWorker: 'Trabajo Social',
+                site,
+                caregiverName,
+                familyLastName,
+                arrivalDate,
+                companions: Number(companions),
+                logisticsNote,
+                eligible,
+              })
+              navigate(`/hospital/referrals/${id}`)
+            } finally {
+              setIsLoading(false)
+            }
           }}
         >
           Crear referencia
