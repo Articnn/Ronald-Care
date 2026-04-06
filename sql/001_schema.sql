@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS appnotifications CASCADE;
 DROP TABLE IF EXISTS volunteerchangerequests CASCADE;
 DROP TABLE IF EXISTS volunteernotificationreads CASCADE;
 DROP TABLE IF EXISTS volunteertasks CASCADE;
+DROP TABLE IF EXISTS staffprofiles CASCADE;
 DROP TABLE IF EXISTS auditevents CASCADE;
 DROP TABLE IF EXISTS communityposts CASCADE;
 DROP TABLE IF EXISTS returnpasses CASCADE;
@@ -67,7 +68,11 @@ CREATE TABLE rooms (
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   roomcode VARCHAR(20) NOT NULL,
   capacity INTEGER NOT NULL CHECK (capacity > 0),
+  roomtype VARCHAR(20) NOT NULL DEFAULT 'normal' CHECK (roomtype IN ('normal', 'especial')),
   occupiedcount INTEGER NOT NULL DEFAULT 0 CHECK (occupiedcount >= 0),
+  roomstatus VARCHAR(20) NOT NULL DEFAULT 'disponible' CHECK (roomstatus IN ('disponible', 'ocupada', 'mantenimiento')),
+  availableat TIMESTAMP,
+  roomnote VARCHAR(255),
   isactive BOOLEAN NOT NULL DEFAULT TRUE,
   createdat TIMESTAMP NOT NULL DEFAULT NOW(),
   CONSTRAINT uq_rooms_site_room UNIQUE (siteid, roomcode)
@@ -146,7 +151,7 @@ CREATE TABLE volunteershifts (
   userid INTEGER REFERENCES users(userid),
   volunteername VARCHAR(120) NOT NULL,
   volunteertype VARCHAR(30) NOT NULL CHECK (volunteertype IN ('individual', 'escolar', 'empresarial')),
-  rolename VARCHAR(40) NOT NULL CHECK (rolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia')),
+  rolename VARCHAR(40) NOT NULL CHECK (rolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza')),
   shiftday DATE NOT NULL,
   workdays TEXT NOT NULL DEFAULT '',
   starttime VARCHAR(5) NOT NULL DEFAULT '08:00',
@@ -165,6 +170,7 @@ CREATE TABLE volunteertasks (
   assignedbyuserid INTEGER NOT NULL REFERENCES users(userid),
   familyid INTEGER REFERENCES families(familyid),
   relatedrequestid INTEGER REFERENCES requests(requestid),
+  relatedroomid INTEGER REFERENCES rooms(roomid),
   title VARCHAR(160) NOT NULL,
   tasktype VARCHAR(40) NOT NULL CHECK (tasktype IN ('cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario')),
   shiftperiod VARCHAR(20) NOT NULL CHECK (shiftperiod IN ('AM', 'PM')),
@@ -196,13 +202,29 @@ CREATE TABLE appnotifications (
   createdat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE staffprofiles (
+  staffprofileid SERIAL PRIMARY KEY,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  userid INTEGER NOT NULL UNIQUE REFERENCES users(userid) ON DELETE CASCADE,
+  workarea VARCHAR(40) NOT NULL CHECK (workarea IN ('recepcion', 'checkin', 'habitaciones', 'inventario', 'coordinacion', 'analitica', 'apoyo_familiar')),
+  workdays TEXT NOT NULL DEFAULT '',
+  starttime VARCHAR(5) NOT NULL DEFAULT '08:00',
+  endtime VARCHAR(5) NOT NULL DEFAULT '16:00',
+  shiftperiod VARCHAR(20) NOT NULL CHECK (shiftperiod IN ('AM', 'PM')),
+  shiftlabel VARCHAR(20) NOT NULL DEFAULT 'manana' CHECK (shiftlabel IN ('manana', 'tarde', 'noche')),
+  availabilitystatus VARCHAR(30) NOT NULL CHECK (availabilitystatus IN ('disponible', 'cupo_limitado', 'no_disponible')),
+  hourslogged NUMERIC(5,2) NOT NULL DEFAULT 0,
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE volunteerchangerequests (
   volunteerchangerequestid SERIAL PRIMARY KEY,
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   volunteeruserid INTEGER NOT NULL REFERENCES users(userid),
   requestedshiftperiod VARCHAR(20) CHECK (requestedshiftperiod IN ('AM', 'PM')),
   requestedtasktype VARCHAR(40) CHECK (requestedtasktype IN ('cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario')),
-  requestedrolename VARCHAR(40) CHECK (requestedrolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia')),
+  requestedrolename VARCHAR(40) CHECK (requestedrolename IN ('traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza')),
   requestedworkdays VARCHAR(120),
   requestedstarttime VARCHAR(5),
   requestedendtime VARCHAR(5),
@@ -219,9 +241,11 @@ CREATE TABLE inventoryitems (
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   itemcode VARCHAR(30) NOT NULL,
   name VARCHAR(120) NOT NULL,
+  itemcategory VARCHAR(20) NOT NULL DEFAULT 'kit' CHECK (itemcategory IN ('kit', 'cocina', 'limpieza', 'otro')),
   unit VARCHAR(20) NOT NULL DEFAULT 'pieza',
   stock INTEGER NOT NULL DEFAULT 0,
   minstock INTEGER NOT NULL DEFAULT 0,
+  expirydate DATE,
   createdat TIMESTAMP NOT NULL DEFAULT NOW(),
   CONSTRAINT uq_inventoryitems_sitecode UNIQUE (siteid, itemcode)
 );
@@ -235,6 +259,18 @@ CREATE TABLE inventorymovements (
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   reason VARCHAR(255) NOT NULL,
   createdat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE inventoryreports (
+  inventoryreportid SERIAL PRIMARY KEY,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  volunteeruserid INTEGER NOT NULL REFERENCES users(userid) ON DELETE CASCADE,
+  itemcategory VARCHAR(20) NOT NULL CHECK (itemcategory IN ('kit', 'cocina', 'limpieza', 'lavanderia', 'recepcion')),
+  title VARCHAR(160) NOT NULL,
+  detail VARCHAR(500) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'atendido')),
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE impactevents (
@@ -294,14 +330,18 @@ CREATE INDEX ix_requests_familyid ON requests(familyid);
 CREATE INDEX ix_requests_assigneduserid_status ON requests(assigneduserid, status);
 CREATE INDEX ix_trips_site_shift_status ON trips(siteid, shift, status);
 CREATE INDEX ix_trips_familyid ON trips(familyid);
+CREATE INDEX ix_rooms_site_roomtype ON rooms(siteid, roomtype);
 CREATE INDEX ix_volunteershifts_site_day ON volunteershifts(siteid, shiftday);
 CREATE INDEX ix_volunteertasks_site_day ON volunteertasks(siteid, taskday);
 CREATE INDEX ix_volunteertasks_volunteer_status ON volunteertasks(volunteeruserid, status);
 CREATE INDEX ix_volunteernotificationreads_userid ON volunteernotificationreads(userid);
 CREATE INDEX ix_appnotifications_userid_isread_createdat ON appnotifications(userid, isread, createdat);
+CREATE INDEX ix_staffprofiles_siteid_workarea ON staffprofiles(siteid, workarea);
 CREATE INDEX ix_volunteerchanges_volunteer_status ON volunteerchangerequests(volunteeruserid, status);
 CREATE INDEX ix_inventoryitems_site_stock ON inventoryitems(siteid, stock);
+CREATE INDEX ix_inventoryitems_site_category_expiry ON inventoryitems(siteid, itemcategory, expirydate);
 CREATE INDEX ix_inventorymovements_item_createdat ON inventorymovements(inventoryitemid, createdat);
+CREATE INDEX ix_inventoryreports_site_status_createdat ON inventoryreports(siteid, status, createdat DESC);
 CREATE INDEX ix_impactevents_site_public_createdat ON impactevents(siteid, ispublic, createdat);
 CREATE INDEX ix_returnpasses_familyid ON returnpasses(familyid);
 CREATE INDEX ix_communityposts_status_createdat ON communityposts(status, createdat);

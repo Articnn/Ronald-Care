@@ -4,8 +4,10 @@ import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 import { ApiError } from '../../src/lib/errors.js'
+import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
 
 export default withApi({ methods: ['POST'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   required(req.body, ['inventoryItemId', 'movementType', 'quantity', 'reason'])
   oneOf(req.body.movementType, ['in', 'out'], 'movementType')
 

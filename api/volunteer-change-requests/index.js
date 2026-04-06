@@ -46,7 +46,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
     required(req.body, ['reason'])
     if (req.body.requestedTaskType) oneOf(req.body.requestedTaskType, TASK_TYPES, 'requestedTaskType')
     if (req.body.requestedShiftPeriod) oneOf(req.body.requestedShiftPeriod, ['AM', 'PM'], 'requestedShiftPeriod')
-    if (req.body.requestedRoleName) oneOf(req.body.requestedRoleName, ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia'], 'requestedRoleName')
+  if (req.body.requestedRoleName) oneOf(req.body.requestedRoleName, ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza'], 'requestedRoleName')
     if (req.body.requestedShiftLabel) oneOf(req.body.requestedShiftLabel, ['manana', 'tarde', 'noche'], 'requestedShiftLabel')
 
     const userResult = await pool

@@ -157,9 +157,9 @@ export const initialVolunteerShifts: VolunteerShift[] = [
 ]
 
 export const initialInventory: InventoryItem[] = [
-  { id: 'inv-1', name: 'Kit higiene', stock: 14, minStock: 10, lastMovement: 'Salida de 2 kits' },
-  { id: 'inv-2', name: 'Kit bienvenida', stock: 7, minStock: 8, lastMovement: 'Salida de 1 kit' },
-  { id: 'inv-3', name: 'Cobijas', stock: 21, minStock: 6, lastMovement: 'Entrada de 5 piezas' },
+  { id: 'inv-1', itemCode: 'KIT-HIG', name: 'Kit higiene', category: 'Kit', unit: 'pieza', stock: 14, minStock: 10, lowStock: false, expiryDate: null, expiringSoon: false, lastMovement: 'Salida de 2 kits' },
+  { id: 'inv-2', itemCode: 'KIT-BIENV', name: 'Kit bienvenida', category: 'Kit', unit: 'pieza', stock: 7, minStock: 8, lowStock: true, expiryDate: null, expiringSoon: false, lastMovement: 'Salida de 1 kit' },
+  { id: 'inv-3', itemCode: 'DETER-01', name: 'Detergente multiusos', category: 'Limpieza', unit: 'pieza', stock: 5, minStock: 6, lowStock: true, expiryDate: null, expiringSoon: false, lastMovement: 'Entrada de 5 piezas' },
 ]
 
 export const initialStories: DonorStory[] = [

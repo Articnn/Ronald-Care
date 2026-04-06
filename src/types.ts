@@ -6,9 +6,9 @@ export type RequestStatus = 'Nueva' | 'Asignada' | 'En proceso' | 'Resuelta'
 export type RequestUrgency = 'Baja' | 'Media' | 'Alta'
 export type RequestPriorityLabel = 'Alta' | 'Media' | 'Baja'
 export type TripStatus = 'Pendiente' | 'En curso' | 'Finalizado'
-export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepción'
+export type RequestType = 'Transporte' | 'Kit' | 'Alimento' | 'Recepcion' | 'Recepción'
 export type TripShift = 'AM' | 'PM'
-export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepción' | 'Limpieza' | 'Inventario'
+export type VolunteerTaskType = 'Cocina' | 'Lavanderia' | 'Traslados' | 'Acompanamiento' | 'Recepcion' | 'Recepción' | 'Limpieza' | 'Inventario'
 
 export interface CurrentUser {
   userId: number
@@ -97,7 +97,7 @@ export interface Trip {
 export interface VolunteerShift {
   id: string
   kind: 'Individual' | 'Escolar' | 'Empresarial'
-  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia'
+  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia' | 'Limpieza'
   day: string
   volunteerName: string
   hours: number
@@ -138,13 +138,28 @@ export interface VolunteerRosterItem {
   site: string
   email: string
   volunteerType: 'Individual' | 'Escolar' | 'Empresarial'
-  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia'
+  role: 'Traslados' | 'Recepcion' | 'Acompanamiento' | 'Cocina' | 'Lavanderia' | 'Limpieza'
   workDays: string[]
   startTime: string
   endTime: string
   shiftLabel: 'Manana' | 'Tarde' | 'Noche'
   availability: 'Disponible' | 'Cupo limitado' | 'No disponible'
   currentTasks: number
+}
+
+export interface StaffRosterItem {
+  userId: number
+  fullName: string
+  email: string
+  site: string
+  siteId: number
+  workArea: 'Recepcion' | 'Check-in' | 'Habitaciones' | 'Inventario' | 'Coordinacion' | 'Analitica' | 'Apoyo familiar'
+  workDays: string[]
+  startTime: string
+  endTime: string
+  shiftLabel: 'Manana' | 'Tarde' | 'Noche'
+  availability: 'Disponible' | 'Cupo limitado' | 'No disponible'
+  currentLoad: number
 }
 
 export interface VolunteerChangeRequest {
@@ -163,6 +178,7 @@ export interface InternalUserRecord {
   email: string
   role: 'Admin' | 'Staff' | 'Voluntario' | 'Hospital'
   site: string | null
+  siteId: number | null
   isActive: boolean
 }
 
@@ -175,10 +191,28 @@ export interface StaffDashboardSummary {
 
 export interface InventoryItem {
   id: string
+  itemCode: string
   name: string
+  category: 'Kit' | 'Cocina' | 'Limpieza' | 'Otro'
+  unit: string
   stock: number
   minStock: number
+  lowStock: boolean
+  expiryDate: string | null
+  expiringSoon: boolean
   lastMovement: string
+}
+
+export interface InventoryReport {
+  id: string
+  volunteerUserId: number
+  volunteerName: string
+  site: string
+  category: 'Kit' | 'Cocina' | 'Limpieza' | 'Lavanderia' | 'Recepcion'
+  title: string
+  detail: string
+  status: 'Pendiente' | 'Atendido'
+  createdAt: string
 }
 
 export interface DonorStory {

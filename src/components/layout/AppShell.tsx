@@ -170,7 +170,7 @@ export function AppShell() {
           {role && <span className="rounded-full bg-gold-300 px-3 py-1 text-sm font-bold text-warm-900">Rol: {roleLabels[role]}</span>}
 
           <div className="ml-auto flex gap-2">
-            {role === 'volunteer' ? (
+            {role && role !== 'family' ? (
               <div className="relative" ref={notificationsRef}>
                 <button
                   onClick={() => setIsNotificationsOpen((value) => !value)}

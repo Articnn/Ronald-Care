@@ -1,4 +1,4 @@
-TRUNCATE TABLE volunteerchangerequests, volunteertasks, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
+TRUNCATE TABLE volunteerchangerequests, volunteertasks, staffprofiles, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
 
 INSERT INTO sites (siteid, sitecode, name, isactive, createdat) VALUES
   (1, 'CDMX', 'Casa Ronald McDonald Ciudad de Mexico', TRUE, NOW()),
@@ -19,13 +19,36 @@ INSERT INTO users (userid, siteid, roleid, fullname, email, passwordhash, isacti
   (4, 1, 4, 'Recepcion Demo', 'staff@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
   (5, 1, 5, 'Voluntario Demo', 'volunteer@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
   (6, 2, 4, 'Staff Puebla', 'staff.puebla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
-  (7, 3, 5, 'Voluntaria Tlalnepantla', 'volunteer.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW());
+  (7, 3, 5, 'Voluntaria Tlalnepantla', 'volunteer.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
+  (8, 1, 5, 'Limpieza CDMX', 'volunteer.clean.cdmx@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
+  (9, 2, 5, 'Limpieza Puebla', 'volunteer.clean.puebla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
+  (10, 3, 5, 'Limpieza Tlalnepantla', 'volunteer.clean.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW());
 
-INSERT INTO rooms (roomid, siteid, roomcode, capacity, occupiedcount, isactive, createdat) VALUES
-  (1, 1, 'A-12', 4, 1, TRUE, NOW()),
-  (2, 1, 'B-03', 3, 1, TRUE, NOW()),
-  (3, 2, 'P-07', 2, 0, TRUE, NOW()),
-  (4, 3, 'T-04', 2, 0, TRUE, NOW());
+INSERT INTO rooms (roomid, siteid, roomcode, capacity, roomtype, occupiedcount, roomstatus, availableat, roomnote, isactive, createdat) VALUES
+  (1, 1, 'CDMX-N1', 2, 'normal', 1, 'ocupada', NULL, NULL, TRUE, NOW()),
+  (2, 1, 'CDMX-N2', 2, 'normal', 1, 'ocupada', NULL, NULL, TRUE, NOW()),
+  (3, 1, 'CDMX-N3', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (4, 1, 'CDMX-N4', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (5, 1, 'CDMX-N5', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (6, 1, 'CDMX-E1', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (7, 1, 'CDMX-E2', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (8, 1, 'CDMX-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (9, 2, 'PUE-N1', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (10, 2, 'PUE-N2', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (11, 2, 'PUE-N3', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (12, 2, 'PUE-N4', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (13, 2, 'PUE-N5', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (14, 2, 'PUE-E1', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (15, 2, 'PUE-E2', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (16, 2, 'PUE-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (17, 3, 'TLA-N1', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (18, 3, 'TLA-N2', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (19, 3, 'TLA-N3', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (20, 3, 'TLA-N4', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (21, 3, 'TLA-N5', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (22, 3, 'TLA-E1', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (23, 3, 'TLA-E2', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (24, 3, 'TLA-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW());
 
 INSERT INTO referrals (referralid, siteid, createdbyuserid, caregivername, familylastname, referralcode, familycode, status, arrivaldate, companioncount, logisticsnote, eligibilityconfirmed, createdat) VALUES
   (1, 1, 3, 'Maria', 'Lopez', 'REF-2026-1001', 'FAM-3481', 'aceptada', '2026-04-02', 2, 'Llegada por autobus. Requiere orientacion de acceso.', TRUE, NOW()),
@@ -52,8 +75,14 @@ INSERT INTO trips (tripid, siteid, familyid, relatedrequestid, destination, shif
 
 INSERT INTO volunteershifts (volunteershiftid, siteid, userid, volunteername, volunteertype, rolename, shiftday, workdays, starttime, endtime, shiftperiod, shiftlabel, availabilitystatus, hourslogged, createdat) VALUES
   (1, 1, 5, 'Voluntario Demo', 'individual', 'traslados', CURRENT_DATE, 'Lunes,Martes,Miercoles,Jueves,Viernes', '08:00', '14:00', 'AM', 'manana', 'disponible', 4.00, NOW()),
-  (2, 2, 6, 'Staff Puebla', 'empresarial', 'recepcion', CURRENT_DATE, 'Martes,Jueves', '13:00', '18:00', 'PM', 'tarde', 'cupo_limitado', 3.50, NOW()),
-  (3, 3, 7, 'Voluntaria Tlalnepantla', 'individual', 'acompanamiento', CURRENT_DATE, 'Lunes,Miercoles,Viernes', '09:00', '15:00', 'AM', 'manana', 'disponible', 5.00, NOW());
+  (2, 3, 7, 'Voluntaria Tlalnepantla', 'individual', 'acompanamiento', CURRENT_DATE, 'Lunes,Miercoles,Viernes', '09:00', '15:00', 'AM', 'manana', 'disponible', 5.00, NOW()),
+  (3, 1, 8, 'Limpieza CDMX', 'individual', 'limpieza', CURRENT_DATE, 'Lunes,Martes,Miercoles,Jueves,Viernes,Sabado', '07:00', '15:00', 'AM', 'manana', 'disponible', 8.00, NOW()),
+  (4, 2, 9, 'Limpieza Puebla', 'individual', 'limpieza', CURRENT_DATE, 'Lunes,Martes,Miercoles,Jueves,Viernes,Sabado', '07:00', '15:00', 'AM', 'manana', 'disponible', 8.00, NOW()),
+  (5, 3, 10, 'Limpieza Tlalnepantla', 'individual', 'limpieza', CURRENT_DATE, 'Lunes,Martes,Miercoles,Jueves,Viernes,Sabado', '07:00', '15:00', 'AM', 'manana', 'disponible', 8.00, NOW());
+
+INSERT INTO staffprofiles (staffprofileid, siteid, userid, workarea, workdays, starttime, endtime, shiftperiod, shiftlabel, availabilitystatus, hourslogged, createdat, updatedat) VALUES
+  (1, 1, 4, 'recepcion', 'Lunes,Martes,Miercoles,Jueves,Viernes', '07:00', '15:00', 'AM', 'manana', 'disponible', 8.00, NOW(), NOW()),
+  (2, 2, 6, 'apoyo_familiar', 'Lunes,Martes,Jueves,Viernes', '12:00', '18:00', 'PM', 'tarde', 'disponible', 6.00, NOW(), NOW());
 
 INSERT INTO volunteertasks (volunteertaskid, siteid, volunteeruserid, assignedbyuserid, familyid, relatedrequestid, title, tasktype, shiftperiod, taskday, status, notes, createdat, updatedat) VALUES
   (1, 1, 5, 4, 1, 1, 'Traslado matutino a cita', 'traslados', 'AM', CURRENT_DATE, 'pendiente', 'Recoger a la familia a las 07:15', NOW(), NOW()),
@@ -62,13 +91,26 @@ INSERT INTO volunteertasks (volunteertaskid, siteid, volunteeruserid, assignedby
 INSERT INTO volunteerchangerequests (volunteerchangerequestid, siteid, volunteeruserid, requestedshiftperiod, requestedtasktype, requestedrolename, requestedworkdays, requestedstarttime, requestedendtime, requestedshiftlabel, reason, status, reviewedbyuserid, createdat, updatedat) VALUES
   (1, 1, 5, 'PM', 'acompanamiento', 'acompanamiento', 'Lunes,Martes,Jueves', '14:00', '19:00', 'tarde', 'Necesito cambiar mi turno por clases matutinas.', 'pendiente', NULL, NOW(), NOW());
 
-INSERT INTO inventoryitems (inventoryitemid, siteid, itemcode, name, unit, stock, minstock, createdat) VALUES
-  (1, 1, 'KIT-BIENV', 'Kit bienvenida', 'pieza', 7, 8, NOW()),
-  (2, 2, 'KIT-HIG', 'Kit higiene', 'pieza', 14, 10, NOW()),
-  (3, 3, 'COBIJA', 'Cobija', 'pieza', 21, 6, NOW());
+INSERT INTO inventoryitems (inventoryitemid, siteid, itemcode, name, itemcategory, unit, stock, minstock, expirydate, createdat) VALUES
+  (1, 1, 'KIT-BIENV', 'Kit bienvenida', 'kit', 'pieza', 7, 8, NULL, NOW()),
+  (2, 1, 'KIT-HIG', 'Kit higiene', 'kit', 'pieza', 14, 10, NULL, NOW()),
+  (3, 1, 'LECHE-01', 'Leche UHT 1L', 'cocina', 'pieza', 12, 10, CURRENT_DATE + INTERVAL '5 days', NOW()),
+  (4, 1, 'FRUTA-01', 'Fruta para desayuno', 'cocina', 'kg', 9, 8, CURRENT_DATE + INTERVAL '2 days', NOW()),
+  (5, 1, 'DETER-01', 'Detergente multiusos', 'limpieza', 'pieza', 5, 6, NULL, NOW()),
+  (6, 1, 'GUANT-01', 'Guantes de limpieza', 'limpieza', 'caja', 3, 4, NULL, NOW()),
+  (7, 2, 'KIT-BIENV', 'Kit bienvenida', 'kit', 'pieza', 11, 8, NULL, NOW()),
+  (8, 2, 'DESP-01', 'Despensa basica', 'cocina', 'pieza', 16, 12, CURRENT_DATE + INTERVAL '8 days', NOW()),
+  (9, 2, 'CLORO-01', 'Cloro', 'limpieza', 'pieza', 4, 5, NULL, NOW()),
+  (10, 3, 'KIT-BIENV', 'Kit bienvenida', 'kit', 'pieza', 6, 8, NULL, NOW()),
+  (11, 3, 'PASTA-01', 'Pasta seca', 'cocina', 'pieza', 15, 10, CURRENT_DATE + INTERVAL '12 days', NOW()),
+  (12, 3, 'JABON-01', 'Jabon de lavanderia', 'limpieza', 'pieza', 5, 5, NULL, NOW());
 
 INSERT INTO inventorymovements (inventorymovementid, inventoryitemid, siteid, performedbyuserid, movementtype, quantity, reason, createdat) VALUES
-  (1, 1, 1, 4, 'out', 1, 'Kit entregado a familia durante check-in', NOW() - interval '2 hours');
+  (1, 1, 1, 4, 'out', 1, 'Kit entregado a familia durante check-in', NOW() - interval '2 hours'),
+  (2, 3, 1, 4, 'in', 6, 'Reposicion de cocina semanal', NOW() - interval '1 day'),
+  (3, 5, 1, 4, 'out', 1, 'Uso en limpieza profunda de habitacion', NOW() - interval '6 hours'),
+  (4, 7, 2, 6, 'out', 2, 'Entrega de kits de bienvenida', NOW() - interval '3 hours'),
+  (5, 10, 3, 6, 'out', 1, 'Kit entregado en admision nocturna', NOW() - interval '4 hours');
 
 INSERT INTO impactevents (impacteventid, siteid, eventtype, sourceentitytype, sourceentityid, publictitle, publicdetail, ispublic, createdat) VALUES
   (1, 1, 'checkin_completed', 'family', 1, 'Nueva familia recibida', 'Check-in operativo completado y ficha familia emitida sin incidencias.', TRUE, NOW() - interval '1 hour'),
@@ -96,6 +138,7 @@ SELECT setval(pg_get_serial_sequence('familyaccess', 'familyaccessid'), COALESCE
 SELECT setval(pg_get_serial_sequence('requests', 'requestid'), COALESCE((SELECT MAX(requestid) FROM requests), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('trips', 'tripid'), COALESCE((SELECT MAX(tripid) FROM trips), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('volunteershifts', 'volunteershiftid'), COALESCE((SELECT MAX(volunteershiftid) FROM volunteershifts), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('staffprofiles', 'staffprofileid'), COALESCE((SELECT MAX(staffprofileid) FROM staffprofiles), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('volunteertasks', 'volunteertaskid'), COALESCE((SELECT MAX(volunteertaskid) FROM volunteertasks), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('volunteerchangerequests', 'volunteerchangerequestid'), COALESCE((SELECT MAX(volunteerchangerequestid) FROM volunteerchangerequests), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('inventoryitems', 'inventoryitemid'), COALESCE((SELECT MAX(inventoryitemid) FROM inventoryitems), 1), TRUE);

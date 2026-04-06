@@ -11,6 +11,7 @@ const typeWeight = {
   Kit: 12,
   Alimento: 10,
   Recepcion: 8,
+  Recepción: 8,
 }
 
 export function calculatePriority(request: Pick<SupportRequest, 'urgency' | 'waitingMinutes' | 'type' | 'optionalWindow'>): PriorityScore {

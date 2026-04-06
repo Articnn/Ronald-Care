@@ -75,6 +75,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       .input('assignedByUserId', sql.Int, req.auth.sub)
       .input('familyId', sql.Int, req.body.familyId ? Number(req.body.familyId) : null)
       .input('relatedRequestId', sql.Int, req.body.relatedRequestId ? Number(req.body.relatedRequestId) : null)
+      .input('relatedRoomId', sql.Int, req.body.relatedRoomId ? Number(req.body.relatedRoomId) : null)
       .input('title', sql.NVarChar(160), req.body.title)
       .input('taskType', sql.NVarChar(40), req.body.taskType)
       .input('shiftPeriod', sql.NVarChar(20), req.body.shiftPeriod)
@@ -82,8 +83,8 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       .input('status', sql.NVarChar(20), 'pendiente')
       .input('notes', sql.NVarChar(255), req.body.notes || null)
       .query(`
-        INSERT INTO VolunteerTasks (SiteId, VolunteerUserId, AssignedByUserId, FamilyId, RelatedRequestId, Title, TaskType, ShiftPeriod, TaskDay, Status, Notes, CreatedAt, UpdatedAt)
-        VALUES (@siteId, @volunteerUserId, @assignedByUserId, @familyId, @relatedRequestId, @title, @taskType, @shiftPeriod, @taskDay, @status, @notes, NOW(), NOW())
+        INSERT INTO VolunteerTasks (SiteId, VolunteerUserId, AssignedByUserId, FamilyId, RelatedRequestId, RelatedRoomId, Title, TaskType, ShiftPeriod, TaskDay, Status, Notes, CreatedAt, UpdatedAt)
+        VALUES (@siteId, @volunteerUserId, @assignedByUserId, @familyId, @relatedRequestId, @relatedRoomId, @title, @taskType, @shiftPeriod, @taskDay, @status, @notes, NOW(), NOW())
         RETURNING *
       `)
 
@@ -132,6 +133,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
   const nextShiftPeriod = req.body.shiftPeriod || task.ShiftPeriod
   const nextTitle = req.body.title || task.Title
   const nextTaskType = req.body.taskType || task.TaskType
+  const nextRelatedRoomId = req.body.relatedRoomId ?? task.RelatedRoomId
   oneOf(nextShiftPeriod, ['AM', 'PM'], 'shiftPeriod')
   oneOf(nextTaskType, TASK_TYPES, 'taskType')
 
@@ -142,6 +144,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
     .input('title', sql.NVarChar(160), nextTitle)
     .input('taskType', sql.NVarChar(40), nextTaskType)
     .input('shiftPeriod', sql.NVarChar(20), nextShiftPeriod)
+    .input('relatedRoomId', sql.Int, nextRelatedRoomId ? Number(nextRelatedRoomId) : null)
     .input('status', sql.NVarChar(20), nextStatus)
     .input('notes', sql.NVarChar(255), req.body.notes ?? task.Notes)
     .query(`
@@ -150,12 +153,26 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
           Title = @title,
           TaskType = @taskType,
           ShiftPeriod = @shiftPeriod,
+          RelatedRoomId = @relatedRoomId,
           Status = @status,
           Notes = @notes,
           UpdatedAt = NOW()
       WHERE VolunteerTaskId = @volunteerTaskId
       RETURNING *
     `)
+
+  if (nextStatus !== task.Status && nextStatus === 'completada' && task.RelatedRoomId) {
+    await pool
+      .request()
+      .input('roomId', sql.Int, Number(task.RelatedRoomId))
+      .query(`
+        UPDATE Rooms
+        SET RoomStatus = 'disponible',
+            AvailableAt = NULL,
+            RoomNote = NULL
+        WHERE RoomId = @roomId
+      `)
+  }
 
   if (Number(nextVolunteerUserId) !== Number(task.VolunteerUserId)) {
     const volunteerResult = await pool

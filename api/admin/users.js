@@ -1,14 +1,30 @@
-import { getPool, sql } from '../../src/lib/db.js'
+import { getPool, sql, withTransaction } from '../../src/lib/db.js'
 import { isGlobalRole, canManageInternalUser, resolveScopedSiteId } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { hashPassword } from '../../src/lib/security.js'
+import { inferAvailabilityFromHours, inferShiftLabel, inferShiftPeriod, calculateHoursBetween } from '../../src/lib/schedule.js'
+import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
 import { email, oneOf, required, toInt } from '../../src/lib/validation.js'
 
 const MANAGEABLE_ROLES = ['admin', 'staff', 'volunteer']
+const VOLUNTEER_ROLE_NAMES = ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza']
+const STAFF_WORK_AREAS = ['recepcion', 'checkin', 'habitaciones', 'inventario', 'coordinacion', 'analitica', 'apoyo_familiar']
+
+function buildSchedule(startTime, endTime, explicitShiftLabel = null) {
+  const hoursLogged = calculateHoursBetween(startTime, endTime)
+  const shiftLabel = explicitShiftLabel || inferShiftLabel(startTime)
+  return {
+    hoursLogged,
+    shiftLabel,
+    shiftPeriod: inferShiftPeriod(startTime),
+    availabilityStatus: inferAvailabilityFromHours(hoursLogged),
+  }
+}
 
 export default withApi({ methods: ['GET', 'POST', 'PATCH', 'DELETE'], roles: ['superadmin', 'admin', 'staff'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   const pool = await getPool()
 
   if (req.method === 'GET') {
@@ -44,26 +60,83 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH', 'DELETE'], roles: ['s
       throw new ApiError(403, 'Solo puedes crear usuarios en tu sede')
     }
 
-    const roleResult = await pool
-      .request()
-      .input('roleCode', sql.NVarChar(30), req.body.role)
-      .query(`SELECT RoleId FROM Roles WHERE RoleCode = @roleCode`)
+    const created = await withTransaction(async (tx) => {
+      const roleResult = await tx
+        .request()
+        .input('roleCode', sql.NVarChar(30), req.body.role)
+        .query(`SELECT RoleId FROM Roles WHERE RoleCode = @roleCode`)
 
-    const roleRow = roleResult.recordset[0]
-    const result = await pool
-      .request()
-      .input('siteId', sql.Int, siteId)
-      .input('roleId', sql.Int, roleRow.RoleId)
-      .input('fullName', sql.NVarChar(120), req.body.fullName)
-      .input('email', sql.NVarChar(160), req.body.email)
-      .input('passwordHash', sql.NVarChar(255), hashPassword(req.body.password))
-      .query(`
-        INSERT INTO Users (SiteId, RoleId, FullName, Email, PasswordHash, IsActive, CreatedAt, UpdatedAt)
-        VALUES (@siteId, @roleId, @fullName, @email, @passwordHash, TRUE, NOW(), NOW())
-        RETURNING *
-      `)
+      const roleRow = roleResult.recordset[0]
+      if (!roleRow) throw new ApiError(404, 'Rol no encontrado')
 
-    const created = result.recordset[0]
+      const userResult = await tx
+        .request()
+        .input('siteId', sql.Int, siteId)
+        .input('roleId', sql.Int, roleRow.RoleId)
+        .input('fullName', sql.NVarChar(120), req.body.fullName)
+        .input('email', sql.NVarChar(160), req.body.email)
+        .input('passwordHash', sql.NVarChar(255), hashPassword(req.body.password))
+        .query(`
+          INSERT INTO Users (SiteId, RoleId, FullName, Email, PasswordHash, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@siteId, @roleId, @fullName, @email, @passwordHash, TRUE, NOW(), NOW())
+          RETURNING *
+        `)
+
+      const user = userResult.recordset[0]
+
+      if (req.body.role === 'volunteer' && req.body.volunteerShift) {
+        const profile = req.body.volunteerShift
+        oneOf(profile.volunteerType, ['individual', 'escolar', 'empresarial'], 'volunteerType')
+        oneOf(profile.roleName, VOLUNTEER_ROLE_NAMES, 'roleName')
+        const derived = buildSchedule(profile.startTime, profile.endTime, profile.shiftLabel)
+
+        await tx
+          .request()
+          .input('siteId', sql.Int, siteId)
+          .input('userId', sql.Int, user.UserId)
+          .input('volunteerName', sql.NVarChar(120), user.FullName)
+          .input('volunteerType', sql.NVarChar(30), profile.volunteerType)
+          .input('roleName', sql.NVarChar(40), profile.roleName)
+          .input('shiftDay', sql.Date, profile.shiftDay)
+          .input('workDays', sql.NVarChar(120), Array.isArray(profile.workDays) ? profile.workDays.join(',') : '')
+          .input('startTime', sql.NVarChar(5), profile.startTime)
+          .input('endTime', sql.NVarChar(5), profile.endTime)
+          .input('shiftPeriod', sql.NVarChar(20), derived.shiftPeriod)
+          .input('shiftLabel', sql.NVarChar(20), derived.shiftLabel)
+          .input('availabilityStatus', sql.NVarChar(30), derived.availabilityStatus)
+          .input('hoursLogged', sql.Decimal(5, 2), derived.hoursLogged)
+          .query(`
+            INSERT INTO VolunteerShifts (SiteId, UserId, VolunteerName, VolunteerType, RoleName, ShiftDay, WorkDays, StartTime, EndTime, ShiftPeriod, ShiftLabel, AvailabilityStatus, HoursLogged)
+            VALUES (@siteId, @userId, @volunteerName, @volunteerType, @roleName, @shiftDay, @workDays, @startTime, @endTime, @shiftPeriod, @shiftLabel, @availabilityStatus, @hoursLogged)
+          `)
+      }
+
+      if (req.body.role === 'staff' && req.body.staffProfile) {
+        const profile = req.body.staffProfile
+        oneOf(profile.workArea, STAFF_WORK_AREAS, 'workArea')
+        const derived = buildSchedule(profile.startTime, profile.endTime, profile.shiftLabel)
+
+        await tx
+          .request()
+          .input('siteId', sql.Int, siteId)
+          .input('userId', sql.Int, user.UserId)
+          .input('workArea', sql.NVarChar(40), profile.workArea)
+          .input('workDays', sql.NVarChar(120), Array.isArray(profile.workDays) ? profile.workDays.join(',') : '')
+          .input('startTime', sql.NVarChar(5), profile.startTime)
+          .input('endTime', sql.NVarChar(5), profile.endTime)
+          .input('shiftPeriod', sql.NVarChar(20), derived.shiftPeriod)
+          .input('shiftLabel', sql.NVarChar(20), derived.shiftLabel)
+          .input('availabilityStatus', sql.NVarChar(30), derived.availabilityStatus)
+          .input('hoursLogged', sql.Decimal(5, 2), derived.hoursLogged)
+          .query(`
+            INSERT INTO StaffProfiles (SiteId, UserId, WorkArea, WorkDays, StartTime, EndTime, ShiftPeriod, ShiftLabel, AvailabilityStatus, HoursLogged, CreatedAt, UpdatedAt)
+            VALUES (@siteId, @userId, @workArea, @workDays, @startTime, @endTime, @shiftPeriod, @shiftLabel, @availabilityStatus, @hoursLogged, NOW(), NOW())
+          `)
+      }
+
+      return user
+    })
+
     await logAudit({
       siteId,
       actorUserId: req.auth.sub,
@@ -133,6 +206,18 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH', 'DELETE'], roles: ['s
         WHERE UserId = @userId
         RETURNING *
       `)
+
+    if (nextSiteId) {
+      await pool
+        .request()
+        .input('userId', sql.Int, userId)
+        .input('siteId', sql.Int, nextSiteId)
+        .query(`
+          UPDATE VolunteerShifts SET SiteId = @siteId WHERE UserId = @userId;
+          UPDATE StaffProfiles SET SiteId = @siteId, UpdatedAt = NOW() WHERE UserId = @userId;
+          UPDATE VolunteerTasks SET SiteId = @siteId WHERE VolunteerUserId = @userId;
+        `)
+    }
 
     await logAudit({
       siteId: nextSiteId || target.SiteId,

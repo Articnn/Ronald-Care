@@ -66,7 +66,6 @@ export function StaffVolunteersPage() {
   const [taskDay, setTaskDay] = useState('2026-04-04')
   const [shiftPeriod, setShiftPeriod] = useState<'AM' | 'PM'>('AM')
   const [isCreatingTask, setIsCreatingTask] = useState(false)
-  const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null)
   const [changingRequestId, setChangingRequestId] = useState<string | null>(null)
 
   return (
@@ -190,12 +189,7 @@ export function StaffVolunteersPage() {
                       onChange={async (event) => {
                         const nextUserId = Number(event.target.value)
                         if (nextUserId !== task.volunteerUserId) {
-                          setLoadingTaskId(task.id)
-                          try {
-                            await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
-                          } finally {
-                            setLoadingTaskId(null)
-                          }
+                          await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
                         }
                       }}
                     >

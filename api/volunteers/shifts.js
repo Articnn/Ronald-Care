@@ -35,7 +35,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
 
   required(req.body, ['siteId', 'volunteerName', 'volunteerType', 'roleName', 'shiftDay', 'shiftPeriod', 'availabilityStatus', 'hoursLogged', 'workDays', 'startTime', 'endTime', 'shiftLabel'])
   oneOf(req.body.volunteerType, ['individual', 'escolar', 'empresarial'], 'volunteerType')
-  oneOf(req.body.roleName, ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia'], 'roleName')
+  oneOf(req.body.roleName, ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza'], 'roleName')
   oneOf(req.body.shiftPeriod, ['AM', 'PM'], 'shiftPeriod')
   oneOf(req.body.shiftLabel, ['manana', 'tarde', 'noche'], 'shiftLabel')
   oneOf(req.body.availabilityStatus, ['disponible', 'cupo_limitado', 'no_disponible'], 'availabilityStatus')

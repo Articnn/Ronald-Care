@@ -17,6 +17,14 @@ const coworkerAlerts = [
   { value: 'cover_me', label: 'Puedes cubrirme?' },
 ] as const
 
+function inventoryCategoryForRole(role?: string | null) {
+  if (role === 'Recepcion') return 'recepcion' as const
+  if (role === 'Cocina') return 'cocina' as const
+  if (role === 'Limpieza') return 'limpieza' as const
+  if (role === 'Lavanderia') return 'lavanderia' as const
+  return null
+}
+
 function formatDisplayDate(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -39,6 +47,8 @@ export function VolunteerRequestsPage() {
     requests,
     volunteerTasks,
     volunteerRoster,
+    inventoryReports,
+    createInventoryNeedReport,
     requestVolunteerChange,
     updateRequestStatus,
     updateVolunteerTaskForUser,
@@ -48,7 +58,7 @@ export function VolunteerRequestsPage() {
 
   const [requestedShift, setRequestedShift] = useState<'AM' | 'PM'>('AM')
   const [requestedTask, setRequestedTask] = useState<VolunteerTaskType>('Traslados')
-  const [requestedRole, setRequestedRole] = useState<'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'>('traslados')
+  const [requestedRole, setRequestedRole] = useState<'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia' | 'limpieza'>('traslados')
   const [requestedStartTime, setRequestedStartTime] = useState('08:00')
   const [requestedEndTime, setRequestedEndTime] = useState('14:00')
   const [requestedShiftLabel, setRequestedShiftLabel] = useState<'manana' | 'tarde' | 'noche'>('manana')
@@ -60,6 +70,9 @@ export function VolunteerRequestsPage() {
   const [isSendingAlert, setIsSendingAlert] = useState(false)
   const [isSendingRequest, setIsSendingRequest] = useState(false)
   const [loadingRequestId, setLoadingRequestId] = useState<string | null>(null)
+  const [inventoryNeedTitle, setInventoryNeedTitle] = useState('')
+  const [inventoryNeedDetail, setInventoryNeedDetail] = useState('')
+  const [isSavingInventoryNeed, setIsSavingInventoryNeed] = useState(false)
 
   useEffect(() => {
     void refreshConnectedData()
@@ -93,6 +106,7 @@ export function VolunteerRequestsPage() {
   const todayLabel = new Intl.DateTimeFormat('sv-SE').format(new Date())
   const todayTasks = orderedTasks.filter((task) => task.day.slice(0, 10) === todayLabel)
   const historyTasks = orderedTasks
+  const inventoryCategory = inventoryCategoryForRole(myProfile?.role)
 
   return (
     <div className="space-y-5">
@@ -195,6 +209,61 @@ export function VolunteerRequestsPage() {
         </Card>
       </div>
 
+      {inventoryCategory ? (
+        <Card className="space-y-4">
+          <h2 className="text-xl font-bold text-warm-900">Faltantes de mi área</h2>
+          <p className="text-sm text-warm-600">
+            Reporta lo que hace falta en {myProfile?.role?.toLowerCase() || 'tu área'} para que staff lo vea directo en inventario de tu sede.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Input label="Qué hace falta" value={inventoryNeedTitle} onChange={(event) => setInventoryNeedTitle(event.target.value)} placeholder="Ej. Kits de bienvenida, detergente, toallas..." />
+            <Input label="Detalle operativo" value={inventoryNeedDetail} onChange={(event) => setInventoryNeedDetail(event.target.value)} placeholder="Ej. Solo quedan 2 unidades y mañana llega una familia nueva." />
+          </div>
+          <Button
+            isLoading={isSavingInventoryNeed}
+            onClick={async () => {
+              if (!inventoryNeedTitle.trim() || !inventoryNeedDetail.trim() || !inventoryCategory) return
+              setIsSavingInventoryNeed(true)
+              try {
+                await createInventoryNeedReport({
+                  itemCategory: inventoryCategory,
+                  title: inventoryNeedTitle.trim(),
+                  detail: inventoryNeedDetail.trim(),
+                })
+                setInventoryNeedTitle('')
+                setInventoryNeedDetail('')
+              } finally {
+                setIsSavingInventoryNeed(false)
+              }
+            }}
+          >
+            Reportar faltante
+          </Button>
+
+          <div className="space-y-3">
+            <p className="text-base font-semibold text-warm-900">Mis reportes recientes</p>
+            {inventoryReports.length > 0 ? (
+              inventoryReports.map((report) => (
+                <div key={report.id} className="rounded-2xl bg-warm-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-warm-900">{report.title}</p>
+                      <p className="text-sm text-warm-700">{report.category} · {formatDisplayDate(report.createdAt)}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-sm font-bold ${report.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {report.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-warm-700">{report.detail}</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">Todavía no has reportado faltantes para tu área.</div>
+            )}
+          </div>
+        </Card>
+      ) : null}
+
       <Card className="space-y-3">
         <h2 className="text-xl font-bold text-warm-900">Historial de tareas</h2>
         {historyTasks.length > 0 ? (
@@ -233,10 +302,11 @@ export function VolunteerRequestsPage() {
             <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedRole} onChange={(event) => setRequestedRole(event.target.value as typeof requestedRole)}>
               <option value="traslados">traslados</option>
               <option value="recepcion">recepcion</option>
-              <option value="acompanamiento">acompanamiento</option>
-              <option value="cocina">cocina</option>
-              <option value="lavanderia">lavanderia</option>
-            </select>
+                <option value="acompanamiento">acompanamiento</option>
+                <option value="cocina">cocina</option>
+                <option value="lavanderia">lavanderia</option>
+                <option value="limpieza">limpieza</option>
+              </select>
           </label>
           <Input label="Hora inicio" type="time" value={requestedStartTime} onChange={(event) => setRequestedStartTime(event.target.value)} />
           <Input label="Hora fin" type="time" value={requestedEndTime} onChange={(event) => setRequestedEndTime(event.target.value)} />

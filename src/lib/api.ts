@@ -189,6 +189,7 @@ export interface VolunteerTask {
   AssignedByName?: string
   FamilyId: number | null
   RelatedRequestId: number | null
+  RelatedRoomId?: number | null
   Title: string
   TaskType: 'cocina' | 'lavanderia' | 'traslados' | 'acompanamiento' | 'recepcion' | 'limpieza' | 'inventario'
   ShiftPeriod: 'AM' | 'PM'
@@ -230,7 +231,7 @@ export interface BackendVolunteerRosterItem {
   SiteId: number
   SiteName: string
   VolunteerType: 'individual' | 'escolar' | 'empresarial'
-  RoleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+  RoleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia' | 'limpieza'
   WorkDays: string
   StartTime: string
   EndTime: string
@@ -238,6 +239,23 @@ export interface BackendVolunteerRosterItem {
   AvailabilityStatus: 'disponible' | 'cupo_limitado' | 'no_disponible'
   HoursLogged: number
   CurrentTasks: number
+}
+
+export interface BackendStaffRosterItem {
+  UserId: number
+  FullName: string
+  Email: string
+  SiteId: number
+  SiteName: string
+  WorkArea: 'recepcion' | 'checkin' | 'habitaciones' | 'inventario' | 'coordinacion' | 'analitica' | 'apoyo_familiar'
+  WorkDays: string
+  StartTime: string
+  EndTime: string
+  ShiftPeriod: 'AM' | 'PM'
+  ShiftLabel: 'manana' | 'tarde' | 'noche'
+  AvailabilityStatus: 'disponible' | 'cupo_limitado' | 'no_disponible'
+  HoursLogged: number
+  CurrentLoad: number
 }
 
 export interface StaffDashboardResponse {
@@ -363,7 +381,7 @@ export function createVolunteerShift(
     userId: number
     volunteerName: string
     volunteerType: 'individual' | 'escolar' | 'empresarial'
-    roleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia'
+    roleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia' | 'limpieza'
     shiftDay: string
     workDays: string[]
     startTime: string
@@ -389,7 +407,7 @@ export function getVolunteerTasks(token: string, params: { siteId?: number | nul
   return apiRequest<VolunteerTask[]>(`/volunteer-tasks${query.toString() ? `?${query.toString()}` : ''}`, { token })
 }
 
-export function createVolunteerTask(token: string, payload: { volunteerUserId: number; title: string; taskType: VolunteerTask['TaskType']; shiftPeriod: 'AM' | 'PM'; taskDay: string; familyId?: number; relatedRequestId?: number; notes?: string }) {
+export function createVolunteerTask(token: string, payload: { volunteerUserId: number; title: string; taskType: VolunteerTask['TaskType']; shiftPeriod: 'AM' | 'PM'; taskDay: string; familyId?: number; relatedRequestId?: number; relatedRoomId?: number; notes?: string }) {
   return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'POST', token, body: payload })
 }
 
@@ -403,6 +421,7 @@ export function updateVolunteerTask(
     shiftPeriod?: 'AM' | 'PM'
     status?: VolunteerTask['Status']
     notes?: string | null
+    relatedRoomId?: number | null
   },
 ) {
   return apiRequest<VolunteerTask>('/volunteer-tasks', { method: 'PATCH', token, body: payload })
@@ -450,8 +469,17 @@ export function getStaffDashboard(token: string, siteId?: number | null) {
   return apiRequest<StaffDashboardResponse>(`/staff/dashboard${query}`, { token })
 }
 
+export function getStaffRoster(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendStaffRosterItem[]>(`/staff/roster${query}`, { token })
+}
+
 export function sendVolunteerAlert(token: string, payload: { toVolunteerUserId: number; alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me' }) {
   return apiRequest<{ message: string }>('/volunteer-alerts', { method: 'POST', token, body: payload })
+}
+
+export function sendStaffAlert(token: string, payload: { toStaffUserId: number; alertType: 'incoming_families' | 'prepare_kits' | 'reception_help' | 'checkin_pending' }) {
+  return apiRequest<{ message: string }>('/staff-alerts', { method: 'POST', token, body: payload })
 }
 
 export function getDonorImpact(siteName?: string) {
@@ -490,10 +518,29 @@ export interface Room {
   SiteId: number
   RoomCode: string
   Capacity: number
+  RoomType?: 'normal' | 'especial'
   OccupiedCount: number
+  RoomStatus?: 'disponible' | 'ocupada' | 'mantenimiento'
+  AvailableAt?: string | null
+  RoomNote?: string | null
   IsActive: boolean
   SiteName: string
   assignedfamilies: string | null
+}
+
+export interface BackendInventoryItem {
+  InventoryItemId: number
+  ItemCode: string
+  Name: string
+  ItemCategory: 'kit' | 'cocina' | 'limpieza' | 'otro'
+  Unit: string
+  Stock: number
+  MinStock: number
+  ExpiryDate: string | null
+  LowStock?: boolean
+  ExpiringSoon?: boolean
+  LastMovementReason?: string | null
+  LastMovementAt?: string | null
 }
 
 export function getRooms(token: string, siteId?: number | null) {
@@ -501,12 +548,52 @@ export function getRooms(token: string, siteId?: number | null) {
   return apiRequest<Room[]>(`/staff/rooms${query}`, { token })
 }
 
+export function updateRoom(token: string, payload: { roomId: number; availableAt?: string | null; roomNote?: string | null; roomStatus?: 'disponible' | 'ocupada' | 'mantenimiento' }) {
+  return apiRequest<Room>('/staff/rooms', { method: 'PATCH', token, body: payload })
+}
+
+export interface BackendInventoryReport {
+  InventoryReportId: number
+  SiteId: number
+  VolunteerUserId: number
+  VolunteerName?: string
+  SiteName?: string
+  ItemCategory: 'kit' | 'cocina' | 'limpieza' | 'lavanderia' | 'recepcion'
+  Title: string
+  Detail: string
+  Status: 'pendiente' | 'atendido'
+  CreatedAt: string
+  UpdatedAt: string
+}
+
 export function getAdminUsers(token: string, siteId?: number | null) {
   const query = siteId ? `?siteId=${siteId}` : ''
   return apiRequest<BackendUser[]>(`/admin/users${query}`, { token })
 }
 
-export function createAdminUser(token: string, payload: { fullName: string; email: string; role: 'admin' | 'staff' | 'volunteer'; siteId: number; password: string }) {
+export function createAdminUser(token: string, payload: {
+  fullName: string
+  email: string
+  role: 'admin' | 'staff' | 'volunteer'
+  siteId: number
+  password: string
+  volunteerShift?: {
+    volunteerType: 'individual' | 'escolar' | 'empresarial'
+    roleName: 'traslados' | 'recepcion' | 'acompanamiento' | 'cocina' | 'lavanderia' | 'limpieza'
+    shiftDay: string
+    workDays: string[]
+    startTime: string
+    endTime: string
+    shiftLabel?: 'manana' | 'tarde' | 'noche'
+  }
+  staffProfile?: {
+    workArea: 'recepcion' | 'checkin' | 'habitaciones' | 'inventario' | 'coordinacion' | 'analitica' | 'apoyo_familiar'
+    workDays: string[]
+    startTime: string
+    endTime: string
+    shiftLabel?: 'manana' | 'tarde' | 'noche'
+  }
+}) {
   return apiRequest<BackendUser>('/admin/users', { method: 'POST', token, body: payload })
 }
 
@@ -533,7 +620,27 @@ export function updateFamilyAccess(token: string, familyId: number, action: 'pau
 
 export function getInventoryStock(token: string, siteId?: number | null) {
   const query = siteId ? `?siteId=${siteId}` : ''
-  return apiRequest<Array<{ InventoryItemId: number; Name: string; Stock: number; MinStock: number; LowStock?: boolean }>>(`/inventory/stock${query}`, { token })
+  return apiRequest<BackendInventoryItem[]>(`/inventory/stock${query}`, { token })
+}
+
+export function createInventoryMovement(
+  token: string,
+  payload: { inventoryItemId: number; movementType: 'in' | 'out'; quantity: number; reason: string },
+) {
+  return apiRequest<{ movement: Record<string, unknown>; nextStock: number }>('/inventory/movements', { method: 'POST', token, body: payload })
+}
+
+export function getInventoryReports(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<BackendInventoryReport[]>(`/inventory/reports${query}`, { token })
+}
+
+export function createInventoryReport(token: string, payload: { itemCategory: BackendInventoryReport['ItemCategory']; title: string; detail: string }) {
+  return apiRequest<BackendInventoryReport>('/inventory/reports', { method: 'POST', token, body: payload })
+}
+
+export function updateInventoryReportStatus(token: string, payload: { inventoryReportId: number; status: 'pendiente' | 'atendido' }) {
+  return apiRequest<BackendInventoryReport>('/inventory/reports', { method: 'PATCH', token, body: payload })
 }
 
 export function getCommunityPosts(token: string) {

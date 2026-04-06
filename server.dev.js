@@ -29,12 +29,15 @@ import volunteersCoverage from './api/volunteers/coverage.js'
 import volunteerTasks from './api/volunteer-tasks/index.js'
 import volunteerChangeRequests from './api/volunteer-change-requests/index.js'
 import volunteerAlerts from './api/volunteer-alerts/index.js'
+import staffAlerts from './api/staff-alerts/index.js'
 import notificationsIndex from './api/notifications/index.js'
 import inventoryStock from './api/inventory/stock.js'
 import inventoryMovements from './api/inventory/movements.js'
+import inventoryReports from './api/inventory/reports.js'
 import kioskStatus from './api/kiosk/status.js'
 import analyticsKpis from './api/analytics/kpis.js'
 import staffDashboard from './api/staff/dashboard.js'
+import staffRoster from './api/staff/roster.js'
 import donorImpact from './api/donor/impact.js'
 import donorGallery from './api/donor/gallery.js'
 import donorEvents from './api/donor/events.js'
@@ -86,16 +89,22 @@ const routes = {
   'POST /api/volunteer-change-requests': volunteerChangeRequests,
   'PATCH /api/volunteer-change-requests': volunteerChangeRequests,
   'POST /api/volunteer-alerts': volunteerAlerts,
+  'POST /api/staff-alerts': staffAlerts,
   'GET /api/notifications': notificationsIndex,
   'PATCH /api/notifications': notificationsIndex,
   'GET /api/inventory/stock': inventoryStock,
   'POST /api/inventory/movements': inventoryMovements,
+  'GET /api/inventory/reports': inventoryReports,
+  'POST /api/inventory/reports': inventoryReports,
+  'PATCH /api/inventory/reports': inventoryReports,
   'GET /api/staff/dashboard': staffDashboard,
+  'GET /api/staff/roster': staffRoster,
   'GET /api/analytics/kpis': analyticsKpis,
   'GET /api/donor/impact': donorImpact,
   'GET /api/donor/gallery': donorGallery,
   'GET /api/donor/events': donorEvents,
   'GET /api/staff/rooms': staffRooms,
+  'PATCH /api/staff/rooms': staffRooms,
   'GET /api/community/posts': communityPosts,
   'POST /api/community/posts': communityPosts,
   'PATCH /api/community/report': communityReport,

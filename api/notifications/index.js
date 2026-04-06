@@ -4,7 +4,7 @@ import { ensureNotificationTable } from '../../src/lib/notifications.js'
 import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
 import { required, toInt } from '../../src/lib/validation.js'
 
-export default withApi({ methods: ['GET', 'PATCH'], roles: ['volunteer'] }, async (req) => {
+export default withApi({ methods: ['GET', 'PATCH'], roles: ['superadmin', 'admin', 'staff', 'volunteer'] }, async (req) => {
   await ensureVolunteerManagementSchema()
   const pool = await getPool()
   await ensureNotificationTable()
