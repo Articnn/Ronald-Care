@@ -472,6 +472,19 @@ export function getGallery() {
   return apiRequest<GalleryImage[]>('/donor/gallery')
 }
 
+export interface DonorEvent {
+  id: number
+  event_title: string
+  description: string
+  site: string
+  date: string
+  image_url: string
+}
+
+export function getEvents() {
+  return apiRequest<DonorEvent[]>('/donor/events')
+}
+
 export function getAdminUsers(token: string, siteId?: number | null) {
   const query = siteId ? `?siteId=${siteId}` : ''
   return apiRequest<BackendUser[]>(`/admin/users${query}`, { token })

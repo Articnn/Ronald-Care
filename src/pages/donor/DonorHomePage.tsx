@@ -2,9 +2,8 @@ import { useMemo, useState, useEffect } from 'react'
 import { SectionHeader } from '../../components/ui/SectionHeader'
 import { Tabs } from '../../components/ui/Tabs'
 import { useAppState } from '../../context/AppContext'
-import { UPCOMING_EVENTS } from './DonorImpactPage'
-import { getGallery } from '../../lib/api'
-import type { GalleryImage } from '../../lib/api'
+import { getGallery, getEvents } from '../../lib/api'
+import type { GalleryImage, DonorEvent } from '../../lib/api'
 
 const SITE_IMAGES: Record<string, string> = {
   'Casa Ronald McDonald Ciudad de Mexico': '/public/images/casa-cdmx.webp',
@@ -19,6 +18,7 @@ export function DonorHomePage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Impacto por sede')
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([])
   const [activeMonth, setActiveMonth] = useState('')
+  const [eventsData, setEventsData] = useState<DonorEvent[]>([])
 
   useEffect(() => {
     getGallery()
@@ -29,6 +29,12 @@ export function DonorHomePage() {
       .catch(() => setGalleryImages([]))
   }, [])
 
+  useEffect(() => {
+    getEvents()
+      .then(setEventsData)
+      .catch(() => setEventsData([]))
+  }, [])
+
   const impactItems = donorImpactBySite.filter((item) => item.name === site)
   const monthNames = useMemo(() => [...new Set(galleryImages.map((img) => img.month))], [galleryImages])
   const isCurrentMonth = monthNames.length > 0 && activeMonth === monthNames[0]
@@ -36,7 +42,10 @@ export function DonorHomePage() {
     () => galleryImages.filter((img) => img.month === activeMonth && img.site === site),
     [galleryImages, activeMonth, site],
   )
-  const eventsPreview = useMemo(() => UPCOMING_EVENTS.filter((item) => item.site === site), [site])
+  const eventsPreview = useMemo(
+    () => eventsData.filter((e) => site === 'Todas' || e.site === site),
+    [eventsData, site],
+  )
 
   return (
     <div className="space-y-6">
@@ -125,13 +134,17 @@ export function DonorHomePage() {
               {eventsPreview.map((event) => (
                 <article key={event.id} className="overflow-hidden rounded-[28px] bg-white shadow-soft">
                   <div className="relative h-48 bg-warm-100">
-                    <img src={event.imageUrl} alt={event.title} className="h-full w-full object-cover" />
+                    <img
+                      src={event.image_url || '/public/images/image-9.png'}
+                      alt={event.event_title}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <div className="space-y-2 p-5">
                     <span className="inline-block rounded-full bg-[#950606] px-3 py-1 text-xs font-semibold text-white">
                       {event.site}
                     </span>
-                    <h3 className="text-xl font-bold text-warm-900">{event.title}</h3>
+                    <h3 className="text-xl font-bold text-warm-900">{event.event_title}</h3>
                     <p className="text-sm text-warm-700">{event.description}</p>
                     <p className="text-sm font-semibold text-warm-600">
                       {new Date(event.date).toLocaleDateString('es-MX', {
