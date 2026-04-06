@@ -485,6 +485,22 @@ export function getEvents() {
   return apiRequest<DonorEvent[]>('/donor/events')
 }
 
+export interface Room {
+  RoomId: number
+  SiteId: number
+  RoomCode: string
+  Capacity: number
+  OccupiedCount: number
+  IsActive: boolean
+  SiteName: string
+  assignedfamilies: string | null
+}
+
+export function getRooms(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<Room[]>(`/staff/rooms${query}`, { token })
+}
+
 export function getAdminUsers(token: string, siteId?: number | null) {
   const query = siteId ? `?siteId=${siteId}` : ''
   return apiRequest<BackendUser[]>(`/admin/users${query}`, { token })
