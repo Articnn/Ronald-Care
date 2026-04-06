@@ -12,6 +12,8 @@ export function StaffTripsPage() {
   const [destination, setDestination] = useState('Hospital Infantil')
   const [assignedTo, setAssignedTo] = useState('Carlos R.')
   const [shift, setShift] = useState<'AM' | 'PM'>('AM')
+  const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   return (
     <div className="space-y-6">
@@ -39,7 +41,14 @@ export function StaffTripsPage() {
             Turno PM
           </button>
         </div>
-        <Button onClick={async () => createTrip({ site, familyId, destination, assignedTo, shift })}>Crear viaje</Button>
+        <Button isLoading={isCreating} onClick={async () => {
+          setIsCreating(true)
+          try {
+            await createTrip({ site, familyId, destination, assignedTo, shift })
+          } finally {
+            setIsCreating(false)
+          }
+        }}>Crear viaje</Button>
       </Card>
       <div className="grid gap-4">
         {trips.map((trip) => (
@@ -53,8 +62,8 @@ export function StaffTripsPage() {
             </div>
             <p className="text-warm-700">Duracion: {trip.durationMinutes ? `${trip.durationMinutes} min` : 'Sin finalizar'}</p>
             <div className="flex flex-wrap gap-2">
-              {trip.status === 'Pendiente' ? <Button variant="ghost" onClick={async () => startTrip(trip.id)}>Iniciar viaje</Button> : null}
-              {trip.status === 'En curso' ? <Button variant="secondary" onClick={async () => finishTrip(trip.id)}>Finalizar viaje</Button> : null}
+              {trip.status === 'Pendiente' ? <Button variant="ghost" isLoading={loadingTripId === trip.id} onClick={async () => { setLoadingTripId(trip.id); try { await startTrip(trip.id) } finally { setLoadingTripId(null) } }}>Iniciar viaje</Button> : null}
+              {trip.status === 'En curso' ? <Button variant="secondary" isLoading={loadingTripId === trip.id} onClick={async () => { setLoadingTripId(trip.id); try { await finishTrip(trip.id) } finally { setLoadingTripId(null) } }}>Finalizar viaje</Button> : null}
             </div>
           </Card>
         ))}

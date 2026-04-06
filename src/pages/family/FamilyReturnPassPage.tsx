@@ -23,6 +23,7 @@ export function FamilyReturnPassPage() {
   const [date, setDate] = useState('2026-04-06')
   const [companions, setCompanions] = useState('2')
   const [note, setNote] = useState('Regreso para continuidad de hospedaje.')
+  const [isLoading, setIsLoading] = useState(false)
 
   if (!currentFamily) {
     return <Card><p className="text-lg text-warm-700">No hay familia activa para generar return pass.</p></Card>
@@ -43,15 +44,21 @@ export function FamilyReturnPassPage() {
           <Input label="Nota logística" value={note} onChange={(event) => setNote(event.target.value)} />
         </div>
         <Button
-          onClick={() =>
-            createReturnPass({
-              familyId: currentFamily.id,
-              site: currentFamily.site,
-              date,
-              companions: Number(companions),
-              note,
-            })
-          }
+          isLoading={isLoading}
+          onClick={async () => {
+            setIsLoading(true)
+            try {
+              await createReturnPass({
+                familyId: currentFamily.id,
+                site: currentFamily.site,
+                date,
+                companions: Number(companions),
+                note,
+              })
+            } finally {
+              setIsLoading(false)
+            }
+          }}
         >
           Enviar Return Pass
         </Button>

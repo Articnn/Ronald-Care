@@ -16,6 +16,7 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
+import { LoadingOverlay } from '../ui/LoadingOverlay'
 import type { InternalRole, Role } from '../../types'
 
 const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; to: string; icon: ReactElement }>> = {
@@ -95,6 +96,7 @@ export function AppShell() {
     notifications,
     unreadNotifications,
     markNotificationAsRead,
+    isSyncing,
   } = useAppState()
   const location = useLocation()
   const links = role === 'family' ? familyNav : role ? navByRole[role as InternalRole] : []
@@ -248,7 +250,10 @@ export function AppShell() {
         )}
       </header>
 
-      <main className="mx-auto max-w-7xl p-4 md:p-6">
+      <main className="relative mx-auto max-w-7xl p-4 md:p-6">
+        {isSyncing && (
+          <LoadingOverlay message="Cargando informacion..." className="absolute inset-0 min-h-[400px]" />
+        )}
         <Outlet />
       </main>
     </div>

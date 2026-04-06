@@ -18,6 +18,7 @@ export function FamilyRequestPage() {
   const [urgency, setUrgency] = useState<RequestUrgency>('Media')
   const [optionalWindow, setOptionalWindow] = useState('')
   const [note, setNote] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   if (!family) {
     return <Card><p className="text-lg text-warm-700">No hay una familia activa en demo.</p></Card>
@@ -73,18 +74,24 @@ export function FamilyRequestPage() {
         </div>
 
         <Button
+          isLoading={isLoading}
           onClick={async () => {
-            await createRequest({
-              site: family.site,
-              familyId: family.id,
-              title: note.trim() || `Solicitud de ${type.toLowerCase()}`,
-              type,
-              urgency,
-              optionalWindow: optionalWindow.trim() || undefined,
-              assignedRole: type === 'Transporte' ? 'volunteer' : 'staff',
-              assignedTo: type === 'Transporte' ? 'Carlos R.' : 'Lucia P.',
-            })
-            navigate('/family/status')
+            setIsLoading(true)
+            try {
+              await createRequest({
+                site: family.site,
+                familyId: family.id,
+                title: note.trim() || `Solicitud de ${type.toLowerCase()}`,
+                type,
+                urgency,
+                optionalWindow: optionalWindow.trim() || undefined,
+                assignedRole: type === 'Transporte' ? 'volunteer' : 'staff',
+                assignedTo: type === 'Transporte' ? 'Carlos R.' : 'Lucia P.',
+              })
+              navigate('/family/status')
+            } finally {
+              setIsLoading(false)
+            }
           }}
         >
           Enviar solicitud

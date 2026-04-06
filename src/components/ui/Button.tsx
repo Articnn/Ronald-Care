@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { Spinner } from './Spinner'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost'
 
@@ -11,20 +12,23 @@ const stylesByVariant: Record<ButtonVariant, string> = {
 export function Button({
   variant = 'primary',
   fullWidth,
+  isLoading = false,
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
   fullWidth?: boolean
+  isLoading?: boolean
   children: ReactNode
 }) {
   return (
     <button
       className={`rounded-2xl px-5 py-3 text-lg font-semibold transition focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50 ${stylesByVariant[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      disabled={isLoading || props.disabled}
       {...props}
     >
-      {children}
+      {isLoading ? <span className="inline-flex items-center gap-2"><Spinner size="sm" /> Cargando...</span> : children}
     </button>
   )
 }

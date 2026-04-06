@@ -24,8 +24,9 @@ export function FamilyCommunityPage() {
   const { communityPosts, createCommunityPost } = useAppState()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  function handlePublish() {
+  async function handlePublish() {
     const texto = message.trim()
     if (!texto) return
 
@@ -38,9 +39,14 @@ export function FamilyCommunityPage() {
       return
     }
 
-    createCommunityPost(texto)
-    setMessage('')
-    setError('')
+    setIsLoading(true)
+    try {
+      await createCommunityPost(texto)
+      setMessage('')
+      setError('')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const postsOrdenados = [...communityPosts].reverse()
@@ -72,7 +78,7 @@ export function FamilyCommunityPage() {
           </div>
         )}
 
-        <Button onClick={handlePublish} disabled={!message.trim()}>
+        <Button isLoading={isLoading} onClick={handlePublish} disabled={!message.trim()}>
           Publicar en comunidad
         </Button>
       </div>

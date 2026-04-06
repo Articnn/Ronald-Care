@@ -49,6 +49,10 @@ export function AdminPanelPage() {
   const [volunteerAvailability, setVolunteerAvailability] = useState<(typeof volunteerAvailabilityOptions)[number]>('disponible')
   const [volunteerHours, setVolunteerHours] = useState('6')
   const [generatedAccess, setGeneratedAccess] = useState<string | null>(null)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
+  const [activatingReferralId, setActivatingReferralId] = useState<string | null>(null)
+  const [familyActionId, setFamilyActionId] = useState<string | null>(null)
 
   useEffect(() => {
     const inferred = inferShiftLabel(startTime)
@@ -158,32 +162,38 @@ export function AdminPanelPage() {
         ) : null}
 
         <Button
+          isLoading={isCreatingUser}
           onClick={async () => {
-            await createInternalUser({
-              fullName,
-              email,
-              role,
-              siteId,
-              password,
-              volunteerShift:
-                role === 'volunteer'
-                  ? {
-                      volunteerType,
-                      roleName: volunteerRole,
-                      shiftDay: volunteerShiftDay,
-                      workDays: selectedWorkDays,
-                      startTime,
-                      endTime,
-                      shiftPeriod: volunteerShiftPeriod,
-                      shiftLabel,
-                      availabilityStatus: volunteerAvailability,
-                      hoursLogged: Number(volunteerHours || 0),
-                    }
-                  : undefined,
-            })
-            setFullName('')
-            setEmail('')
-            setPassword('Demo123!')
+            setIsCreatingUser(true)
+            try {
+              await createInternalUser({
+                fullName,
+                email,
+                role,
+                siteId,
+                password,
+                volunteerShift:
+                  role === 'volunteer'
+                    ? {
+                        volunteerType,
+                        roleName: volunteerRole,
+                        shiftDay: volunteerShiftDay,
+                        workDays: selectedWorkDays,
+                        startTime,
+                        endTime,
+                        shiftPeriod: volunteerShiftPeriod,
+                        shiftLabel,
+                        availabilityStatus: volunteerAvailability,
+                        hoursLogged: Number(volunteerHours || 0),
+                      }
+                    : undefined,
+              })
+              setFullName('')
+              setEmail('')
+              setPassword('Demo123!')
+            } finally {
+              setIsCreatingUser(false)
+            }
           }}
         >
           Crear usuario
@@ -200,10 +210,10 @@ export function AdminPanelPage() {
                 <p className="text-sm text-warm-700">{user.email} · {user.role} · {user.site || 'Global'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" onClick={async () => updateInternalUser({ userId: Number(user.id), isActive: !user.isActive })}>
+                <Button variant="ghost" isLoading={loadingUserId === user.id} onClick={async () => { setLoadingUserId(user.id); try { await updateInternalUser({ userId: Number(user.id), isActive: !user.isActive }) } finally { setLoadingUserId(null) } }}>
                   {user.isActive ? 'Pausar' : 'Reactivar'}
                 </Button>
-                <Button variant="secondary" onClick={async () => deleteInternalUser(Number(user.id))}>Eliminar</Button>
+                <Button variant="secondary" isLoading={loadingUserId === `del-${user.id}`} onClick={async () => { setLoadingUserId(`del-${user.id}`); try { await deleteInternalUser(Number(user.id)) } finally { setLoadingUserId(null) } }}>Eliminar</Button>
               </div>
             </div>
           ))}
@@ -224,9 +234,15 @@ export function AdminPanelPage() {
               </div>
               <div className="mt-3">
                 <Button
+                  isLoading={activatingReferralId === referral.id}
                   onClick={async () => {
-                    const result = await activateReferralFamily(Number(referral.id))
-                    setGeneratedAccess(`Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}`)
+                    setActivatingReferralId(referral.id)
+                    try {
+                      const result = await activateReferralFamily(Number(referral.id))
+                      setGeneratedAccess(`Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}`)
+                    } finally {
+                      setActivatingReferralId(null)
+                    }
                   }}
                 >
                   Activar familia
@@ -248,14 +264,20 @@ export function AdminPanelPage() {
                 <p className="text-sm text-warm-700">{family.site} · ticket {family.kioskCode || 'pendiente'} · QR {family.qrCode || 'pendiente'}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" onClick={async () => setFamilyAccessState(Number(family.id), family.isActive === false ? 'reactivate' : 'pause')}>
+                <Button variant="ghost" isLoading={familyActionId === `pause-${family.id}`} onClick={async () => { setFamilyActionId(`pause-${family.id}`); try { await setFamilyAccessState(Number(family.id), family.isActive === false ? 'reactivate' : 'pause') } finally { setFamilyActionId(null) } }}>
                   {family.isActive === false ? 'Reactivar' : 'Pausar'}
                 </Button>
                 <Button
                   variant="secondary"
+                  isLoading={familyActionId === `reset-${family.id}`}
                   onClick={async () => {
-                    const result = await setFamilyAccessState(Number(family.id), 'reset-pin')
-                    setGeneratedAccess(`Nuevo PIN temporal para ${family.caregiverName}: ${result.newPin || 'generado'}`)
+                    setFamilyActionId(`reset-${family.id}`)
+                    try {
+                      const result = await setFamilyAccessState(Number(family.id), 'reset-pin')
+                      setGeneratedAccess(`Nuevo PIN temporal para ${family.caregiverName}: ${result.newPin || 'generado'}`)
+                    } finally {
+                      setFamilyActionId(null)
+                    }
                   }}
                 >
                   Resetear PIN

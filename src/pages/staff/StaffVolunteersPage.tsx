@@ -65,6 +65,9 @@ export function StaffVolunteersPage() {
   const [taskType, setTaskType] = useState<VolunteerTaskType>('Recepcion')
   const [taskDay, setTaskDay] = useState('2026-04-04')
   const [shiftPeriod, setShiftPeriod] = useState<'AM' | 'PM'>('AM')
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null)
+  const [changingRequestId, setChangingRequestId] = useState<string | null>(null)
 
   return (
     <div className="space-y-5">
@@ -105,29 +108,35 @@ export function StaffVolunteersPage() {
           </label>
         </div>
         <Button
+          isLoading={isCreatingTask}
           disabled={!volunteerUserId}
-          onClick={async () =>
-            createVolunteerTaskForUser({
-              volunteerUserId,
-              title,
-              taskType:
-                taskType === 'Cocina'
-                  ? 'cocina'
-                  : taskType === 'Lavanderia'
-                    ? 'lavanderia'
-                    : taskType === 'Traslados'
-                      ? 'traslados'
-                      : taskType === 'Acompanamiento'
-                        ? 'acompanamiento'
-                        : taskType === 'Recepcion'
-                          ? 'recepcion'
-                          : taskType === 'Limpieza'
-                            ? 'limpieza'
-                            : 'inventario',
-              taskDay,
-              shiftPeriod,
-            })
-          }
+          onClick={async () => {
+            setIsCreatingTask(true)
+            try {
+              await createVolunteerTaskForUser({
+                volunteerUserId,
+                title,
+                taskType:
+                  taskType === 'Cocina'
+                    ? 'cocina'
+                    : taskType === 'Lavanderia'
+                      ? 'lavanderia'
+                      : taskType === 'Traslados'
+                        ? 'traslados'
+                        : taskType === 'Acompanamiento'
+                          ? 'acompanamiento'
+                          : taskType === 'Recepcion'
+                            ? 'recepcion'
+                            : taskType === 'Limpieza'
+                              ? 'limpieza'
+                              : 'inventario',
+                taskDay,
+                shiftPeriod,
+              })
+            } finally {
+              setIsCreatingTask(false)
+            }
+          }}
         >
           Crear tarea
         </Button>
@@ -181,7 +190,12 @@ export function StaffVolunteersPage() {
                       onChange={async (event) => {
                         const nextUserId = Number(event.target.value)
                         if (nextUserId !== task.volunteerUserId) {
-                          await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
+                          setLoadingTaskId(task.id)
+                          try {
+                            await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
+                          } finally {
+                            setLoadingTaskId(null)
+                          }
                         }
                       }}
                     >
@@ -214,8 +228,8 @@ export function StaffVolunteersPage() {
               <span className="rounded-full bg-warm-100 px-3 py-1 text-sm font-bold text-warm-800">{item.status}</span>
               {item.status === 'Pendiente' ? (
                 <>
-                  <Button variant="ghost" onClick={async () => reviewVolunteerChange(Number(item.id), 'aprobada')}>Aprobar</Button>
-                  <Button variant="secondary" onClick={async () => reviewVolunteerChange(Number(item.id), 'rechazada')}>Rechazar</Button>
+                  <Button variant="ghost" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'aprobada') } finally { setChangingRequestId(null) } }}>Aprobar</Button>
+                  <Button variant="secondary" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'rechazada') } finally { setChangingRequestId(null) } }}>Rechazar</Button>
                 </>
               ) : null}
             </div>
