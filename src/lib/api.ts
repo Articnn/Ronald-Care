@@ -459,6 +459,19 @@ export function getDonorImpact(siteName?: string) {
   return apiRequest<DonorImpactResponse>(`/donor/impact${query}`)
 }
 
+export interface GalleryImage {
+  id: number
+  impact_title: string
+  description: string
+  site: string
+  image_url: string
+  month: string
+}
+
+export function getGallery() {
+  return apiRequest<GalleryImage[]>('/donor/gallery')
+}
+
 export function getAdminUsers(token: string, siteId?: number | null) {
   const query = siteId ? `?siteId=${siteId}` : ''
   return apiRequest<BackendUser[]>(`/admin/users${query}`, { token })
