@@ -38,6 +38,7 @@ import staffDashboard from './api/staff/dashboard.js'
 import donorImpact from './api/donor/impact.js'
 import donorGallery from './api/donor/gallery.js'
 import donorEvents from './api/donor/events.js'
+import staffRooms from './api/staff/rooms.js'
 import communityPosts from './api/community/posts.js'
 import communityReport from './api/community/report.js'
 import communityModerate from './api/community/moderate.js'
@@ -94,6 +95,7 @@ const routes = {
   'GET /api/donor/impact': donorImpact,
   'GET /api/donor/gallery': donorGallery,
   'GET /api/donor/events': donorEvents,
+  'GET /api/staff/rooms': staffRooms,
   'GET /api/community/posts': communityPosts,
   'POST /api/community/posts': communityPosts,
   'PATCH /api/community/report': communityReport,
