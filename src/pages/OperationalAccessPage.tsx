@@ -10,12 +10,14 @@ const accessCards = [
     route: '/admin/login',
     icon: <UserCog className="h-8 w-8" />,
   },
+  /*
   {
     title: 'Hospital / Trabajo Social',
     description: 'Captura y seguimiento de referencias no clínicas.',
     route: '/hospital/login',
     icon: <Building2 className="h-8 w-8" />,
   },
+  */
   {
     title: 'Staff / Operación',
     description: 'Recepción, ayuda asistida, solicitudes, viajes, voluntariado e inventario.',

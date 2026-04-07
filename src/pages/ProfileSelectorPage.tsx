@@ -60,7 +60,7 @@ export function ProfileSelectorPage() {
                 <Building2 className="h-5 w-5 text-warm-700" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-warm-900">Hospital, admin, staff y voluntariado</p>
+                <p className="font-bold text-warm-900">Admin, staff y voluntariado</p>
                 <p className="text-sm text-warm-600">Entran por login interno.</p>
               </div>
               <Link to="/login" className="shrink-0">
