@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -16,10 +17,20 @@ export function KioskPage() {
     lookupFamilyStatus,
     toggleEasyRead,
   } = useAppState()
-  const [code, setCode] = useState('TKT-3481')
+  const [searchParams] = useSearchParams()
+  const [code, setCode] = useState(searchParams.get('code') || 'TKT-3481')
   const family = kioskStatus?.family || null
   const familyRequests = kioskStatus?.requests || []
   const familyTrips = kioskStatus?.trips || []
+
+  useEffect(() => {
+    const initialCode = searchParams.get('code')
+    if (initialCode) {
+      setCode(initialCode)
+      void lookupFamilyStatus(initialCode)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
     <div className={`mx-auto max-w-3xl space-y-5 ${easyRead ? 'text-xl' : ''}`}>

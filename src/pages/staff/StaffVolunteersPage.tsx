@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -51,6 +52,15 @@ export function StaffVolunteersPage() {
   }, [])
 
   const [volunteerUserId, setVolunteerUserId] = useState<number>(volunteerOptions[0]?.userId || 0)
+  const [title, setTitle] = useState('Apoyo en recepcion')
+  const [taskType, setTaskType] = useState<VolunteerTaskType>('Recepcion')
+  const [taskDay, setTaskDay] = useState(new Intl.DateTimeFormat('sv-SE').format(new Date()))
+  const [shiftPeriod, setShiftPeriod] = useState<'AM' | 'PM'>('AM')
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [changingRequestId, setChangingRequestId] = useState<string | null>(null)
+  const [showActiveVolunteers, setShowActiveVolunteers] = useState(true)
+  const [showAssignedTasks, setShowAssignedTasks] = useState(true)
+
   useEffect(() => {
     if (volunteerOptions.length === 0) {
       setVolunteerUserId(0)
@@ -60,13 +70,6 @@ export function StaffVolunteersPage() {
       setVolunteerUserId(volunteerOptions[0].userId)
     }
   }, [volunteerOptions, volunteerUserId])
-
-  const [title, setTitle] = useState('Apoyo en recepcion')
-  const [taskType, setTaskType] = useState<VolunteerTaskType>('Recepcion')
-  const [taskDay, setTaskDay] = useState('2026-04-04')
-  const [shiftPeriod, setShiftPeriod] = useState<'AM' | 'PM'>('AM')
-  const [isCreatingTask, setIsCreatingTask] = useState(false)
-  const [changingRequestId, setChangingRequestId] = useState<string | null>(null)
 
   return (
     <div className="space-y-5">
@@ -143,69 +146,75 @@ export function StaffVolunteersPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="space-y-3">
-          <h2 className="text-xl font-bold text-warm-900">Voluntarios activos</h2>
-          {volunteerRoster.length > 0 ? (
-            volunteerRoster.map((volunteer) => {
-              const workload = workloadMeta(volunteer.currentTasks)
-              return (
-                <div key={volunteer.userId} className="rounded-2xl bg-warm-50 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-warm-900">{volunteer.fullName}</p>
-                      <p className="text-warm-700">
-                        {volunteer.role} · {volunteer.workDays.join(', ') || 'Sin dias'} · {volunteer.startTime} - {volunteer.endTime}
-                      </p>
-                      <p className="text-sm font-semibold text-warm-600">
-                        {volunteer.shiftLabel} · {volunteer.availability}
-                      </p>
+          <button type="button" onClick={() => setShowActiveVolunteers((value) => !value)} className="flex w-full items-center justify-between rounded-2xl bg-warm-50 px-4 py-3 text-left">
+            <h2 className="text-xl font-bold text-warm-900">Voluntarios activos</h2>
+            <ChevronDown className={`h-5 w-5 text-warm-600 transition-transform ${showActiveVolunteers ? 'rotate-180' : ''}`} />
+          </button>
+          {showActiveVolunteers ? (
+            volunteerRoster.length > 0 ? (
+              volunteerRoster.map((volunteer) => {
+                const workload = workloadMeta(volunteer.currentTasks)
+                return (
+                  <div key={volunteer.userId} className="rounded-2xl bg-warm-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-warm-900">{volunteer.fullName}</p>
+                        <p className="text-warm-700">{`${volunteer.role} · ${volunteer.workDays.join(', ') || 'Sin dias'} · ${volunteer.startTime} - ${volunteer.endTime}`}</p>
+                        <p className="text-sm font-semibold text-warm-600">{`${volunteer.shiftLabel} · ${volunteer.availability}`}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
+                    <p className="mt-2 text-sm text-warm-700">Tareas activas: {volunteer.currentTasks}</p>
                   </div>
-                  <p className="mt-2 text-sm text-warm-700">Tareas activas: {volunteer.currentTasks}</p>
-                </div>
-              )
-            })
-          ) : (
-            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay voluntarios activos cargados para la sede seleccionada.</div>
-          )}
+                )
+              })
+            ) : (
+              <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay voluntarios activos cargados para la sede seleccionada.</div>
+            )
+          ) : null}
         </Card>
 
         <Card className="space-y-3">
-          <h2 className="text-xl font-bold text-warm-900">Tareas asignadas</h2>
-          {volunteerTasks.length > 0 ? (
-            volunteerTasks.map((task) => (
-              <div key={task.id} className="space-y-3 rounded-2xl bg-warm-50 p-4">
-                <div>
-                  <p className="font-bold text-warm-900">{task.title}</p>
-                  <p className="text-warm-700">{task.volunteerName} · {task.type} · {formatDisplayDate(task.day)} · turno {task.shift}</p>
-                  <p className="text-sm font-semibold text-warm-600">{task.status}</p>
+          <button type="button" onClick={() => setShowAssignedTasks((value) => !value)} className="flex w-full items-center justify-between rounded-2xl bg-warm-50 px-4 py-3 text-left">
+            <h2 className="text-xl font-bold text-warm-900">Tareas asignadas</h2>
+            <ChevronDown className={`h-5 w-5 text-warm-600 transition-transform ${showAssignedTasks ? 'rotate-180' : ''}`} />
+          </button>
+          {showAssignedTasks ? (
+            volunteerTasks.length > 0 ? (
+              volunteerTasks.map((task) => (
+                <div key={task.id} className="space-y-3 rounded-2xl bg-warm-50 p-4">
+                  <div>
+                    <p className="font-bold text-warm-900">{task.title}</p>
+                    <p className="text-warm-700">{`${task.volunteerName} · ${task.type} · ${formatDisplayDate(task.day)} · turno ${task.shift}`}</p>
+                    <p className="text-sm font-semibold text-warm-600">{task.status}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="block space-y-2">
+                      <span className="text-sm font-semibold text-warm-900">Reasignar a</span>
+                      <select
+                        className="w-full rounded-2xl border border-warm-200 px-4 py-2 text-sm"
+                        defaultValue={String(task.volunteerUserId)}
+                        onChange={async (event) => {
+                          const nextUserId = Number(event.target.value)
+                          if (nextUserId !== task.volunteerUserId) {
+                            await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
+                          }
+                        }}
+                      >
+                        {volunteerOptions.map((item) => (
+                          <option key={`${task.id}-${item.userId}`} value={item.userId}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="block space-y-2">
-                    <span className="text-sm font-semibold text-warm-900">Reasignar a</span>
-                    <select
-                      className="w-full rounded-2xl border border-warm-200 px-4 py-2 text-sm"
-                      defaultValue={String(task.volunteerUserId)}
-                      onChange={async (event) => {
-                        const nextUserId = Number(event.target.value)
-                        if (nextUserId !== task.volunteerUserId) {
-                          await updateVolunteerTaskForUser({ volunteerTaskId: Number(task.id), volunteerUserId: nextUserId })
-                        }
-                      }}
-                    >
-                      {volunteerOptions.map((item) => (
-                        <option key={`${task.id}-${item.userId}`} value={item.userId}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay tareas asignadas para la sede seleccionada.</div>
-          )}
+              ))
+            ) : (
+              <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay tareas asignadas para la sede seleccionada.</div>
+            )
+          ) : null}
         </Card>
       </div>
 
@@ -215,15 +224,19 @@ export function StaffVolunteersPage() {
           <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warm-50 p-4">
             <div>
               <p className="font-bold text-warm-900">{item.volunteerName}</p>
-              <p className="text-warm-700">Turno: {item.requestedShift || 'sin cambio'} · Tarea: {item.requestedTask || 'sin cambio'}</p>
+              <p className="text-warm-700">{`Turno: ${item.requestedShift || 'sin cambio'} · Tarea: ${item.requestedTask || 'sin cambio'}`}</p>
               <p className="text-sm text-warm-600">{item.reason}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-warm-100 px-3 py-1 text-sm font-bold text-warm-800">{item.status}</span>
               {item.status === 'Pendiente' ? (
                 <>
-                  <Button variant="ghost" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'aprobada') } finally { setChangingRequestId(null) } }}>Aprobar</Button>
-                  <Button variant="secondary" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'rechazada') } finally { setChangingRequestId(null) } }}>Rechazar</Button>
+                  <Button variant="ghost" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'aprobada') } finally { setChangingRequestId(null) } }}>
+                    Aprobar
+                  </Button>
+                  <Button variant="secondary" isLoading={changingRequestId === item.id} onClick={async () => { setChangingRequestId(item.id); try { await reviewVolunteerChange(Number(item.id), 'rechazada') } finally { setChangingRequestId(null) } }}>
+                    Rechazar
+                  </Button>
                 </>
               ) : null}
             </div>

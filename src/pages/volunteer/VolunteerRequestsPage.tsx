@@ -73,6 +73,7 @@ export function VolunteerRequestsPage() {
   const [inventoryNeedTitle, setInventoryNeedTitle] = useState('')
   const [inventoryNeedDetail, setInventoryNeedDetail] = useState('')
   const [isSavingInventoryNeed, setIsSavingInventoryNeed] = useState(false)
+  const [isChangeMenuOpen, setIsChangeMenuOpen] = useState(false)
 
   useEffect(() => {
     void refreshConnectedData()
@@ -280,96 +281,109 @@ export function VolunteerRequestsPage() {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Solicitar cambio</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="block space-y-2">
-            <span className="text-base font-semibold text-warm-900">Turno</span>
-            <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedShift} onChange={(event) => setRequestedShift(event.target.value as 'AM' | 'PM')}>
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </label>
-          <label className="block space-y-2">
-            <span className="text-base font-semibold text-warm-900">Tarea</span>
-            <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedTask} onChange={(event) => setRequestedTask(event.target.value as VolunteerTaskType)}>
-              {['Cocina', 'Lavanderia', 'Traslados', 'Acompanamiento', 'Recepcion', 'Limpieza', 'Inventario'].map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-2">
-            <span className="text-base font-semibold text-warm-900">Rol deseado</span>
-            <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedRole} onChange={(event) => setRequestedRole(event.target.value as typeof requestedRole)}>
-              <option value="traslados">traslados</option>
-              <option value="recepcion">recepcion</option>
-                <option value="acompanamiento">acompanamiento</option>
-                <option value="cocina">cocina</option>
-                <option value="lavanderia">lavanderia</option>
-                <option value="limpieza">limpieza</option>
-              </select>
-          </label>
-          <Input label="Hora inicio" type="time" value={requestedStartTime} onChange={(event) => setRequestedStartTime(event.target.value)} />
-          <Input label="Hora fin" type="time" value={requestedEndTime} onChange={(event) => setRequestedEndTime(event.target.value)} />
-          <label className="block space-y-2">
-            <span className="text-base font-semibold text-warm-900">Franja</span>
-            <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedShiftLabel} onChange={(event) => setRequestedShiftLabel(event.target.value as 'manana' | 'tarde' | 'noche')}>
-              <option value="manana">Mañana</option>
-              <option value="tarde">Tarde</option>
-              <option value="noche">Noche</option>
-            </select>
-          </label>
-          <Input label="Motivo" value={reason} onChange={(event) => setReason(event.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <p className="text-base font-semibold text-warm-900">Dias deseados</p>
-          <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
-            {weekDays.map((day) => (
-              <label key={day} className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-3 py-2 text-sm font-semibold text-warm-800">
-                <input
-                  type="checkbox"
-                  checked={requestedWorkDays.includes(day)}
-                  onChange={(event) => setRequestedWorkDays((current) => (event.target.checked ? [...current, day] : current.filter((item) => item !== day)))}
-                />
-                {day}
-              </label>
-            ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-warm-900">Solicitar cambio</h2>
+            <p className="text-sm text-warm-600">Abre el menú cuando necesites pedir ajuste de horario o tarea.</p>
           </div>
+          <Button variant="ghost" onClick={() => setIsChangeMenuOpen((value) => !value)}>
+            {isChangeMenuOpen ? 'Ocultar menú' : 'Abrir menú'}
+          </Button>
         </div>
-        <Button
-          isLoading={isSendingRequest}
-          onClick={async () => {
-            setIsSendingRequest(true)
-            try {
-              await requestVolunteerChange({
-                requestedShiftPeriod: requestedShift,
-                requestedTaskType:
-                  requestedTask === 'Cocina'
-                    ? 'cocina'
-                    : requestedTask === 'Lavanderia'
-                      ? 'lavanderia'
-                      : requestedTask === 'Traslados'
-                        ? 'traslados'
-                        : requestedTask === 'Acompanamiento'
-                          ? 'acompanamiento'
-                          : requestedTask === 'Recepcion'
-                            ? 'recepcion'
-                            : requestedTask === 'Limpieza'
-                              ? 'limpieza'
-                              : 'inventario',
-                requestedRoleName: requestedRole,
-                requestedWorkDays,
-                requestedStartTime,
-                requestedEndTime,
-                requestedShiftLabel,
-                reason,
-              })
-            } finally {
-              setIsSendingRequest(false)
-            }
-          }}
-        >
-          Enviar solicitud
-        </Button>
+
+        {isChangeMenuOpen ? (
+          <div className="space-y-4 rounded-2xl bg-warm-50 p-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Turno</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedShift} onChange={(event) => setRequestedShift(event.target.value as 'AM' | 'PM')}>
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </label>
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Tarea</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedTask} onChange={(event) => setRequestedTask(event.target.value as VolunteerTaskType)}>
+                  {['Cocina', 'Lavanderia', 'Traslados', 'Acompanamiento', 'Recepcion', 'Limpieza', 'Inventario'].map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Rol deseado</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedRole} onChange={(event) => setRequestedRole(event.target.value as typeof requestedRole)}>
+                  <option value="traslados">traslados</option>
+                  <option value="recepcion">recepcion</option>
+                  <option value="acompanamiento">acompanamiento</option>
+                  <option value="cocina">cocina</option>
+                  <option value="lavanderia">lavanderia</option>
+                  <option value="limpieza">limpieza</option>
+                </select>
+              </label>
+              <Input label="Hora inicio" type="time" value={requestedStartTime} onChange={(event) => setRequestedStartTime(event.target.value)} />
+              <Input label="Hora fin" type="time" value={requestedEndTime} onChange={(event) => setRequestedEndTime(event.target.value)} />
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Franja</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={requestedShiftLabel} onChange={(event) => setRequestedShiftLabel(event.target.value as 'manana' | 'tarde' | 'noche')}>
+                  <option value="manana">Mañana</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noche">Noche</option>
+                </select>
+              </label>
+              <Input label="Motivo" value={reason} onChange={(event) => setReason(event.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <p className="text-base font-semibold text-warm-900">Dias deseados</p>
+              <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
+                {weekDays.map((day) => (
+                  <label key={day} className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-3 py-2 text-sm font-semibold text-warm-800">
+                    <input
+                      type="checkbox"
+                      checked={requestedWorkDays.includes(day)}
+                      onChange={(event) => setRequestedWorkDays((current) => (event.target.checked ? [...current, day] : current.filter((item) => item !== day)))}
+                    />
+                    {day}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Button
+              isLoading={isSendingRequest}
+              onClick={async () => {
+                setIsSendingRequest(true)
+                try {
+                  await requestVolunteerChange({
+                    requestedShiftPeriod: requestedShift,
+                    requestedTaskType:
+                      requestedTask === 'Cocina'
+                        ? 'cocina'
+                        : requestedTask === 'Lavanderia'
+                          ? 'lavanderia'
+                          : requestedTask === 'Traslados'
+                            ? 'traslados'
+                            : requestedTask === 'Acompanamiento'
+                              ? 'acompanamiento'
+                              : requestedTask === 'Recepcion'
+                                ? 'recepcion'
+                                : requestedTask === 'Limpieza'
+                                  ? 'limpieza'
+                                  : 'inventario',
+                    requestedRoleName: requestedRole,
+                    requestedWorkDays,
+                    requestedStartTime,
+                    requestedEndTime,
+                    requestedShiftLabel,
+                    reason,
+                  })
+                } finally {
+                  setIsSendingRequest(false)
+                }
+              }}
+            >
+              Enviar solicitud
+            </Button>
+          </div>
+        ) : null}
       </Card>
 
       <div className="grid gap-4">
