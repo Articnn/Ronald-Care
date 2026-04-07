@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, CalendarClock, ClipboardList, Package2, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, CalendarClock, ChevronDown, ClipboardList, Package2, Sparkles } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -9,9 +9,19 @@ import type { InventoryItem, VolunteerRosterItem } from '../../types'
 
 function formatDate(value: string | null) {
   if (!value) return 'Sin caducidad registrada'
-  const date = new Date(`${value}T00:00:00`)
+  const date = new Date(value)
+  if (!Number.isNaN(date.getTime())) {
+    return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+  }
+  const safeDate = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(safeDate.getTime())) return value
+  return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(safeDate)
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+  return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date)
 }
 
 function categoryIcon(category: InventoryItem['category']) {
@@ -91,6 +101,9 @@ export function StaffInventoryPage() {
   const [selectedVolunteerUserId, setSelectedVolunteerUserId] = useState<number>(0)
   const [isSavingMovement, setIsSavingMovement] = useState(false)
   const [isAssigningTask, setIsAssigningTask] = useState(false)
+  const [showKits, setShowKits] = useState(true)
+  const [showCocina, setShowCocina] = useState(true)
+  const [showLimpieza, setShowLimpieza] = useState(true)
 
   const selectedItem = useMemo(
     () => inventory.find((item) => item.id === selectedItemId) || inventory[0] || null,
@@ -128,6 +141,7 @@ export function StaffInventoryPage() {
 
   const lowStockCount = inventory.filter((item) => item.lowStock).length
   const availableWelcomeKits = groupedInventory.kits.find((item) => item.name.toLowerCase().includes('kit bienvenida'))?.stock || 0
+  const pendingReports = inventoryReports.filter((report) => report.status === 'Pendiente')
 
   return (
     <div className="space-y-5">
@@ -155,62 +169,6 @@ export function StaffInventoryPage() {
           <p className="text-sm text-warm-600">Segun el insumo seleccionado y la sede actual.</p>
         </Card>
       </div>
-
-      <div className="space-y-5">
-        {[
-          { title: 'Kits y bienvenida', items: groupedInventory.kits },
-          { title: 'Cocina y alimentos', items: groupedInventory.cocina },
-          { title: 'Limpieza e instrumentos', items: groupedInventory.limpieza },
-        ].map((group) => (
-          <div key={group.title} className="space-y-3">
-            <h2 className="text-xl font-bold text-warm-900">{group.title}</h2>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {group.items.map((item) => (
-                <InventoryCard key={item.id} item={item} isSelected={selectedItem?.id === item.id} onSelect={() => setSelectedItemId(item.id)} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold text-warm-900">Reportes operativos de voluntariado</h2>
-            <p className="text-sm text-warm-600">Faltantes reales reportados por recepción, cocina, limpieza y lavandería en la sede actual.</p>
-          </div>
-          <span className="rounded-full bg-warm-100 px-3 py-1 text-sm font-bold text-warm-700">{inventoryReports.filter((report) => report.status === 'Pendiente').length} pendientes</span>
-        </div>
-
-        {inventoryReports.length > 0 ? (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {inventoryReports.map((report) => (
-              <div key={report.id} className="rounded-2xl bg-warm-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-warm-900">{report.title}</p>
-                    <p className="text-sm text-warm-700">{report.category} · {report.volunteerName}</p>
-                    <p className="mt-1 text-sm text-warm-600">{new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(report.createdAt))}</p>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-sm font-bold ${report.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {report.status}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-warm-800">{report.detail}</p>
-                {report.status === 'Pendiente' ? (
-                  <div className="mt-4">
-                    <Button variant="secondary" onClick={() => void resolveInventoryNeedReport(Number(report.id))}>
-                      Marcar como atendido
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">Todavía no hay reportes operativos registrados para esta sede.</div>
-        )}
-      </Card>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Card className="space-y-4">
@@ -296,11 +254,11 @@ export function StaffInventoryPage() {
                 <p className="font-bold text-warm-900">{selectedItem.name}</p>
                 <p className="text-sm text-warm-700">
                   {selectedItem.category === 'Kit'
-                    ? 'Se asigna a recepcion.'
+                    ? 'Se asigna a recepción.'
                     : selectedItem.category === 'Cocina'
                       ? 'Se asigna a voluntariado de cocina.'
                       : selectedItem.category === 'Limpieza'
-                        ? 'Se asigna a limpieza o lavanderia.'
+                        ? 'Se asigna a limpieza o lavandería.'
                         : 'Se puede asignar a voluntariado operativo.'}
                 </p>
               </div>
@@ -359,27 +317,76 @@ export function StaffInventoryPage() {
                   }
                 }}
               >
-                Asignar tarea y alertar voluntario
+                Asignar apoyo real
               </Button>
             </>
           ) : null}
-
-          <div className="space-y-3">
-            <h3 className="text-lg font-bold text-warm-900">Caducidades proximas</h3>
-            {expiringItems.length > 0 ? (
-              expiringItems.map((item) => (
-                <div key={`expiry-${item.id}`} className="rounded-2xl bg-amber-50 p-4">
-                  <p className="font-bold text-warm-900">{item.name}</p>
-                  <p className="text-sm text-warm-700">Caduca: {formatDate(item.expiryDate)}</p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay alimentos proximos a vencer en esta sede.</div>
-            )}
-          </div>
         </Card>
+      </div>
+
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-warm-900">Reportes operativos de voluntariado</h2>
+            <p className="text-sm text-warm-600">Faltantes reales reportados por recepción, cocina, limpieza y lavandería en la sede actual.</p>
+          </div>
+          <span className="rounded-full bg-warm-100 px-3 py-1 text-sm font-bold text-warm-700">{pendingReports.length} pendientes</span>
+        </div>
+
+        {inventoryReports.length > 0 ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {inventoryReports.map((report) => (
+              <div key={report.id} className="rounded-2xl bg-warm-50 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-warm-900">{report.title}</p>
+                    <p className="text-sm text-warm-700">{report.category} · {report.volunteerName}</p>
+                    <p className="mt-1 text-sm text-warm-600">{formatDateTime(report.createdAt)}</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-sm font-bold ${report.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {report.status}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-warm-800">{report.detail}</p>
+                {report.status === 'Pendiente' ? (
+                  <div className="mt-4">
+                    <Button variant="secondary" onClick={() => void resolveInventoryNeedReport(Number(report.id))}>
+                      Marcar como atendido
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">Todavía no hay reportes operativos registrados para esta sede.</div>
+        )}
+      </Card>
+
+      <div className="space-y-5">
+        {[
+          { title: 'Kits y bienvenida', items: groupedInventory.kits, open: showKits, toggle: () => setShowKits((value) => !value) },
+          { title: 'Cocina y alimentos', items: groupedInventory.cocina, open: showCocina, toggle: () => setShowCocina((value) => !value) },
+          { title: 'Limpieza e instrumentos', items: groupedInventory.limpieza, open: showLimpieza, toggle: () => setShowLimpieza((value) => !value) },
+        ].map((group) => (
+          <div key={group.title} className="space-y-3">
+            <button type="button" onClick={group.toggle} className="flex w-full items-center justify-between rounded-2xl bg-warm-50 px-4 py-3 text-left">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-warm-900">{group.title}</h2>
+                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-warm-700 shadow-soft">{group.items.length} items</span>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-warm-600 transition-transform ${group.open ? 'rotate-180' : ''}`} />
+            </button>
+            {group.open ? (
+              <div className="grid gap-4 lg:grid-cols-3">
+                {group.items.map((item) => (
+                  <InventoryCard key={item.id} item={item} isSelected={selectedItem?.id === item.id} onSelect={() => setSelectedItemId(item.id)} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
-

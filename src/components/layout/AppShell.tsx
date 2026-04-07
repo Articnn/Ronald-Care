@@ -44,7 +44,7 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   ],
   staff: [
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],

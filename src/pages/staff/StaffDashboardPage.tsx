@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { BedDouble, ClipboardList, HeartHandshake, Route, ShieldCheck, Users, UserCircle2, Warehouse } from 'lucide-react'
+import { BedDouble, ClipboardList, HeartHandshake, Route, ShieldCheck, Users, UserCircle2, Warehouse, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -7,7 +7,7 @@ import { SectionHeader } from '../../components/ui/SectionHeader'
 import { useAppState } from '../../context/AppContext'
 import { getRooms, type Room } from '../../lib/api'
 
-type ExpandedPanel = 'requests' | 'volunteers' | 'inventory' | 'kiosk' | 'profile' | null
+type ExpandedPanel = 'requests' | 'volunteers' | null
 
 const weekdayMap = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'] as const
 
@@ -57,8 +57,8 @@ function DashboardMetric({
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-36 animate-pulse rounded-3xl bg-white/80 shadow-soft" />
         ))}
       </div>
@@ -143,7 +143,7 @@ export function StaffDashboardPage() {
     <div className="space-y-6">
       <SectionHeader title="Centro de control staff" subtitle={`Vista principal operativa para ${site}. Todo lo que ves viene de datos reales de la sede.`} />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <DashboardMetric
           icon={<ClipboardList className="h-5 w-5" />}
           label="Solicitudes pendientes"
@@ -180,7 +180,7 @@ export function StaffDashboardPage() {
               <p className="text-sm text-warm-600">Top 5 solicitudes más urgentes del día con prioridad visual.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={() => setExpandedPanel((value) => (value === 'requests' ? null : 'requests'))}>
+              <Button variant="ghost" onClick={() => setExpandedPanel('requests')}>
                 Ver todas
               </Button>
               <Link to="/staff/requests">
@@ -197,7 +197,7 @@ export function StaffDashboardPage() {
                   <button
                     key={request.id}
                     type="button"
-                    onClick={() => setExpandedPanel((value) => (value === 'requests' ? null : 'requests'))}
+                    onClick={() => setExpandedPanel('requests')}
                     className="w-full rounded-2xl bg-warm-50 p-4 text-left transition hover:-translate-y-0.5"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -214,24 +214,6 @@ export function StaffDashboardPage() {
               <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay solicitudes urgentes registradas por ahora.</div>
             )}
           </div>
-
-          {expandedPanel === 'requests' ? (
-            <div className="rounded-2xl border border-warm-200 bg-white p-4">
-              <p className="mb-3 text-base font-semibold text-warm-900">Resumen ampliado</p>
-              <div className="grid gap-3 md:grid-cols-2">
-                {requests
-                  .filter((request) => request.status !== 'Resuelta')
-                  .slice(0, 8)
-                  .map((request) => (
-                    <div key={`expanded-${request.id}`} className="rounded-2xl bg-warm-50 p-4">
-                      <p className="font-bold text-warm-900">{request.title}</p>
-                      <p className="text-sm text-warm-700">{request.type} · {request.status}</p>
-                      <p className="text-sm text-warm-600">{request.assignedTo}</p>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ) : null}
         </Card>
 
         <Card className="space-y-4">
@@ -241,7 +223,7 @@ export function StaffDashboardPage() {
               <p className="text-sm text-warm-600">Disponibilidad real según carga de tareas activas.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={() => setExpandedPanel((value) => (value === 'volunteers' ? null : 'volunteers'))}>
+              <Button variant="ghost" onClick={() => setExpandedPanel('volunteers')}>
                 Gestionar
               </Button>
               <Link to="/staff/volunteers">
@@ -258,7 +240,7 @@ export function StaffDashboardPage() {
                   <button
                     key={volunteer.userId}
                     type="button"
-                    onClick={() => setExpandedPanel((value) => (value === 'volunteers' ? null : 'volunteers'))}
+                    onClick={() => setExpandedPanel('volunteers')}
                     className="w-full rounded-2xl bg-warm-50 p-4 text-left transition hover:-translate-y-0.5"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -275,45 +257,23 @@ export function StaffDashboardPage() {
               <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay voluntarios con turno registrado para hoy.</div>
             )}
           </div>
-
-          {expandedPanel === 'volunteers' ? (
-            <div className="rounded-2xl border border-warm-200 bg-white p-4">
-              <p className="mb-3 text-base font-semibold text-warm-900">Cobertura del día</p>
-              <div className="space-y-3">
-                {volunteersToday.map((volunteer) => {
-                  const workload = workloadMeta(volunteer.currentTasks)
-                  return (
-                    <div key={`detail-${volunteer.userId}`} className="rounded-2xl bg-warm-50 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-warm-900">{volunteer.fullName}</p>
-                          <p className="text-sm text-warm-700">{volunteer.role} · {volunteer.workDays.join(', ')}</p>
-                        </div>
-                        <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
         </Card>
       </div>
 
       <Card className="space-y-4">
         <div>
           <h2 className="text-2xl font-bold text-warm-900">Accesos operativos</h2>
-          <p className="text-sm text-warm-600">Las herramientas principales de staff viven aquí para mantener el header limpio y el flujo mejor organizado.</p>
+          <p className="text-sm text-warm-600">Las herramientas principales de staff viven aquí para mantener mejor organizado el flujo operativo.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <Link to="/staff/reception" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
+          <Link to="/staff/kiosk" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#950606] shadow-soft">
                 <ClipboardList className="h-5 w-5" />
               </span>
               <div>
-                <p className="font-bold text-warm-900">Recepción</p>
-                <p className="text-sm text-warm-600">Ingreso y seguimiento inicial</p>
+                <p className="font-bold text-warm-900">Ayuda asistida</p>
+                <p className="text-sm text-warm-600">Kiosko interno y consulta por código</p>
               </div>
             </div>
           </Link>
@@ -368,15 +328,82 @@ export function StaffDashboardPage() {
         </div>
       </Card>
 
-      <div className="rounded-3xl bg-white p-5 shadow-soft">
+      <Card className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <ShieldCheck className="h-5 w-5 text-[#950606]" />
           <p className="text-lg font-bold text-warm-900">Centro de control activo</p>
         </div>
-        <p className="mt-2 text-sm text-warm-600">
-          Este dashboard ya concentra solicitudes, voluntarios, familias, habitaciones e inventario con datos reales del backend. Desde aquí puedes abrir cada módulo completo cuando necesites operar más a detalle.
+        <p className="text-sm text-warm-600">
+          Este dashboard concentra solicitudes, voluntarios, familias y habitaciones con datos reales del backend. Desde aquí puedes abrir cada módulo completo cuando necesites operar a detalle.
         </p>
-      </div>
+      </Card>
+
+      {expandedPanel ? (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-warm-900/35 px-4">
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-6 shadow-soft">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-warm-900">
+                  {expandedPanel === 'requests' ? 'Solicitudes activas' : 'Voluntarios de hoy'}
+                </h2>
+                <p className="text-sm text-warm-600">
+                  {expandedPanel === 'requests'
+                    ? 'Vista centrada con el resumen completo de solicitudes activas.'
+                    : 'Vista centrada con la cobertura completa de voluntariado del día.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedPanel(null)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-warm-700 transition hover:bg-warm-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {expandedPanel === 'requests' ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {requests
+                  .filter((request) => request.status !== 'Resuelta')
+                  .slice(0, 10)
+                  .map((request) => {
+                    const urgency = urgencyMeta(request.urgency)
+                    return (
+                      <div key={`modal-request-${request.id}`} className="rounded-2xl bg-warm-50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-warm-900">{request.title}</p>
+                            <p className="text-sm text-warm-700">{request.type} · {request.status}</p>
+                            <p className="text-sm text-warm-600">{request.assignedTo}</p>
+                          </div>
+                          <span className={`rounded-full px-3 py-1 text-sm font-bold ${urgency.className}`}>{request.urgency}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {volunteersToday.map((volunteer) => {
+                  const workload = workloadMeta(volunteer.currentTasks)
+                  return (
+                    <div key={`modal-volunteer-${volunteer.userId}`} className="rounded-2xl bg-warm-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-warm-900">{volunteer.fullName}</p>
+                          <p className="text-sm text-warm-700">{volunteer.role} · {volunteer.workDays.join(', ')}</p>
+                          <p className="text-sm text-warm-600">{volunteer.startTime} - {volunteer.endTime}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
