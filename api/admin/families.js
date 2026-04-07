@@ -33,7 +33,7 @@ export const pendingReferralsHandler = withApi({ methods: ['GET'], roles: ['supe
   return result.recordset
 })
 
-export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['superadmin', 'admin'] }, async (req) => {
+export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['superadmin', 'admin', 'staff'] }, async (req) => {
   required(req.body, ['referralId'])
   const pool = await getPool()
   const referralId = toInt(req.body.referralId, 'referralId')
