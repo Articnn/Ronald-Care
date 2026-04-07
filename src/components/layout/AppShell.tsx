@@ -44,14 +44,8 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   ],
   staff: [
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Habitaciones', to: '/staff/rooms', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Viajes', to: '/staff/trips', icon: <Route className="h-4 w-4" /> },
-    { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
     { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
-    { label: 'Analitica', to: '/staff/analytics', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   volunteer: [
