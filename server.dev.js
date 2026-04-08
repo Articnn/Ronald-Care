@@ -16,6 +16,8 @@ import referralsStatus from './api/referrals/status.js'
 import familiesCheckin from './api/families/checkin.js'
 import familiesIndex from './api/families/index.js'
 import familiesStatus from './api/families/status.js'
+import familiesAssignRoom from './api/families/assign-room.js'
+import familiesReleaseRoom from './api/families/release-room.js'
 import requestsIndex from './api/requests/index.js'
 import requestsAssign from './api/requests/assign.js'
 import requestsResolve from './api/requests/resolve.js'
@@ -68,6 +70,8 @@ const routes = {
   'GET /api/families': familiesIndex,
   'PATCH /api/families/checkin': familiesCheckin,
   'GET /api/families/status': familiesStatus,
+  'PATCH /api/families/assign-room': familiesAssignRoom,
+  'POST /api/families/release-room': familiesReleaseRoom,
   'GET /api/kiosk/status': kioskStatus,
   'GET /api/requests': requestsIndex,
   'POST /api/requests': requestsIndex,

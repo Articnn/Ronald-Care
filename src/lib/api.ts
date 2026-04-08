@@ -552,6 +552,14 @@ export function updateRoom(token: string, payload: { roomId: number; availableAt
   return apiRequest<Room>('/staff/rooms', { method: 'PATCH', token, body: payload })
 }
 
+export function assignRoomToFamily(token: string, payload: { familyId: number; roomId: number }) {
+  return apiRequest<{ success: boolean; data: { familyId: number; roomId: number; roomCode: string; caregiverName: string; familyLastName: string } }>('/families/assign-room', { method: 'PATCH', token, body: payload })
+}
+
+export function releaseRoomFromFamily(token: string, payload: { familyId: number }) {
+  return apiRequest<{ success: boolean; data: { familyId: number; roomId: number; roomCode: string; caregiverName: string; familyLastName: string; newRoomStatus: string } }>('/families/release-room', { method: 'POST', token, body: payload })
+}
+
 export interface BackendInventoryReport {
   InventoryReportId: number
   SiteId: number

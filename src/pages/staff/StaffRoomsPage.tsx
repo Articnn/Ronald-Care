@@ -1,10 +1,10 @@
 ﻿import { useMemo, useState, useEffect } from 'react'
-import { BedDouble, DoorOpen, MapPin, Users, Clock3, ShieldAlert, Sparkles } from 'lucide-react'
+import { BedDouble, DoorOpen, MapPin, Users, Clock3, ShieldAlert, Sparkles, UserCheck, LogOut } from 'lucide-react'
 import { SectionHeader } from '../../components/ui/SectionHeader'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { useAppState } from '../../context/AppContext'
-import { getRooms, updateRoom } from '../../lib/api'
+import { getRooms, updateRoom, assignRoomToFamily, releaseRoomFromFamily } from '../../lib/api'
 import type { Room } from '../../lib/api'
 
 function isRoomInMaintenance(room: Room) {
@@ -101,6 +101,18 @@ function roomTypeIcon(room: Room) {
   return room.RoomType === 'especial' ? <Sparkles className="h-4 w-4 text-gold-500" /> : <BedDouble className="h-4 w-4 text-warm-400" />
 }
 
+interface Family {
+  FamilyId: number
+  CaregiverName: string
+  FamilyLastName: string
+  AdmissionStatus: 'pendiente' | 'checkin_completado'
+  RoomId: number | null
+  RoomCode: string | null
+  SiteId: number
+  SiteName: string
+  CheckInCompletedAt: string | null
+}
+
 function RoomCard({
   room,
   isSelected,
@@ -147,6 +159,7 @@ function RoomCard({
 export function StaffRoomsPage() {
   const { authToken, currentUser, volunteerRoster, createVolunteerTaskForUser } = useAppState()
   const [rooms, setRooms] = useState<Room[]>([])
+  const [families, setFamilies] = useState<Family[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
@@ -155,6 +168,10 @@ export function StaffRoomsPage() {
   const [roomNote, setRoomNote] = useState('')
   const [selectedVolunteerUserId, setSelectedVolunteerUserId] = useState<number>(0)
   const [isSaving, setIsSaving] = useState(false)
+  const [roomStatusEdit, setRoomStatusEdit] = useState<'disponible' | 'mantenimiento'>('disponible')
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedFamilyId, setSelectedFamilyId] = useState<number | null>(null)
+  const [assignError, setAssignError] = useState<string | null>(null)
 
   const loadRooms = async () => {
     if (!authToken) return
@@ -171,8 +188,24 @@ export function StaffRoomsPage() {
     }
   }
 
+  const loadFamilies = async () => {
+    if (!authToken) return
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8787/api'}/families?siteId=${currentUser?.siteId ?? ''}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setFamilies(data.data)
+      }
+    } catch {
+      // Silently fail, families will just not be shown
+    }
+  }
+
   useEffect(() => {
     void loadRooms()
+    void loadFamilies()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, currentUser?.siteId])
 
@@ -182,7 +215,56 @@ export function StaffRoomsPage() {
     if (!selectedRoom) return
     setRoomNote(selectedRoom.RoomNote || '')
     setAvailableInMinutes(diffMinutesFromNow(selectedRoom.AvailableAt))
+    setRoomStatusEdit(selectedRoom.RoomStatus === 'mantenimiento' ? 'mantenimiento' : 'disponible')
   }, [selectedRoom])
+
+  const availableFamilies = useMemo(() => {
+    return families
+      .filter(f => f.AdmissionStatus === 'checkin_completado' && (f.RoomId === null || f.RoomId === undefined))
+      .sort((a, b) => {
+        const dateA = a.CheckInCompletedAt ? new Date(a.CheckInCompletedAt).getTime() : 0
+        const dateB = b.CheckInCompletedAt ? new Date(b.CheckInCompletedAt).getTime() : 0
+        return dateA - dateB
+      })
+  }, [families])
+
+  const handleAssignRoom = async () => {
+    if (!authToken || !selectedFamilyId || !selectedRoom) return
+    setAssignError(null)
+    setIsSaving(true)
+    try {
+      await assignRoomToFamily(authToken, { familyId: selectedFamilyId, roomId: selectedRoom.RoomId })
+      await loadRooms()
+      await loadFamilies()
+      setShowAssignModal(false)
+      setSelectedFamilyId(null)
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : 'Error al asignar habitación')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleReleaseRoom = async () => {
+    if (!authToken || !selectedRoom) return
+    const familyInRoom = families.find(f => f.RoomId === selectedRoom.RoomId)
+    if (!familyInRoom) return
+
+    if (!window.confirm(`¿Liberar habitación ${selectedRoom.RoomCode}? La familia ${familyInRoom.CaregiverName} ${familyInRoom.FamilyLastName} perderá su asignación.`)) {
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      await releaseRoomFromFamily(authToken, { familyId: familyInRoom.FamilyId })
+      await loadRooms()
+      await loadFamilies()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al liberar habitación')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const cleaningVolunteers = useMemo(
     () =>
@@ -225,6 +307,15 @@ export function StaffRoomsPage() {
               <StatusBadge room={selectedRoom} />
             </div>
 
+            {selectedRoom.assignedfamilies && (
+              <div className="rounded-xl bg-warm-50 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-warm-700">
+                  <Users className="h-4 w-4" />
+                  <span>Familias ocupando: {selectedRoom.assignedfamilies}</span>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl bg-warm-50 p-4">
                 <p className="text-sm font-semibold text-warm-700">Tiempo estimado para liberarse</p>
@@ -239,12 +330,19 @@ export function StaffRoomsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Input label="Disponible en minutos" type="number" min="0" value={availableInMinutes} onChange={(event) => setAvailableInMinutes(event.target.value)} />
               <label className="block space-y-2">
-                <span className="text-base font-semibold text-warm-900">Tipo de incidencia</span>
-                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={roomIssue} onChange={(event) => setRoomIssue(event.target.value as 'limpieza' | 'accidente' | 'mantenimiento')}>
-                  <option value="limpieza">Limpieza</option>
-                  <option value="accidente">Accidente</option>
+                <span className="text-base font-semibold text-warm-900">Estado de la habitación</span>
+                <select
+                  className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg"
+                  value={roomStatusEdit}
+                  onChange={(event) => setRoomStatusEdit(event.target.value as 'disponible' | 'mantenimiento')}
+                  disabled={selectedRoom.RoomStatus === 'ocupada'}
+                >
+                  <option value="disponible">Disponible</option>
                   <option value="mantenimiento">Mantenimiento</option>
                 </select>
+                {selectedRoom.RoomStatus === 'ocupada' && (
+                  <p className="text-xs text-warm-500">Libera la habitación primero para cambiar su estado.</p>
+                )}
               </label>
             </div>
 
@@ -255,26 +353,53 @@ export function StaffRoomsPage() {
               placeholder="Ej. limpieza profunda, cambio de sabanas, incidente menor..."
             />
 
-            <Button
-              isLoading={isSaving}
-              onClick={async () => {
-                if (!authToken) return
-                setIsSaving(true)
-                try {
-                  await updateRoom(authToken, {
-                    roomId: selectedRoom.RoomId,
-                    availableAt: buildAvailableAt(availableInMinutes),
-                    roomNote,
-                    roomStatus: 'mantenimiento',
-                  })
-                  await loadRooms()
-                } finally {
-                  setIsSaving(false)
-                }
-              }}
-            >
-              Guardar estado de la habitacion
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                isLoading={isSaving}
+                onClick={async () => {
+                  if (!authToken) return
+                  setIsSaving(true)
+                  try {
+                    await updateRoom(authToken, {
+                      roomId: selectedRoom.RoomId,
+                      availableAt: buildAvailableAt(availableInMinutes),
+                      roomNote,
+                      roomStatus: roomStatusEdit,
+                    })
+                    await loadRooms()
+                  } finally {
+                    setIsSaving(false)
+                  }
+                }}
+              >
+                Guardar estado de la habitacion
+              </Button>
+
+              {selectedRoom.RoomStatus === 'ocupada' && (
+                <Button variant="secondary" onClick={handleReleaseRoom} disabled={isSaving}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Liberar habitación
+                </Button>
+              )}
+            </div>
+
+            {selectedRoom.RoomStatus === 'disponible' && availableFamilies.length > 0 && (
+              <div className="rounded-xl border-2 border-dashed border-[#950606] bg-[#950606]/5 p-4">
+                <div className="flex items-center gap-2 text-[#950606]">
+                  <UserCheck className="h-5 w-5" />
+                  <p className="font-semibold">Habitación disponible para asignar</p>
+                </div>
+                <p className="mt-1 text-sm text-warm-600">Hay {availableFamilies.length} familia(s) con check-in completado sin habitación asignada.</p>
+                <Button
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => setShowAssignModal(true)}
+                >
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Asignar familia a esta habitación
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 rounded-2xl bg-white p-5 shadow-soft">
@@ -283,6 +408,15 @@ export function StaffRoomsPage() {
               <h2 className="text-xl font-bold text-warm-900">Asignar apoyo a voluntariado</h2>
             </div>
             <p className="text-sm text-warm-600">Si la habitacion requiere limpieza o atencion por incidente, puedes mandar la tarea a voluntariado de la misma sede. La alerta le llega automaticamente al asignar la tarea.</p>
+
+            <label className="block space-y-2">
+              <span className="text-base font-semibold text-warm-900">Tipo de incidencia</span>
+              <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={roomIssue} onChange={(event) => setRoomIssue(event.target.value as 'limpieza' | 'accidente' | 'mantenimiento')}>
+                <option value="limpieza">Limpieza</option>
+                <option value="accidente">Accidente</option>
+                <option value="mantenimiento">Mantenimiento</option>
+              </select>
+            </label>
 
             <label className="block space-y-2">
               <span className="text-base font-semibold text-warm-900">Voluntario de apoyo</span>
@@ -348,6 +482,64 @@ export function StaffRoomsPage() {
       {isLoading ? <div className="rounded-2xl bg-warm-50 p-8 text-center text-warm-700">Cargando habitaciones...</div> : null}
       {!isLoading && error ? <div className="rounded-2xl bg-warm-50 p-8 text-center text-warm-700">No pudimos cargar las habitaciones.</div> : null}
       {!isLoading && !error && rooms.length === 0 ? <div className="rounded-2xl bg-warm-50 p-8 text-center text-warm-700">No hay habitaciones configuradas para esta sede.</div> : null}
+
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center gap-2">
+              <UserCheck className="h-6 w-6 text-[#950606]" />
+              <h3 className="text-xl font-bold text-warm-900">Asignar familia a {selectedRoom?.RoomCode}</h3>
+            </div>
+
+            {assignError && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                {assignError}
+              </div>
+            )}
+
+            <label className="block space-y-2">
+              <span className="text-base font-semibold text-warm-900">Seleccionar familia</span>
+              <select
+                className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg"
+                value={selectedFamilyId ?? ''}
+                onChange={(e) => setSelectedFamilyId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">-- Seleccione una familia --</option>
+                {availableFamilies.map((family) => {
+                  const since = family.CheckInCompletedAt
+                    ? new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(family.CheckInCompletedAt))
+                    : null
+                  return (
+                    <option key={family.FamilyId} value={family.FamilyId}>
+                      {`${family.CaregiverName} ${family.FamilyLastName}${since ? ` · check-in ${since}` : ''}`}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+
+            <div className="mt-6 flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowAssignModal(false)
+                  setSelectedFamilyId(null)
+                  setAssignError(null)
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAssignRoom}
+                disabled={!selectedFamilyId}
+                isLoading={isSaving}
+              >
+                Confirmar asignación
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
