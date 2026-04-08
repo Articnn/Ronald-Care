@@ -42,6 +42,10 @@ export interface FamilyProfile {
   familyLastName: string
   site: string
   room: string
+  plannedRoom?: string
+  stayDays?: number
+  plannedCheckoutDate?: string | null
+  automationStatus?: 'Pendiente' | 'Sin cupo' | 'Preparacion' | 'Reservada' | 'Ocupada' | 'Checkout completado'
   idVerified: boolean
   regulationAccepted: boolean
   simpleSignature: string
@@ -50,6 +54,20 @@ export interface FamilyProfile {
   pin: string
   admissionStatus: 'Pendiente' | 'Check-in completado'
   isActive?: boolean
+}
+
+export interface FamilyStayAutomation {
+  familyId: number
+  caregiverName: string
+  familyLastName: string
+  site: string
+  arrivalDate: string
+  stayDays: number
+  plannedCheckoutDate: string | null
+  automationStatus: 'Pendiente' | 'Sin cupo' | 'Preparacion' | 'Reservada' | 'Ocupada' | 'Checkout completado'
+  plannedRoomCode: string | null
+  assignedVolunteerName?: string | null
+  message: string
 }
 
 export interface Room {

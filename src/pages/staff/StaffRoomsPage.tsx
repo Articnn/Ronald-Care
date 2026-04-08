@@ -1,18 +1,33 @@
 ﻿import { useMemo, useState, useEffect } from 'react'
-import { BedDouble, DoorOpen, MapPin, Users, Clock3, ShieldAlert, Sparkles } from 'lucide-react'
+import {
+  BedDouble,
+  CheckCircle2,
+  Clock3,
+  DoorOpen,
+  LoaderCircle,
+  MapPin,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import { SectionHeader } from '../../components/ui/SectionHeader'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { useAppState } from '../../context/AppContext'
-import { getRooms, updateRoom } from '../../lib/api'
-import type { Room } from '../../lib/api'
+import { confirmRoomArrivalAssignment, getRoomArrivalFlow, getRooms, releaseRoom, updateRoom } from '../../lib/api'
+import type { Room, RoomArrivalFlow } from '../../lib/api'
 
 function isRoomInMaintenance(room: Room) {
   return room.RoomStatus === 'mantenimiento'
 }
 
+function isRoomReserved(room: Room) {
+  return room.RoomStatus === 'reservada'
+}
+
 function isRoomOccupied(room: Room) {
-  return room.OccupiedCount > 0 || isRoomInMaintenance(room)
+  return room.RoomStatus === 'ocupada' || room.RoomStatus === 'reservada' || isRoomInMaintenance(room) || room.OccupiedCount > 0
 }
 
 function StatusBadge({ room }: { room: Room }) {
@@ -24,18 +39,26 @@ function StatusBadge({ room }: { room: Room }) {
       </span>
     )
   }
-  if (!room.assignedfamilies && room.OccupiedCount === 0) {
+  if (isRoomReserved(room)) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-4 py-1.5 text-sm font-semibold text-green-800">
-        <span className="h-2 w-2 rounded-full bg-green-500" />
-        Disponible
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-4 py-1.5 text-sm font-semibold text-yellow-800">
+        <span className="h-2 w-2 rounded-full bg-yellow-500" />
+        Reservada
+      </span>
+    )
+  }
+  if (room.RoomStatus === 'ocupada') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-1.5 text-sm font-semibold text-red-800">
+        <span className="h-2 w-2 rounded-full bg-red-500" />
+        Ocupada
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-1.5 text-sm font-semibold text-red-800">
-      <span className="h-2 w-2 rounded-full bg-red-500" />
-      Llena
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-4 py-1.5 text-sm font-semibold text-green-800">
+      <span className="h-2 w-2 rounded-full bg-green-500" />
+      Disponible
     </span>
   )
 }
@@ -47,7 +70,7 @@ function OccupancyMeter({ rooms }: { rooms: Room[] }) {
   const pct = total > 0 ? (occupied / total) * 100 : 0
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-soft space-y-3">
+    <div className="space-y-3 rounded-2xl bg-white p-5 shadow-soft">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-warm-700">Ocupacion general de la sede</p>
         <p className="text-sm font-bold text-warm-900">
@@ -78,6 +101,16 @@ function formatDateTime(value?: string | null) {
   }).format(date)
 }
 
+function formatDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
 function buildAvailableAt(minutes: string) {
   const parsed = Number(minutes || 0)
   if (!parsed || parsed < 0) return null
@@ -101,52 +134,114 @@ function roomTypeIcon(room: Room) {
   return room.RoomType === 'especial' ? <Sparkles className="h-4 w-4 text-gold-500" /> : <BedDouble className="h-4 w-4 text-warm-400" />
 }
 
+function FlowBadge({ flow }: { flow: RoomArrivalFlow }) {
+  if (flow.FlowStatus === 'ready') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
+        <CheckCircle2 className="h-4 w-4" />
+        Lista para asignar
+      </span>
+    )
+  }
+
+  if (flow.FlowStatus === 'preparing') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
+        <LoaderCircle className="h-4 w-4" />
+        En preparación
+      </span>
+    )
+  }
+
+  if (flow.FlowStatus === 'assigned' || flow.FlowStatus === 'reserved') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800">
+        <CheckCircle2 className="h-4 w-4" />
+        Asignada
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-warm-100 px-3 py-1 text-sm font-semibold text-warm-700">
+      <Search className="h-4 w-4" />
+      Seguimiento
+    </span>
+  )
+}
+
 function RoomCard({
   room,
   isSelected,
   onSelect,
+  onRelease,
+  isReleasing,
 }: {
   room: Room
   isSelected: boolean
   onSelect: () => void
+  onRelease: () => void
+  isReleasing: boolean
 }) {
+  const familyName = room.assignedfamilies
+  const familyLabel = room.AssignedFamilyLastName ? `Habitación de familia ${room.AssignedFamilyLastName}` : null
+  const canRelease = room.RoomStatus === 'ocupada' && room.AssignedFamilyAdmissionStatus === 'checkin_completado'
+
   return (
-    <button type="button" onClick={onSelect} className={`overflow-hidden rounded-2xl bg-white text-left shadow-soft transition ${isSelected ? 'ring-2 ring-[#950606]' : 'hover:-translate-y-0.5'}`}>
-      <div className="space-y-2 border-b border-warm-100 p-5">
-        <div className="flex items-center gap-2">
-          <DoorOpen className="h-5 w-5 shrink-0 text-[#950606]" />
-          <h2 className="truncate text-2xl font-bold text-warm-900">{room.RoomCode}</h2>
+    <div className={`overflow-hidden rounded-2xl bg-white shadow-soft transition ${isSelected ? 'ring-2 ring-[#950606]' : 'hover:-translate-y-0.5'}`}>
+      <button type="button" onClick={onSelect} className="w-full text-left">
+        <div className="space-y-2 border-b border-warm-100 p-5">
+          <div className="flex items-center gap-2">
+            <DoorOpen className="h-5 w-5 shrink-0 text-[#950606]" />
+            <h2 className="truncate text-2xl font-bold text-warm-900">{room.RoomCode}</h2>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-warm-500">
+            <MapPin className="h-4 w-4 shrink-0 text-[#950606]" />
+            <span className="truncate">{room.SiteName}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-warm-700">
+            {roomTypeIcon(room)}
+            <span>{roomTypeLabel(room)}</span>
+          </div>
+          <div className="flex items-start gap-1.5 text-sm text-warm-600">
+            <Users className="mt-0.5 h-4 w-4 shrink-0 text-[#950606]" />
+            {familyName ? (
+              <div className="space-y-0.5">
+                <p className="font-semibold text-warm-800">{familyName}</p>
+                <p>{familyLabel || 'Habitación con familia asignada'}</p>
+              </div>
+            ) : (
+              <span className="italic text-warm-400">Sin familia asignada</span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-sm text-warm-500">
-          <MapPin className="h-4 w-4 shrink-0 text-[#950606]" />
-          <span className="truncate">{room.SiteName}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-warm-700">
-          {roomTypeIcon(room)}
-          <span>{roomTypeLabel(room)}</span>
-        </div>
-        <div className="flex items-start gap-1.5 text-sm text-warm-600">
-          <Users className="mt-0.5 h-4 w-4 shrink-0 text-[#950606]" />
-          {room.assignedfamilies ? <span>{room.assignedfamilies}</span> : <span className="italic text-warm-400">Sin familia asignada</span>}
-        </div>
-      </div>
 
-      <div className="flex flex-col items-center gap-1 border-b border-warm-100 p-4">
-        <BedDouble className="h-5 w-5 text-warm-400" />
-        <p className="text-3xl font-extrabold text-warm-900">{room.Capacity}</p>
-        <p className="text-xs uppercase tracking-wide text-warm-400">Capacidad</p>
-      </div>
+        <div className="flex flex-col items-center gap-1 border-b border-warm-100 p-4">
+          <BedDouble className="h-5 w-5 text-warm-400" />
+          <p className="text-3xl font-extrabold text-warm-900">{room.Capacity}</p>
+          <p className="text-xs uppercase tracking-wide text-warm-400">Capacidad</p>
+        </div>
 
-      <div className="flex justify-center p-4">
-        <StatusBadge room={room} />
-      </div>
-    </button>
+        <div className="flex justify-center p-4">
+          <StatusBadge room={room} />
+        </div>
+      </button>
+
+      {canRelease ? (
+        <div className="border-t border-warm-100 px-4 pb-4">
+          <Button variant="secondary" className="mt-4 w-full" isLoading={isReleasing} onClick={onRelease}>
+            Familia se fue
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
 export function StaffRoomsPage() {
   const { authToken, currentUser, volunteerRoster, createVolunteerTaskForUser } = useAppState()
   const [rooms, setRooms] = useState<Room[]>([])
+  const [arrivalFlows, setArrivalFlows] = useState<RoomArrivalFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
@@ -155,15 +250,34 @@ export function StaffRoomsPage() {
   const [roomNote, setRoomNote] = useState('')
   const [selectedVolunteerUserId, setSelectedVolunteerUserId] = useState<number>(0)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingFlows, setIsLoadingFlows] = useState(false)
+  const [assigningFamilyId, setAssigningFamilyId] = useState<number | null>(null)
+  const [releasingRoomId, setReleasingRoomId] = useState<number | null>(null)
 
   const loadRooms = async () => {
+    if (!authToken) return
+    const data = await getRooms(authToken, currentUser?.siteId ?? null)
+    setRooms(data)
+    if (!selectedRoomId && data[0]) setSelectedRoomId(data[0].RoomId)
+  }
+
+  const loadArrivalFlows = async () => {
+    if (!authToken) return
+    setIsLoadingFlows(true)
+    try {
+      const data = await getRoomArrivalFlow(authToken, currentUser?.siteId ?? null)
+      setArrivalFlows(data)
+    } finally {
+      setIsLoadingFlows(false)
+    }
+  }
+
+  const loadData = async () => {
     if (!authToken) return
     setIsLoading(true)
     setError(null)
     try {
-      const data = await getRooms(authToken, currentUser?.siteId ?? null)
-      setRooms(data)
-      if (!selectedRoomId && data[0]) setSelectedRoomId(data[0].RoomId)
+      await Promise.all([loadRooms(), loadArrivalFlows()])
     } catch {
       setError('error')
     } finally {
@@ -172,7 +286,7 @@ export function StaffRoomsPage() {
   }
 
   useEffect(() => {
-    void loadRooms()
+    void loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, currentUser?.siteId])
 
@@ -187,9 +301,7 @@ export function StaffRoomsPage() {
   const cleaningVolunteers = useMemo(
     () =>
       volunteerRoster.filter(
-        (volunteer) =>
-          volunteer.role === 'Limpieza' &&
-          (!selectedRoom || volunteer.site === selectedRoom.SiteName),
+        (volunteer) => volunteer.role === 'Limpieza' && (!selectedRoom || volunteer.site === selectedRoom.SiteName),
       ),
     [volunteerRoster, selectedRoom],
   )
@@ -204,12 +316,91 @@ export function StaffRoomsPage() {
     <div className="space-y-6">
       <SectionHeader title="Room planning" subtitle="Habitaciones, ocupacion y disponibilidad por sede." />
 
+      <div className="space-y-4 rounded-2xl bg-white p-5 shadow-soft">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-2xl font-bold text-warm-900">Flujo automático de llegadas</p>
+            <p className="text-sm text-warm-600">Seguimiento automático para familias que llegan mañana en esta sede.</p>
+          </div>
+          {isLoadingFlows ? <LoaderCircle className="h-5 w-5 animate-spin text-[#950606]" /> : null}
+        </div>
+
+        {arrivalFlows.length > 0 ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {arrivalFlows.map((flow) => (
+              <div key={flow.FamilyId} className="space-y-3 rounded-2xl bg-warm-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-bold text-warm-900">{`${flow.CaregiverName} ${flow.FamilyLastName}`}</p>
+                    <p className="text-sm text-warm-600">Llega el {formatDate(flow.ArrivalDate)} · capacidad inicial {flow.RequiredCapacity}</p>
+                  </div>
+                  <FlowBadge flow={flow} />
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-warm-200 bg-white p-4 text-sm text-warm-700">
+                  <p className="font-semibold text-warm-900">Buscando habitación disponible para la familia {flow.CaregiverName} que llega el {formatDate(flow.ArrivalDate)}...</p>
+                  <p className="mt-2">{flow.Message}</p>
+                  {flow.AssignedVolunteerName ? (
+                    <p className="mt-2 text-sm font-semibold text-warm-800">Tarea asignada a {flow.AssignedVolunteerName} para preparar la habitación.</p>
+                  ) : null}
+                </div>
+
+                {flow.FlowStatus === 'ready' && flow.SuggestedRoomId && flow.SuggestedRoomCode ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-sm font-semibold text-green-700">✅ Habitación {flow.SuggestedRoomCode} encontrada y lista</p>
+                    <Button
+                      isLoading={assigningFamilyId === flow.FamilyId}
+                      onClick={async () => {
+                        if (!authToken || !flow.SuggestedRoomId) return
+                        setAssigningFamilyId(flow.FamilyId)
+                        try {
+                          await confirmRoomArrivalAssignment(authToken, { familyId: flow.FamilyId, roomId: flow.SuggestedRoomId })
+                          await loadData()
+                        } finally {
+                          setAssigningFamilyId(null)
+                        }
+                      }}
+                    >
+                      Confirmar y asignar a familia
+                    </Button>
+                  </div>
+                ) : null}
+
+                {flow.FlowStatus === 'preparing' ? (
+                  <p className="text-sm font-semibold text-amber-700">🔍 Habitación encontrada pero necesita preparación</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : !isLoadingFlows ? (
+          <div className="rounded-2xl bg-warm-50 p-6 text-sm text-warm-700">
+            No hay familias registradas con llegada para mañana en esta sede.
+          </div>
+        ) : null}
+      </div>
+
       {!isLoading && !error && rooms.length > 0 ? <OccupancyMeter rooms={rooms} /> : null}
 
       {!isLoading && !error ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {rooms.map((room) => (
-            <RoomCard key={room.RoomId} room={room} isSelected={room.RoomId === selectedRoomId} onSelect={() => setSelectedRoomId(room.RoomId)} />
+            <RoomCard
+              key={room.RoomId}
+              room={room}
+              isSelected={room.RoomId === selectedRoomId}
+              onSelect={() => setSelectedRoomId(room.RoomId)}
+              isReleasing={releasingRoomId === room.RoomId}
+              onRelease={async () => {
+                if (!authToken) return
+                setReleasingRoomId(room.RoomId)
+                try {
+                  await releaseRoom(authToken, room.RoomId)
+                  await loadData()
+                } finally {
+                  setReleasingRoomId(null)
+                }
+              }}
+            />
           ))}
         </div>
       ) : null}
@@ -267,7 +458,7 @@ export function StaffRoomsPage() {
                     roomNote,
                     roomStatus: 'mantenimiento',
                   })
-                  await loadRooms()
+                  await loadData()
                 } finally {
                   setIsSaving(false)
                 }
@@ -328,7 +519,7 @@ export function StaffRoomsPage() {
                       roomStatus: 'mantenimiento',
                     })
                   }
-                  await loadRooms()
+                  await loadData()
                 } finally {
                   setIsSaving(false)
                 }
@@ -351,4 +542,3 @@ export function StaffRoomsPage() {
     </div>
   )
 }
-

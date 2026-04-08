@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -14,10 +14,10 @@ export function StaffLoginPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <SectionHeader title="Login staff" subtitle="Recepción, operación, inventario y analytics." />
+      <SectionHeader title="Login staff" subtitle="Recepción, operación, inventario y analítica." />
       <Card className="space-y-4">
         <Input label="Usuario" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="staff@ronaldcare.org" />
-        <Input label="Contrasena" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
+        <Input label="Contraseña" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
         {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <Button
           fullWidth

@@ -1,10 +1,11 @@
-import { getPool, sql } from '../../src/lib/db.js'
-import { ensureSameOrGlobalSite, isGlobalRole, resolveScopedSiteId } from '../../src/lib/access.js'
+﻿import { getPool, sql } from '../../src/lib/db.js'
+import { ensureSameOrGlobalSite, resolveScopedSiteId } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { createNotification, ensureNotificationTable } from '../../src/lib/notifications.js'
 import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
+import { notifySiteStaff } from '../../src/lib/room-automation.js'
 import { oneOf, required, toInt } from '../../src/lib/validation.js'
 
 const TASK_TYPES = ['cocina', 'lavanderia', 'traslados', 'acompanamiento', 'recepcion', 'limpieza', 'inventario']
@@ -94,7 +95,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       userId: volunteerUserId,
       type: 'task_assigned',
       title: 'Nueva tarea asignada',
-      message: `Se te asigno la tarea ${task.Title} para el dia ${req.body.taskDay} turno ${task.ShiftPeriod}`,
+      message: `Se te asignó la tarea ${task.Title} para el día ${req.body.taskDay} turno ${task.ShiftPeriod}`,
       relatedEntityType: 'volunteer_task',
       relatedEntityId: task.VolunteerTaskId,
     })
@@ -162,16 +163,54 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
     `)
 
   if (nextStatus !== task.Status && nextStatus === 'completada' && task.RelatedRoomId) {
-    await pool
-      .request()
-      .input('roomId', sql.Int, Number(task.RelatedRoomId))
-      .query(`
-        UPDATE Rooms
-        SET RoomStatus = 'disponible',
-            AvailableAt = NULL,
-            RoomNote = NULL
-        WHERE RoomId = @roomId
-      `)
+    if (task.FamilyId) {
+      const familyResult = await pool
+        .request()
+        .input('familyId', sql.Int, Number(task.FamilyId))
+        .query(`SELECT FamilyId, SiteId, CaregiverName, FamilyLastName FROM Families WHERE FamilyId = @familyId`)
+      const family = familyResult.recordset[0]
+
+      await pool
+        .request()
+        .input('familyId', sql.Int, Number(task.FamilyId))
+        .input('roomId', sql.Int, Number(task.RelatedRoomId))
+        .query(`UPDATE Families SET RoomId = @roomId, UpdatedAt = NOW() WHERE FamilyId = @familyId`)
+
+      await pool
+        .request()
+        .input('roomId', sql.Int, Number(task.RelatedRoomId))
+        .query(`
+          UPDATE Rooms
+          SET RoomStatus = 'reservada',
+              OccupiedCount = 1,
+              AvailableAt = NULL,
+              RoomNote = NULL
+          WHERE RoomId = @roomId
+        `)
+
+      if (family) {
+        await notifySiteStaff(
+          pool,
+          family.SiteId,
+          'Habitación lista y asignada',
+          `Habitación lista y asignada a familia ${family.CaregiverName} ${family.FamilyLastName}.`,
+          'room',
+          Number(task.RelatedRoomId),
+        )
+      }
+    } else {
+      await pool
+        .request()
+        .input('roomId', sql.Int, Number(task.RelatedRoomId))
+        .query(`
+          UPDATE Rooms
+          SET RoomStatus = 'disponible',
+              OccupiedCount = 0,
+              AvailableAt = NULL,
+              RoomNote = NULL
+          WHERE RoomId = @roomId
+        `)
+    }
   }
 
   if (Number(nextVolunteerUserId) !== Number(task.VolunteerUserId)) {
@@ -185,7 +224,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['superadmin'
       userId: nextVolunteerUserId,
       type: 'task_reassigned',
       title: 'Tarea reasignada',
-      message: `Se te reasigno la tarea ${nextTitle}.`,
+      message: `Se te reasignó la tarea ${nextTitle}.`,
       relatedEntityType: 'volunteer_task',
       relatedEntityId: volunteerTaskId,
     })

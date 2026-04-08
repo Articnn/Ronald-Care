@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+﻿import { useMemo, useState, useEffect } from 'react'
 import { SectionHeader } from '../../components/ui/SectionHeader'
 import { Tabs } from '../../components/ui/Tabs'
 import { useAppState } from '../../context/AppContext'
@@ -12,6 +12,32 @@ const SITE_IMAGES: Record<string, string> = {
 }
 
 const tabs = ['Impacto por sede', 'Galería de impacto', 'Próximos eventos'] as const
+const MONTH_ORDER = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+]
+
+function parseMonthLabel(monthLabel: string) {
+  const [monthName, yearText] = monthLabel.trim().split(/\s+/)
+  const monthIndex = MONTH_ORDER.findIndex((month) => month.toLowerCase() === monthName?.toLowerCase())
+  const year = Number(yearText)
+
+  if (monthIndex === -1 || Number.isNaN(year)) {
+    return null
+  }
+
+  return { year, monthIndex }
+}
 
 export function DonorHomePage() {
   const { donorImpactBySite, site } = useAppState()
@@ -24,7 +50,6 @@ export function DonorHomePage() {
     getGallery()
       .then((data) => {
         setGalleryImages(data)
-        if (data.length > 0) setActiveMonth(data[0].month)
       })
       .catch(() => setGalleryImages([]))
   }, [])
@@ -36,8 +61,24 @@ export function DonorHomePage() {
   }, [])
 
   const impactItems = donorImpactBySite.filter((item) => item.name === site)
-  const monthNames = useMemo(() => [...new Set(galleryImages.map((img) => img.month))], [galleryImages])
-  const isCurrentMonth = monthNames.length > 0 && activeMonth === monthNames[0]
+  const monthNames = useMemo(() => {
+    return [...new Set(galleryImages.map((img) => img.month))].sort((left, right) => {
+      const leftMonth = parseMonthLabel(left)
+      const rightMonth = parseMonthLabel(right)
+
+      if (!leftMonth || !rightMonth) {
+        return left.localeCompare(right, 'es')
+      }
+
+      if (leftMonth.year !== rightMonth.year) {
+        return leftMonth.year - rightMonth.year
+      }
+
+      return leftMonth.monthIndex - rightMonth.monthIndex
+    })
+  }, [galleryImages])
+  const latestMonth = monthNames.length > 0 ? monthNames[monthNames.length - 1] : ''
+  const isCurrentMonth = latestMonth !== '' && activeMonth === latestMonth
   const galleryPreview = useMemo(
     () => galleryImages.filter((img) => img.month === activeMonth && img.site === site),
     [galleryImages, activeMonth, site],
@@ -46,6 +87,17 @@ export function DonorHomePage() {
     () => eventsData.filter((e) => site === 'Todas' || e.site === site),
     [eventsData, site],
   )
+
+  useEffect(() => {
+    if (monthNames.length === 0) {
+      setActiveMonth('')
+      return
+    }
+
+    if (!activeMonth || !monthNames.includes(activeMonth)) {
+      setActiveMonth(latestMonth)
+    }
+  }, [monthNames, activeMonth, latestMonth])
 
   return (
     <div className="space-y-6">

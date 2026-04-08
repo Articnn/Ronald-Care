@@ -1,4 +1,4 @@
-TRUNCATE TABLE volunteerchangerequests, volunteertasks, staffprofiles, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
+TRUNCATE TABLE seguimiento_clinico, volunteerchangerequests, volunteertasks, stafftasks, staffprofiles, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
 
 INSERT INTO sites (siteid, sitecode, name, isactive, createdat) VALUES
   (1, 'CDMX', 'Casa Ronald McDonald Ciudad de Mexico', TRUE, NOW()),
@@ -50,13 +50,17 @@ INSERT INTO rooms (roomid, siteid, roomcode, capacity, roomtype, occupiedcount, 
   (23, 3, 'TLA-E2', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
   (24, 3, 'TLA-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW());
 
-INSERT INTO referrals (referralid, siteid, createdbyuserid, caregivername, familylastname, referralcode, familycode, status, arrivaldate, companioncount, logisticsnote, eligibilityconfirmed, createdat) VALUES
-  (1, 1, 3, 'Maria', 'Lopez', 'REF-2026-1001', 'FAM-3481', 'aceptada', '2026-04-02', 2, 'Llegada por autobus. Requiere orientacion de acceso.', TRUE, NOW()),
-  (2, 2, 3, 'Carlos', 'Ramirez', 'REF-2026-1002', 'FAM-5520', 'en_revision', '2026-04-03', 1, 'Ingreso vespertino con acompanante unico.', TRUE, NOW()),
-  (3, 3, 4, 'Daniela', 'Soto', 'REF-2026-1003', 'FAM-7781', 'enviada', '2026-04-04', 1, 'Llegada programada para primera hora.', TRUE, NOW());
+INSERT INTO referrals (
+  referralid, siteid, createdbyuserid, caregivername, familylastname, referralcode, familycode, status, admissionstage,
+  originhospital, origincity, requesttemplatejson, socialworkername, familycontactphone, dossiersummary, assignedsiteid, approvedat,
+  arrivaldate, companioncount, logisticsnote, eligibilityconfirmed, createdat
+) VALUES
+  (1, 1, 3, 'Maria', 'Lopez', 'REF-2026-1001', 'FAM-3481', 'aceptada', 'aprobada', 'Hospital Infantil CDMX', 'Ciudad de Mexico', '{"nextStep":"activar_familia"}', 'Trabajo Social Demo', '5550001111', 'Expediente completo con estancia inicial de 3 dias.', 1, NOW(), '2026-04-02', 2, 'Llegada por autobus. Requiere orientacion de acceso.', TRUE, NOW()),
+  (2, 2, 3, 'Carlos', 'Ramirez', 'REF-2026-1002', 'FAM-5520', 'en_revision', 'expediente_armado', 'Hospital del Nino Poblano', 'Puebla', '{"nextStep":"aprobacion"}', 'Trabajo Social Demo', '2220001111', 'Familia localizada y expediente socioeconomico completo.', 2, NULL, '2026-04-03', 1, 'Ingreso vespertino con acompanante unico.', TRUE, NOW()),
+  (3, 3, 4, 'Daniela', 'Soto', 'REF-2026-1003', 'FAM-7781', 'enviada', 'referencia', 'Hospital General Tlalnepantla', 'Tlalnepantla', '{"nextStep":"contactar_familia"}', NULL, '5552223333', NULL, NULL, NULL, '2026-04-04', 1, 'Llegada programada para primera hora.', TRUE, NOW());
 
-INSERT INTO families (familyid, referralid, siteid, roomid, caregivername, familylastname, admissionstatus, idverified, regulationaccepted, simplesignature, checkincompletedat, createdat, updatedat) VALUES
-  (1, 1, 1, 1, 'Maria', 'Lopez', 'checkin_completado', TRUE, TRUE, 'Maria Lopez', NOW(), NOW(), NOW());
+INSERT INTO families (familyid, referralid, siteid, roomid, caregivername, familylastname, staydays, plannedcheckoutdate, automationstatus, admissionstatus, idverified, regulationaccepted, simplesignature, checkincompletedat, createdat, updatedat) VALUES
+  (1, 1, 1, 1, 'Maria', 'Lopez', 3, CURRENT_DATE + INTERVAL '2 days', 'ocupada', 'checkin_completado', TRUE, TRUE, 'Maria Lopez', NOW(), NOW(), NOW());
 
 INSERT INTO familyaccess (familyaccessid, familyid, ticketcode, qrcode, pinhash, isactive, lastloginat, createdat, updatedat) VALUES
   (1, 1, 'TKT-3481', 'QR-FAM-3481', '$2b$10$vtuWzvpg1unem7N0vbTTK.Il0Jj0kgO1YTs4eEYjouPunIp6CAp5K', TRUE, NULL, NOW(), NOW());
@@ -122,6 +126,12 @@ INSERT INTO returnpasses (returnpassid, familyid, siteid, requesteddate, compani
 INSERT INTO communityposts (communitypostid, familyid, authoralias, message, status, reportcount, createdat, moderatedbyuserid, moderatedat) VALUES
   (1, 1, 'Familia Lopez', 'Llevar horarios anotados nos ayudo mucho para los traslados.', 'active', 0, NOW(), NULL, NULL);
 
+INSERT INTO stafftasks (stafftaskid, siteid, referralid, familyid, assigneduserid, createdbyuserid, title, instructions, priority, status, createdat, updatedat) VALUES
+  (1, 1, 1, 1, 4, 2, 'Onboarding de llegada para Maria Lopez', 'Preparar recepcion, kit de bienvenida y acceso asistido para la familia Maria Lopez.', 'media', 'pendiente', NOW(), NOW());
+
+INSERT INTO seguimiento_clinico (followupid, familyid, referralid, siteid, recordedbyuserid, clinicname, feedbackmessage, previouscheckoutdate, estimatedcheckoutdate, recordedat) VALUES
+  (1, 1, 1, 1, 3, 'Hospital Infantil CDMX', 'La familia continuara observacion 2 dias mas por respuesta al tratamiento.', CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE + INTERVAL '2 days', NOW());
+
 INSERT INTO auditevents (auditeventid, siteid, actoruserid, actorfamilyid, eventtype, entitytype, entityid, metadatajson, createdat) VALUES
   (1, 1, 3, NULL, 'referral.created', 'referral', 1, '{"source":"seed"}', NOW()),
   (2, 1, 4, NULL, 'checkin.completed', 'family', 1, '{"room":"A-12"}', NOW()),
@@ -140,6 +150,8 @@ SELECT setval(pg_get_serial_sequence('trips', 'tripid'), COALESCE((SELECT MAX(tr
 SELECT setval(pg_get_serial_sequence('volunteershifts', 'volunteershiftid'), COALESCE((SELECT MAX(volunteershiftid) FROM volunteershifts), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('staffprofiles', 'staffprofileid'), COALESCE((SELECT MAX(staffprofileid) FROM staffprofiles), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('volunteertasks', 'volunteertaskid'), COALESCE((SELECT MAX(volunteertaskid) FROM volunteertasks), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('stafftasks', 'stafftaskid'), COALESCE((SELECT MAX(stafftaskid) FROM stafftasks), 1), TRUE);
+SELECT setval(pg_get_serial_sequence('seguimiento_clinico', 'followupid'), COALESCE((SELECT MAX(followupid) FROM seguimiento_clinico), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('volunteerchangerequests', 'volunteerchangerequestid'), COALESCE((SELECT MAX(volunteerchangerequestid) FROM volunteerchangerequests), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('inventoryitems', 'inventoryitemid'), COALESCE((SELECT MAX(inventoryitemid) FROM inventoryitems), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('inventorymovements', 'inventorymovementid'), COALESCE((SELECT MAX(inventorymovementid) FROM inventorymovements), 1), TRUE);

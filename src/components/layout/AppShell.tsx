@@ -1,18 +1,4 @@
-﻿import {
-  Bell,
-  Building2,
-  ChevronDown,
-  ClipboardList,
-  HeartHandshake,
-  LayoutDashboard,
-  Package,
-  Route,
-  ShieldCheck,
-  UserCircle2,
-  Users,
-  InfoIcon,
-  HandHelpingIcon,
-} from 'lucide-react'
+﻿import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, Package, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
@@ -23,47 +9,29 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   superadmin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Referencias', to: '/hospital/referrals', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
+    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   admin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Recepción', to: '/staff/reception', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Ayuda asistida', to: '/staff/kiosk', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Solicitudes', to: '/staff/requests', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Voluntarios', to: '/staff/volunteers', icon: <Users className="h-4 w-4" /> },
-    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
-  ],
-  hospital: [
-    { label: 'Referencias', to: '/hospital/referrals', icon: <Building2 className="h-4 w-4" /> },
-    { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
-  ],
-  staff: [
-    { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
-  volunteer: [
-    { label: 'Solicitudes', to: '/volunteer/requests', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Viajes', to: '/volunteer/trips', icon: <Route className="h-4 w-4" /> },
+  hospital: [],
+  staff: [
+    { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
+    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
+  volunteer: [],
 }
-
-const familyNav = [
-  { label: 'Guía Express', to: '/family/guide', icon: <ClipboardList className="h-4 w-4" /> },
-  { label: 'Mi estatus', to: '/family/status', icon: <InfoIcon className="h-4 w-4" /> },
-  { label: 'Solicitar apoyo', to: '/family/request', icon: <HandHelpingIcon className="h-4 w-4" /> },
-  { label: 'Pausa 60s', to: '/family/pause', icon: <HeartHandshake className="h-4 w-4" /> },
-  { label: 'Return Pass', to: '/family/return-pass', icon: <Route className="h-4 w-4" /> },
-  { label: 'Comunidad', to: '/family/community', icon: <Users className="h-4 w-4" /> },
-  { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
-]
 
 const roleLabels: Record<Exclude<Role, null>, string> = {
   superadmin: 'superadmin',
@@ -93,7 +61,7 @@ export function AppShell() {
     isSyncing,
   } = useAppState()
   const location = useLocation()
-  const links = role === 'family' ? familyNav : role ? navByRole[role as InternalRole] : []
+  const links = role && role !== 'family' ? navByRole[role as InternalRole] : []
 
   const [isSiteOpen, setIsSiteOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -120,7 +88,7 @@ export function AppShell() {
     <div className={`min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(255,211,173,0.85),_transparent_35%),linear-gradient(180deg,_#fff8ef,_#fff4db)] ${easyRead ? 'text-xl' : ''}`}>
       <header className="sticky top-0 z-20 border-b border-warm-200 bg-warm-700 text-white shadow-soft">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/login" className="flex items-center gap-3">
             <HeartHandshake className="h-8 w-8" />
             <p className="text-xl font-extrabold">RonaldCare</p>
           </Link>
@@ -245,9 +213,7 @@ export function AppShell() {
       </header>
 
       <main className="relative mx-auto max-w-7xl p-4 md:p-6">
-        {isSyncing && (
-          <LoadingOverlay message="Cargando informacion..." className="absolute inset-0 min-h-[400px]" />
-        )}
+        {isSyncing && <LoadingOverlay message="Cargando información..." className="absolute inset-0 min-h-[400px]" />}
         <Outlet />
       </main>
     </div>

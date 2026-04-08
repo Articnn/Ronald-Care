@@ -1,4 +1,4 @@
-import http from 'node:http'
+﻿import http from 'node:http'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -9,8 +9,12 @@ import authLogout from './api/auth/logout.js'
 import authMe from './api/auth/me.js'
 import authChangePassword from './api/auth/change-password.js'
 import authChangePin from './api/auth/change-pin.js'
+import admissionsIndex from './api/admissions/index.js'
+import admissionsExtract from './api/admissions/extract.js'
+import admissionsClinicalHistory from './api/admissions/clinical-history.js'
+import admissionsDepartureReminders from './api/admissions/departure-reminders.js'
 import adminUsers from './api/admin/users.js'
-import { activateFamilyHandler, familyAccessAdminHandler, pendingReferralsHandler } from './api/admin/families.js'
+import { activateFamilyHandler, familyAccessAdminHandler, familyStayAutomationHandler, pendingReferralsHandler } from './api/admin/families.js'
 import referralsIndex from './api/referrals/index.js'
 import referralsStatus from './api/referrals/status.js'
 import familiesCheckin from './api/families/checkin.js'
@@ -38,10 +42,13 @@ import kioskStatus from './api/kiosk/status.js'
 import analyticsKpis from './api/analytics/kpis.js'
 import staffDashboard from './api/staff/dashboard.js'
 import staffRoster from './api/staff/roster.js'
+import staffTasks from './api/staff/tasks.js'
 import donorImpact from './api/donor/impact.js'
 import donorGallery from './api/donor/gallery.js'
 import donorEvents from './api/donor/events.js'
 import staffRooms from './api/staff/rooms.js'
+import staffArrivalFlow from './api/staff/arrival-flow.js'
+import staffRoomsRelease from './api/staff/rooms-release.js'
 import communityPosts from './api/community/posts.js'
 import communityReport from './api/community/report.js'
 import communityModerate from './api/community/moderate.js'
@@ -55,6 +62,13 @@ const routes = {
   'GET /api/auth/me': authMe,
   'PATCH /api/auth/change-password': authChangePassword,
   'PATCH /api/auth/change-pin': authChangePin,
+  'GET /api/admissions': admissionsIndex,
+  'POST /api/admissions': admissionsIndex,
+  'PATCH /api/admissions': admissionsIndex,
+  'POST /api/admissions/extract': admissionsExtract,
+  'GET /api/admissions/clinical-history': admissionsClinicalHistory,
+  'GET /api/admissions/departure-reminders': admissionsDepartureReminders,
+  'PATCH /api/admissions/departure-reminders': admissionsDepartureReminders,
   'GET /api/admin/users': adminUsers,
   'POST /api/admin/users': adminUsers,
   'PATCH /api/admin/users': adminUsers,
@@ -62,6 +76,8 @@ const routes = {
   'GET /api/admin/pending-referrals': pendingReferralsHandler,
   'POST /api/admin/activate-family': activateFamilyHandler,
   'PATCH /api/admin/family-access': familyAccessAdminHandler,
+  'GET /api/admin/family-stays': familyStayAutomationHandler,
+  'PATCH /api/admin/family-stays': familyStayAutomationHandler,
   'GET /api/referrals': referralsIndex,
   'POST /api/referrals': referralsIndex,
   'PATCH /api/referrals/status': referralsStatus,
@@ -99,12 +115,16 @@ const routes = {
   'PATCH /api/inventory/reports': inventoryReports,
   'GET /api/staff/dashboard': staffDashboard,
   'GET /api/staff/roster': staffRoster,
+  'GET /api/staff/tasks': staffTasks,
   'GET /api/analytics/kpis': analyticsKpis,
   'GET /api/donor/impact': donorImpact,
   'GET /api/donor/gallery': donorGallery,
   'GET /api/donor/events': donorEvents,
   'GET /api/staff/rooms': staffRooms,
   'PATCH /api/staff/rooms': staffRooms,
+  'GET /api/staff/arrival-flow': staffArrivalFlow,
+  'POST /api/staff/arrival-flow': staffArrivalFlow,
+  'PATCH /api/staff/rooms/release': staffRoomsRelease,
   'GET /api/community/posts': communityPosts,
   'POST /api/community/posts': communityPosts,
   'PATCH /api/community/report': communityReport,
@@ -137,3 +157,4 @@ const port = process.env.PORT || 8787
 server.listen(port, () => {
   console.log(`Serverless dev API running on http://localhost:${port}`)
 })
+

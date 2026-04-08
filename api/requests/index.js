@@ -33,6 +33,8 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
     if (req.query.status) {
       dbReq.input('status', sql.NVarChar(30), req.query.status)
       filters.push('Status = @status')
+    } else {
+      filters.push(`Status <> 'borrador_extraido'`)
     }
     if (req.query.requestType) {
       dbReq.input('requestType', sql.NVarChar(30), req.query.requestType)

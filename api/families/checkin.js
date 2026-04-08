@@ -1,4 +1,4 @@
-import { getPool, sql } from '../../src/lib/db.js'
+﻿import { getPool, sql } from '../../src/lib/db.js'
 import { ensureSameOrGlobalSite } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
@@ -27,7 +27,8 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'admin', 'superadm
         RegulationAccepted = @regulationAccepted,
         SimpleSignature = @simpleSignature,
         AdmissionStatus = 'checkin_completado',
-        CheckInCompletedAt = NOW()
+        CheckInCompletedAt = NOW(),
+        UpdatedAt = NOW()
       WHERE FamilyId = @familyId
       RETURNING *
     `)
@@ -35,6 +36,17 @@ export default withApi({ methods: ['PATCH'], roles: ['staff', 'admin', 'superadm
   const family = result.recordset[0]
   if (!family) throw new ApiError(404, 'Familia no encontrada')
   ensureSameOrGlobalSite(req, family.SiteId)
+
+  if (roomId) {
+    await pool
+      .request()
+      .input('roomId', sql.Int, roomId)
+      .query(`
+        UPDATE Rooms
+        SET RoomStatus = 'ocupada', OccupiedCount = 1, AvailableAt = NULL, RoomNote = NULL
+        WHERE RoomId = @roomId
+      `)
+  }
 
   await logAudit({
     siteId: family.SiteId,

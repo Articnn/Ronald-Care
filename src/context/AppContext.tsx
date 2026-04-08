@@ -21,6 +21,7 @@ import {
   getAdminUsers,
   getCommunityPosts,
   getDonorImpact,
+  getFamilyStayAutomation,
   getFamilies,
   getFamilyStatus,
   getFamilyStatusByCode,
@@ -48,6 +49,7 @@ import {
   sendVolunteerAlert as sendVolunteerAlertApi,
   startTrip as startTripApi,
   updateAdminUser,
+  extendFamilyStayApi,
   updateFamilyAccess,
   updateInventoryReportStatus,
   updateReferralStatus as updateReferralStatusApi,
@@ -67,6 +69,7 @@ import {
   type PendingReferral,
   type BackendVolunteerNotification,
   type BackendVolunteerRosterItem,
+  type FamilyStayAutomationRecord,
   type StaffDashboardResponse,
   type VolunteerChangeRequest as BackendVolunteerChangeRequest,
   type VolunteerTask as BackendVolunteerTask,
@@ -86,6 +89,7 @@ import type {
   CommunityPost,
   CurrentUser,
   FamilyProfile,
+  FamilyStayAutomation,
   GuideStep,
   ImpactFeedItem,
   InternalUserRecord,
@@ -143,6 +147,7 @@ interface AppContextValue {
   referrals: Referral[]
   pendingReferrals: Referral[]
   families: FamilyProfile[]
+  familyStayAutomation: FamilyStayAutomation[]
   rooms: Room[]
   requests: SupportRequest[]
   trips: Trip[]
@@ -228,8 +233,10 @@ interface AppContextValue {
   }) => Promise<void>
   updateInternalUser: (payload: { userId: number; fullName?: string; role?: 'admin' | 'staff' | 'volunteer'; siteId?: number; isActive?: boolean }) => Promise<void>
   deleteInternalUser: (userId: number) => Promise<void>
-  activateReferralFamily: (referralId: number) => Promise<ActivationResponse>
+  activateReferralFamily: (referralId: number, stayDays?: number) => Promise<ActivationResponse>
   setFamilyAccessState: (familyId: number, action: 'pause' | 'reactivate' | 'reset-pin') => Promise<{ newPin?: string }>
+  refreshFamilyStayAutomation: () => Promise<void>
+  extendFamilyStay: (familyId: number, extraDays: number) => Promise<void>
   createVolunteerTaskForUser: (payload: { volunteerUserId: number; title: string; taskType: 'cocina' | 'lavanderia' | 'traslados' | 'acompanamiento' | 'recepcion' | 'limpieza' | 'inventario'; shiftPeriod: 'AM' | 'PM'; taskDay: string; notes?: string; relatedRoomId?: number }) => Promise<void>
   updateVolunteerTaskForUser: (payload: {
     volunteerTaskId: number
@@ -329,6 +336,15 @@ function mapReferral(item: BackendReferral): Referral {
 }
 
 function mapFamily(item: BackendFamily): FamilyProfile {
+  const automationMap: Record<string, FamilyProfile['automationStatus']> = {
+    pendiente: 'Pendiente',
+    sin_cupo: 'Sin cupo',
+    preparacion: 'Preparacion',
+    reservada: 'Reservada',
+    ocupada: 'Ocupada',
+    checkout_completado: 'Checkout completado',
+  }
+
   return {
     id: String(item.FamilyId),
     referralId: item.ReferralId ? String(item.ReferralId) : '',
@@ -336,6 +352,10 @@ function mapFamily(item: BackendFamily): FamilyProfile {
     familyLastName: item.FamilyLastName,
     site: normalizeSite(item.SiteName),
     room: item.RoomCode || 'Por asignar',
+    plannedRoom: item.RoomCode || 'Por asignar',
+    stayDays: item.StayDays || 3,
+    plannedCheckoutDate: item.PlannedCheckoutDate || null,
+    automationStatus: automationMap[item.AutomationStatus || 'pendiente'] || 'Pendiente',
     idVerified: Boolean(item.IdVerified),
     regulationAccepted: Boolean(item.RegulationAccepted),
     simpleSignature: item.SimpleSignature || '',
@@ -344,6 +364,31 @@ function mapFamily(item: BackendFamily): FamilyProfile {
     pin: '',
     admissionStatus: item.AdmissionStatus === 'checkin_completado' ? 'Check-in completado' : 'Pendiente',
     isActive: item.IsActive ?? true,
+  }
+}
+
+function mapFamilyStayAutomation(item: FamilyStayAutomationRecord): FamilyStayAutomation {
+  const automationMap: Record<FamilyStayAutomationRecord['AutomationStatus'], FamilyStayAutomation['automationStatus']> = {
+    pendiente: 'Pendiente',
+    sin_cupo: 'Sin cupo',
+    preparacion: 'Preparacion',
+    reservada: 'Reservada',
+    ocupada: 'Ocupada',
+    checkout_completado: 'Checkout completado',
+  }
+
+  return {
+    familyId: item.FamilyId,
+    caregiverName: item.CaregiverName,
+    familyLastName: item.FamilyLastName,
+    site: normalizeSite(item.SiteName),
+    arrivalDate: item.ArrivalDate,
+    stayDays: item.StayDays,
+    plannedCheckoutDate: item.PlannedCheckoutDate || null,
+    automationStatus: automationMap[item.AutomationStatus],
+    plannedRoomCode: item.PlannedRoomCode || null,
+    assignedVolunteerName: item.AssignedVolunteerName || null,
+    message: item.Message,
   }
 }
 
@@ -663,6 +708,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [referrals, setReferrals] = useState<Referral[]>([])
   const [pendingReferrals, setPendingReferrals] = useState<Referral[]>([])
   const [families, setFamilies] = useState<FamilyProfile[]>([])
+  const [familyStayAutomation, setFamilyStayAutomation] = useState<FamilyStayAutomation[]>([])
   const [rooms] = useState<Room[]>(initialRooms)
   const [requests, setRequests] = useState<SupportRequest[]>([])
   const [trips, setTrips] = useState<Trip[]>([])
@@ -875,18 +921,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         createdAt: item.CreatedAt,
       })))
 
-      if (role === 'admin' || role === 'superadmin') {
-        const [users, pending] = await Promise.all([getAdminUsers(authToken, selectedSiteId), getPendingReferrals(authToken, selectedSiteId)])
-        setInternalUsers(users.map(mapInternalUser))
-        setPendingReferrals((pending as PendingReferral[]).map(mapReferral))
-      } else if (role === 'staff') {
-        const users = await getAdminUsers(authToken, selectedSiteId)
-        setInternalUsers(users.map(mapInternalUser))
-        setPendingReferrals([])
-      } else {
-        setInternalUsers([])
-        setPendingReferrals([])
-      }
+        if (role === 'admin' || role === 'superadmin') {
+          const [users, pending, stays] = await Promise.all([
+            getAdminUsers(authToken, selectedSiteId),
+            getPendingReferrals(authToken, selectedSiteId),
+            getFamilyStayAutomation(authToken, selectedSiteId),
+          ])
+          setInternalUsers(users.map(mapInternalUser))
+          setPendingReferrals((pending as PendingReferral[]).map(mapReferral))
+          setFamilyStayAutomation((stays as FamilyStayAutomationRecord[]).map(mapFamilyStayAutomation))
+        } else if (role === 'staff') {
+          const users = await getAdminUsers(authToken, selectedSiteId)
+          setInternalUsers(users.map(mapInternalUser))
+          setPendingReferrals([])
+          const stays = await getFamilyStayAutomation(authToken, selectedSiteId)
+          setFamilyStayAutomation((stays as FamilyStayAutomationRecord[]).map(mapFamilyStayAutomation))
+        } else {
+          setInternalUsers([])
+          setPendingReferrals([])
+          setFamilyStayAutomation([])
+        }
 
       if (role === 'staff' || role === 'admin' || role === 'superadmin') {
         const dashboard = await getStaffDashboard(authToken, selectedSiteId)
@@ -1153,9 +1207,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshConnectedData()
   }
 
-  const activateReferralFamily = async (referralId: number) => {
+  const activateReferralFamily = async (referralId: number, stayDays?: number) => {
     if (!authToken) throw new Error('Se requiere sesion')
-    const response = await activateFamily(authToken, referralId)
+    const response = await activateFamily(authToken, referralId, stayDays)
     await refreshConnectedData()
     return response
   }
@@ -1165,6 +1219,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const response = await updateFamilyAccess(authToken, familyId, action)
     await refreshConnectedData()
     return { newPin: response.newPin }
+  }
+
+  const refreshFamilyStayAutomation = async () => {
+    if (!authToken || !role || !['admin', 'superadmin', 'staff'].includes(role)) return
+    const selectedSiteId =
+      role === 'admin' || role === 'superadmin'
+        ? site === ALL_SITES_LABEL
+          ? null
+          : sites.findIndex((item) => item === site) + 1
+        : currentUser?.siteId || null
+    const stays = await getFamilyStayAutomation(authToken, selectedSiteId)
+    setFamilyStayAutomation((stays as FamilyStayAutomationRecord[]).map(mapFamilyStayAutomation))
+  }
+
+  const extendFamilyStay = async (familyId: number, extraDays: number) => {
+    if (!authToken) throw new Error('Se requiere sesion')
+    const stays = await extendFamilyStayApi(authToken, { familyId, extraDays })
+    setFamilyStayAutomation((stays as FamilyStayAutomationRecord[]).map(mapFamilyStayAutomation))
+    await refreshConnectedData()
   }
 
   const createVolunteerTaskForUser = async (payload: Parameters<AppContextValue['createVolunteerTaskForUser']>[0]) => {
@@ -1247,6 +1320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         referrals,
         pendingReferrals,
         families,
+        familyStayAutomation,
         rooms,
         requests,
         trips,
@@ -1300,6 +1374,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteInternalUser: deleteInternalUserHandler,
         activateReferralFamily,
         setFamilyAccessState,
+        refreshFamilyStayAutomation,
+        extendFamilyStay,
         createVolunteerTaskForUser,
         updateVolunteerTaskForUser,
         requestVolunteerChange,

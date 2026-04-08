@@ -1,8 +1,9 @@
-DROP TABLE IF EXISTS volunteeralerts CASCADE;
+﻿DROP TABLE IF EXISTS volunteeralerts CASCADE;
 DROP TABLE IF EXISTS appnotifications CASCADE;
 DROP TABLE IF EXISTS volunteerchangerequests CASCADE;
 DROP TABLE IF EXISTS volunteernotificationreads CASCADE;
 DROP TABLE IF EXISTS volunteertasks CASCADE;
+DROP TABLE IF EXISTS stafftasks CASCADE;
 DROP TABLE IF EXISTS staffprofiles CASCADE;
 DROP TABLE IF EXISTS auditevents CASCADE;
 DROP TABLE IF EXISTS communityposts CASCADE;
@@ -56,6 +57,18 @@ CREATE TABLE referrals (
   referralcode VARCHAR(30) NOT NULL UNIQUE,
   familycode VARCHAR(30) NOT NULL UNIQUE,
   status VARCHAR(30) NOT NULL CHECK (status IN ('enviada', 'en_revision', 'aceptada')),
+  admissionstage VARCHAR(30) NOT NULL DEFAULT 'referencia' CHECK (admissionstage IN ('referencia', 'borrador_extraido', 'expediente_armado', 'aprobada')),
+  childname VARCHAR(120),
+  diagnosis VARCHAR(255),
+  originhospital VARCHAR(160),
+  origincity VARCHAR(100),
+  requesttemplatejson TEXT,
+  socialworkername VARCHAR(120),
+  familycontactphone VARCHAR(40),
+  dossiersummary TEXT,
+  assignedsiteid INTEGER REFERENCES sites(siteid),
+  approvedat TIMESTAMP,
+  transporteventready BOOLEAN NOT NULL DEFAULT FALSE,
   arrivaldate DATE NOT NULL,
   companioncount INTEGER NOT NULL CHECK (companioncount >= 0),
   logisticsnote VARCHAR(500),
@@ -70,7 +83,7 @@ CREATE TABLE rooms (
   capacity INTEGER NOT NULL CHECK (capacity > 0),
   roomtype VARCHAR(20) NOT NULL DEFAULT 'normal' CHECK (roomtype IN ('normal', 'especial')),
   occupiedcount INTEGER NOT NULL DEFAULT 0 CHECK (occupiedcount >= 0),
-  roomstatus VARCHAR(20) NOT NULL DEFAULT 'disponible' CHECK (roomstatus IN ('disponible', 'ocupada', 'mantenimiento')),
+  roomstatus VARCHAR(20) NOT NULL DEFAULT 'disponible' CHECK (roomstatus IN ('disponible', 'ocupada', 'reservada', 'mantenimiento')),
   availableat TIMESTAMP,
   roomnote VARCHAR(255),
   isactive BOOLEAN NOT NULL DEFAULT TRUE,
@@ -83,8 +96,12 @@ CREATE TABLE families (
   referralid INTEGER UNIQUE REFERENCES referrals(referralid),
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
   roomid INTEGER REFERENCES rooms(roomid),
+  plannedroomid INTEGER REFERENCES rooms(roomid),
   caregivername VARCHAR(100) NOT NULL,
   familylastname VARCHAR(100) NOT NULL,
+  staydays INTEGER NOT NULL DEFAULT 3 CHECK (staydays > 0),
+  plannedcheckoutdate DATE,
+  automationstatus VARCHAR(30) NOT NULL DEFAULT 'pendiente' CHECK (automationstatus IN ('pendiente', 'sin_cupo', 'preparacion', 'reservada', 'ocupada', 'checkout_completado')),
   admissionstatus VARCHAR(30) NOT NULL CHECK (admissionstatus IN ('pendiente', 'checkin_completado')),
   idverified BOOLEAN NOT NULL DEFAULT FALSE,
   regulationaccepted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -106,10 +123,24 @@ CREATE TABLE familyaccess (
   updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE seguimiento_clinico (
+  followupid SERIAL PRIMARY KEY,
+  familyid INTEGER NOT NULL REFERENCES families(familyid) ON DELETE CASCADE,
+  referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+  requestid INTEGER REFERENCES requests(requestid) ON DELETE SET NULL,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  recordedbyuserid INTEGER REFERENCES users(userid),
+  clinicname VARCHAR(160),
+  feedbackmessage TEXT NOT NULL,
+  previouscheckoutdate DATE,
+  estimatedcheckoutdate DATE,
+  recordedat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE requests (
   requestid SERIAL PRIMARY KEY,
   siteid INTEGER NOT NULL REFERENCES sites(siteid),
-  familyid INTEGER NOT NULL REFERENCES families(familyid),
+  familyid INTEGER REFERENCES families(familyid),
   createdbyuserid INTEGER REFERENCES users(userid),
   createdbysource VARCHAR(20) NOT NULL CHECK (createdbysource IN ('staff', 'family', 'system')),
   title VARCHAR(160) NOT NULL,
@@ -119,7 +150,9 @@ CREATE TABLE requests (
   priorityscore INTEGER NOT NULL CHECK (priorityscore BETWEEN 0 AND 100),
   prioritylabel VARCHAR(20) NOT NULL CHECK (prioritylabel IN ('baja', 'media', 'alta')),
   priorityreason VARCHAR(255) NOT NULL,
-  status VARCHAR(30) NOT NULL CHECK (status IN ('nueva', 'asignada', 'en_proceso', 'resuelta')),
+  status VARCHAR(30) NOT NULL CHECK (status IN ('borrador_extraido', 'nueva', 'asignada', 'en_proceso', 'resuelta')),
+  referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+  documentoreferenciaurl VARCHAR(255),
   assignedrole VARCHAR(30) CHECK (assignedrole IN ('staff', 'volunteer')),
   assigneduserid INTEGER REFERENCES users(userid),
   assigneddisplayname VARCHAR(120),
@@ -177,6 +210,22 @@ CREATE TABLE volunteertasks (
   taskday DATE NOT NULL,
   status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'en_proceso', 'completada')),
   notes VARCHAR(255),
+  createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+  updatedat TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE stafftasks (
+  stafftaskid SERIAL PRIMARY KEY,
+  siteid INTEGER NOT NULL REFERENCES sites(siteid),
+  referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+  familyid INTEGER REFERENCES families(familyid) ON DELETE SET NULL,
+  assigneduserid INTEGER REFERENCES users(userid),
+  createdbyuserid INTEGER REFERENCES users(userid),
+  title VARCHAR(160) NOT NULL,
+  instructions TEXT NOT NULL,
+  priority VARCHAR(20) NOT NULL CHECK (priority IN ('baja', 'media', 'alta')),
+  suggestedroomcode VARCHAR(20),
+  status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'en_proceso', 'completada')),
   createdat TIMESTAMP NOT NULL DEFAULT NOW(),
   updatedat TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -323,7 +372,10 @@ CREATE TABLE auditevents (
 CREATE INDEX ix_users_email ON users(email);
 CREATE INDEX ix_users_site_role ON users(siteid, roleid);
 CREATE INDEX ix_referrals_site_status ON referrals(siteid, status);
+CREATE INDEX ix_referrals_stage_site ON referrals(admissionstage, COALESCE(assignedsiteid, siteid));
 CREATE INDEX ix_families_site_admissionstatus ON families(siteid, admissionstatus);
+CREATE INDEX ix_families_site_checkoutstatus ON families(siteid, plannedcheckoutdate, automationstatus);
+CREATE INDEX ix_seguimiento_clinico_family_recordedat ON seguimiento_clinico(familyid, recordedat DESC);
 CREATE INDEX ix_familyaccess_ticketcode ON familyaccess(ticketcode);
 CREATE INDEX ix_requests_site_status ON requests(siteid, status);
 CREATE INDEX ix_requests_familyid ON requests(familyid);
@@ -334,6 +386,7 @@ CREATE INDEX ix_rooms_site_roomtype ON rooms(siteid, roomtype);
 CREATE INDEX ix_volunteershifts_site_day ON volunteershifts(siteid, shiftday);
 CREATE INDEX ix_volunteertasks_site_day ON volunteertasks(siteid, taskday);
 CREATE INDEX ix_volunteertasks_volunteer_status ON volunteertasks(volunteeruserid, status);
+CREATE INDEX ix_stafftasks_site_status_createdat ON stafftasks(siteid, status, createdat DESC);
 CREATE INDEX ix_volunteernotificationreads_userid ON volunteernotificationreads(userid);
 CREATE INDEX ix_appnotifications_userid_isread_createdat ON appnotifications(userid, isread, createdat);
 CREATE INDEX ix_staffprofiles_siteid_workarea ON staffprofiles(siteid, workarea);
@@ -346,3 +399,4 @@ CREATE INDEX ix_impactevents_site_public_createdat ON impactevents(siteid, ispub
 CREATE INDEX ix_returnpasses_familyid ON returnpasses(familyid);
 CREATE INDEX ix_communityposts_status_createdat ON communityposts(status, createdat);
 CREATE INDEX ix_auditevents_eventtype_createdat ON auditevents(eventtype, createdat);
+

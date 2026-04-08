@@ -1,4 +1,4 @@
-import { getPool, sql } from '../../src/lib/db.js'
+﻿import { getPool, sql } from '../../src/lib/db.js'
 import { ensureSameOrGlobalSite, resolveScopedSiteId } from '../../src/lib/access.js'
 import { withApi } from '../../src/lib/http.js'
 import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
@@ -8,6 +8,7 @@ import { required, toInt } from '../../src/lib/validation.js'
 export default withApi({ methods: ['GET', 'PATCH'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   await ensureVolunteerManagementSchema()
   const pool = await getPool()
+
   if (req.method === 'GET') {
     const siteId = resolveScopedSiteId(req, req.query.siteId)
     const dbReq = pool.request()
@@ -18,25 +19,34 @@ export default withApi({ methods: ['GET', 'PATCH'], roles: ['staff', 'admin', 's
     }
     const result = await dbReq.query(`
       SELECT
-        r.roomid        AS "roomid",
-        r.siteid        AS "siteid",
-        r.roomcode      AS "roomcode",
-        r.capacity      AS "capacity",
-        r.roomtype      AS "roomtype",
-        r.occupiedcount AS "occupiedcount",
-        r.roomstatus    AS "roomstatus",
-        r.availableat   AS "availableat",
-        r.roomnote      AS "roomnote",
-        r.isactive      AS "isactive",
-        s.name          AS "sitename",
-        (
-          SELECT STRING_AGG(f.caregivername || ' ' || f.familylastname, ', ')
-          FROM families f
-          WHERE f.roomid = r.roomid
-            AND f.admissionstatus = 'checkin_completado'
-        ) AS "assignedfamilies"
+        r.roomid AS "RoomId",
+        r.siteid AS "SiteId",
+        r.roomcode AS "RoomCode",
+        r.capacity AS "Capacity",
+        r.roomtype AS "RoomType",
+        r.occupiedcount AS "OccupiedCount",
+        r.roomstatus AS "RoomStatus",
+        r.availableat AS "AvailableAt",
+        r.roomnote AS "RoomNote",
+        r.isactive AS "IsActive",
+        s.name AS "SiteName",
+        af.familyid AS "AssignedFamilyId",
+        af.caregivername AS "AssignedFamilyName",
+        af.familylastname AS "AssignedFamilyLastName",
+        af.admissionstatus AS "AssignedFamilyAdmissionStatus",
+        CASE
+          WHEN af.familyid IS NOT NULL THEN af.caregivername || ' ' || af.familylastname
+          ELSE NULL
+        END AS "assignedfamilies"
       FROM rooms r
       JOIN sites s ON s.siteid = r.siteid
+      LEFT JOIN LATERAL (
+        SELECT f.familyid, f.caregivername, f.familylastname, f.admissionstatus
+        FROM families f
+        WHERE f.roomid = r.roomid
+        ORDER BY f.updatedat DESC NULLS LAST, f.createdat DESC
+        LIMIT 1
+      ) af ON TRUE
       ${where}
       ORDER BY r.roomcode ASC
     `)
@@ -48,12 +58,12 @@ export default withApi({ methods: ['GET', 'PATCH'], roles: ['staff', 'admin', 's
   const roomResult = await pool
     .request()
     .input('roomId', sql.Int, roomId)
-    .query(`SELECT roomid, siteid FROM rooms WHERE roomid = @roomId`)
+    .query(`SELECT roomid AS "RoomId", siteid AS "SiteId" FROM rooms WHERE roomid = @roomId`)
   const room = roomResult.recordset[0]
   ensureSameOrGlobalSite(req, room.SiteId)
 
   const availableAt = req.body.availableAt || null
-  const roomNote = req.body.roomNote || null
+  const roomNote = req.body.roomNote ?? null
   const roomStatus = req.body.roomStatus || (availableAt || roomNote ? 'mantenimiento' : null)
 
   const result = await pool
@@ -65,11 +75,19 @@ export default withApi({ methods: ['GET', 'PATCH'], roles: ['staff', 'admin', 's
     .query(`
       UPDATE rooms
       SET
-        availableat = COALESCE(NULLIF(@availableAt, '')::timestamp, availableat),
-        roomnote = COALESCE(@roomNote, roomnote),
+        availableat = CASE
+          WHEN @availableAt IS NULL OR @availableAt = '' THEN availableat
+          ELSE @availableAt::timestamp
+        END,
+        roomnote = @roomNote,
         roomstatus = COALESCE(@roomStatus, roomstatus)
       WHERE roomid = @roomId
-      RETURNING *
+      RETURNING
+        roomid AS "RoomId",
+        roomcode AS "RoomCode",
+        roomstatus AS "RoomStatus",
+        availableat AS "AvailableAt",
+        roomnote AS "RoomNote"
     `)
 
   await logAudit({

@@ -1,4 +1,4 @@
-import { getPool } from './db.js'
+﻿import { getPool } from './db.js'
 
 let ensurePromise = null
 
@@ -88,6 +88,85 @@ export async function ensureVolunteerManagementSchema() {
       `)
 
       await pool.query(`
+        ALTER TABLE families
+        ADD COLUMN IF NOT EXISTS plannedroomid INTEGER REFERENCES rooms(roomid),
+        ADD COLUMN IF NOT EXISTS staydays INTEGER NOT NULL DEFAULT 3,
+        ADD COLUMN IF NOT EXISTS plannedcheckoutdate DATE,
+        ADD COLUMN IF NOT EXISTS automationstatus VARCHAR(30) NOT NULL DEFAULT 'pendiente'
+      `)
+
+      await pool.query(`
+        ALTER TABLE referrals
+        ADD COLUMN IF NOT EXISTS admissionstage VARCHAR(30) NOT NULL DEFAULT 'referencia',
+        ADD COLUMN IF NOT EXISTS childname VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS diagnosis VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS originhospital VARCHAR(160),
+        ADD COLUMN IF NOT EXISTS origincity VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS requesttemplatejson TEXT,
+        ADD COLUMN IF NOT EXISTS socialworkername VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS familycontactphone VARCHAR(40),
+        ADD COLUMN IF NOT EXISTS dossiersummary TEXT,
+        ADD COLUMN IF NOT EXISTS assignedsiteid INTEGER REFERENCES sites(siteid),
+        ADD COLUMN IF NOT EXISTS approvedat TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS transporteventready BOOLEAN NOT NULL DEFAULT FALSE
+      `)
+
+      await pool.query(`
+        ALTER TABLE referrals
+        DROP CONSTRAINT IF EXISTS referrals_admissionstage_check
+      `)
+
+      await pool.query(`
+        ALTER TABLE referrals
+        ADD CONSTRAINT referrals_admissionstage_check
+        CHECK (admissionstage IN ('referencia', 'borrador_extraido', 'expediente_armado', 'aprobada'))
+      `).catch(() => {})
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS seguimiento_clinico (
+          followupid SERIAL PRIMARY KEY,
+          familyid INTEGER NOT NULL REFERENCES families(familyid) ON DELETE CASCADE,
+          referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+          requestid INTEGER REFERENCES requests(requestid) ON DELETE SET NULL,
+          siteid INTEGER NOT NULL REFERENCES sites(siteid),
+          recordedbyuserid INTEGER REFERENCES users(userid),
+          clinicname VARCHAR(160),
+          feedbackmessage TEXT NOT NULL,
+          previouscheckoutdate DATE,
+          estimatedcheckoutdate DATE,
+          recordedat TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `)
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS stafftasks (
+          stafftaskid SERIAL PRIMARY KEY,
+          siteid INTEGER NOT NULL REFERENCES sites(siteid),
+          referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+          familyid INTEGER REFERENCES families(familyid) ON DELETE SET NULL,
+          assigneduserid INTEGER REFERENCES users(userid),
+          createdbyuserid INTEGER REFERENCES users(userid),
+          title VARCHAR(160) NOT NULL,
+          instructions TEXT NOT NULL,
+          priority VARCHAR(20) NOT NULL DEFAULT 'media',
+          suggestedroomcode VARCHAR(20),
+          status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+          createdat TIMESTAMP NOT NULL DEFAULT NOW(),
+          updatedat TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `)
+
+      await pool.query(`
+        ALTER TABLE stafftasks
+        ADD COLUMN IF NOT EXISTS suggestedroomcode VARCHAR(20)
+      `)
+
+      await pool.query(`
+        ALTER TABLE families
+        ADD COLUMN IF NOT EXISTS departureremindersentat TIMESTAMP
+      `)
+
+      await pool.query(`
         ALTER TABLE rooms
         DROP CONSTRAINT IF EXISTS rooms_roomstatus_check
       `)
@@ -95,7 +174,7 @@ export async function ensureVolunteerManagementSchema() {
       await pool.query(`
         ALTER TABLE rooms
         ADD CONSTRAINT rooms_roomstatus_check
-        CHECK (roomstatus IN ('disponible', 'ocupada', 'mantenimiento'))
+        CHECK (roomstatus IN ('disponible', 'ocupada', 'reservada', 'mantenimiento'))
       `).catch(() => {})
 
       await pool.query(`
@@ -119,6 +198,28 @@ export async function ensureVolunteerManagementSchema() {
         ALTER TABLE volunteertasks
         ADD COLUMN IF NOT EXISTS relatedroomid INTEGER REFERENCES rooms(roomid)
       `)
+
+      await pool.query(`
+        ALTER TABLE requests
+        ADD COLUMN IF NOT EXISTS referralid INTEGER REFERENCES referrals(referralid) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS documentoreferenciaurl VARCHAR(255)
+      `)
+
+      await pool.query(`
+        ALTER TABLE requests
+        ALTER COLUMN familyid DROP NOT NULL
+      `).catch(() => {})
+
+      await pool.query(`
+        ALTER TABLE requests
+        DROP CONSTRAINT IF EXISTS requests_status_check
+      `)
+
+      await pool.query(`
+        ALTER TABLE requests
+        ADD CONSTRAINT requests_status_check
+        CHECK (status IN ('borrador_extraido', 'nueva', 'asignada', 'en_proceso', 'resuelta'))
+      `).catch(() => {})
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS inventoryreports (
@@ -167,8 +268,28 @@ export async function ensureVolunteerManagementSchema() {
       `)
 
       await pool.query(`
+        CREATE INDEX IF NOT EXISTS ix_stafftasks_site_status_createdat
+        ON stafftasks(siteid, status, createdat DESC)
+      `)
+
+      await pool.query(`
         CREATE INDEX IF NOT EXISTS ix_rooms_site_roomtype
         ON rooms(siteid, roomtype)
+      `)
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS ix_families_site_checkoutstatus
+        ON families(siteid, plannedcheckoutdate, automationstatus)
+      `)
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS ix_referrals_stage_site
+        ON referrals(admissionstage, COALESCE(assignedsiteid, siteid))
+      `)
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS ix_seguimiento_clinico_family_recordedat
+        ON seguimiento_clinico(familyid, recordedat DESC)
       `)
 
       await pool.query(`
@@ -188,3 +309,4 @@ export async function ensureVolunteerManagementSchema() {
 
   return ensurePromise
 }
+

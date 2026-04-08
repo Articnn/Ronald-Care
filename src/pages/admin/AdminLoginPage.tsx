@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -17,14 +17,14 @@ export function AdminLoginPage() {
       <SectionHeader title="Login admin" subtitle="Superadmin y coordinadores de sede." />
       <Card className="space-y-4">
         <Input label="Usuario" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@ronaldcare.demo" />
-        <Input label="Contrasena" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
+        <Input label="Contraseña" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
         {authError ? <p className="text-sm font-semibold text-red-700">{authError}</p> : null}
         <Button
           fullWidth
           isLoading={isSyncing}
           onClick={async () => {
             const nextRole = await loginInternalUser(email, password)
-            navigate(nextRole === 'superadmin' || nextRole === 'admin' ? '/admin/panel' : '/')
+            navigate(nextRole === 'superadmin' || nextRole === 'admin' ? '/admin/panel' : '/login')
           }}
         >
           Entrar

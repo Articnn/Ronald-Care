@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8787/api').replace(/\/$/, '')
+﻿const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8787/api').replace(/\/$/, '')
 
 interface ApiEnvelope<T> {
   success: boolean
@@ -54,24 +54,41 @@ export interface FamilyLoginResponse {
 export interface BackendReferral {
   ReferralId: number
   SiteId: number
+  AssignedSiteId?: number | null
   CaregiverName: string
   FamilyLastName: string
+  ChildName?: string | null
+  Diagnosis?: string | null
   ReferralCode: string
   FamilyCode: string
   Status: 'enviada' | 'en_revision' | 'aceptada'
+  AdmissionStage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada'
+  OriginHospital?: string | null
+  OriginCity?: string | null
+  FamilyContactPhone?: string | null
+  RequestTemplateJson?: string | null
+  DossierSummary?: string | null
+  SocialWorkerName?: string | null
+  ApprovedAt?: string | null
   ArrivalDate: string
   CompanionCount: number
   LogisticsNote: string | null
   EligibilityConfirmed: boolean
   CreatedAt: string
   SiteName?: string
+  AssignedSiteName?: string | null
+  Message?: string
 }
 
 export interface BackendFamily {
   FamilyId: number
   ReferralId: number | null
+  PlannedRoomId?: number | null
   CaregiverName: string
   FamilyLastName: string
+  StayDays?: number
+  PlannedCheckoutDate?: string | null
+  AutomationStatus?: 'pendiente' | 'sin_cupo' | 'preparacion' | 'reservada' | 'ocupada' | 'checkout_completado'
   AdmissionStatus: 'pendiente' | 'checkin_completado'
   IdVerified: boolean
   RegulationAccepted: boolean
@@ -94,7 +111,9 @@ export interface BackendRequest {
   PriorityScore: number
   PriorityLabel: 'baja' | 'media' | 'alta'
   PriorityReason: string
-  Status: 'nueva' | 'asignada' | 'en_proceso' | 'resuelta'
+  Status: 'borrador_extraido' | 'nueva' | 'asignada' | 'en_proceso' | 'resuelta'
+  ReferralId?: number | null
+  DocumentReferenceUrl?: string | null
   AssignedRole: 'staff' | 'volunteer'
   AssignedDisplayName: string | null
   CreatedAt: string
@@ -170,6 +189,50 @@ export interface BackendUser {
 
 export interface PendingReferral extends BackendReferral {}
 
+export interface AdmissionRecord extends BackendReferral {
+  FamilyId?: number | null
+  DraftRequestId?: number | null
+}
+
+export interface ExtractedAdmissionReference {
+  childName: string
+  originHospital: string
+  originCity: string
+  diagnosis: string
+  caregiverName: string
+  familyLastName: string
+  siteSuggestion: string
+  message: string
+}
+
+export interface ClinicalHistoryRecord {
+  FollowUpId: number
+  FamilyId: number
+  ReferralId: number | null
+  SiteId: number
+  SiteName: string
+  RecordedByUserId: number | null
+  RecordedByName?: string | null
+  ClinicName: string | null
+  FeedbackMessage: string
+  PreviousCheckoutDate: string | null
+  EstimatedCheckoutDate: string | null
+  RecordedAt: string
+}
+
+export interface DepartureReminderRecord {
+  FamilyId: number
+  SiteId: number
+  CaregiverName: string
+  FamilyLastName: string
+  PlannedCheckoutDate: string
+  DepartureReminderSentAt: string | null
+  TicketCode: string | null
+  SiteName: string
+  RoomCode: string | null
+  ReminderMessage: string
+}
+
 export interface ActivationResponse {
   family: BackendFamily
   access: {
@@ -179,6 +242,24 @@ export interface ActivationResponse {
     IsActive: boolean
   }
   generatedPin: string
+  automation?: FamilyStayAutomationRecord | null
+}
+
+export interface FamilyStayAutomationRecord {
+  FamilyId: number
+  SiteId: number
+  SiteName: string
+  CaregiverName: string
+  FamilyLastName: string
+  ArrivalDate: string
+  StayDays: number
+  PlannedCheckoutDate: string | null
+  AutomationStatus: 'pendiente' | 'sin_cupo' | 'preparacion' | 'reservada' | 'ocupada' | 'checkout_completado'
+  PlannedRoomId: number | null
+  PlannedRoomCode: string | null
+  AssignedVolunteerUserId?: number | null
+  AssignedVolunteerName?: string | null
+  Message: string
 }
 
 export interface VolunteerTask {
@@ -265,6 +346,28 @@ export interface StaffDashboardResponse {
   unassignedTasks: number
 }
 
+export interface StaffTaskRecord {
+  StaffTaskId: number
+  SiteId: number
+  SiteName: string
+  ReferralId: number | null
+  FamilyId: number | null
+  AssignedUserId: number | null
+  AssignedUserName?: string | null
+  CreatedByUserId: number | null
+  CreatedByName?: string | null
+  CaregiverName?: string | null
+  FamilyLastName?: string | null
+  RoomCode?: string | null
+  SuggestedRoomCode?: string | null
+  Title: string
+  Instructions: string
+  Priority: 'baja' | 'media' | 'alta'
+  Status: 'pendiente' | 'en_proceso' | 'completada'
+  CreatedAt: string
+  UpdatedAt: string
+}
+
 export function loginInternal(email: string, password: string) {
   return apiRequest<InternalLoginResponse>('/auth/login', { method: 'POST', body: { email, password } })
 }
@@ -292,9 +395,90 @@ export function getReferrals(token: string, siteId?: number | null) {
 
 export function createReferral(
   token: string,
-  payload: { siteId: number; caregiverName: string; familyLastName: string; arrivalDate: string; companionCount: number; logisticsNote?: string; eligibilityConfirmed: boolean }
+  payload: {
+    siteId: number
+    caregiverName: string
+    familyLastName: string
+    arrivalDate: string
+    companionCount: number
+    logisticsNote?: string
+    eligibilityConfirmed: boolean
+    originHospital?: string
+    originCity?: string
+    familyContactPhone?: string
+  }
 ) {
   return apiRequest<BackendReferral>('/referrals', { method: 'POST', token, body: payload })
+}
+
+export function getAdmissions(token: string, params: { siteId?: number | null; stage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada' } = {}) {
+  const query = new URLSearchParams()
+  if (params.siteId) query.set('siteId', String(params.siteId))
+  if (params.stage) query.set('stage', params.stage)
+  return apiRequest<AdmissionRecord[]>(`/admissions${query.toString() ? `?${query.toString()}` : ''}`, { token })
+}
+
+export function createAdmissionReferral(token: string, payload: {
+  siteId: number
+  caregiverName: string
+  familyLastName: string
+  childName?: string
+  diagnosis?: string
+  arrivalDate: string
+  companionCount: number
+  logisticsNote?: string
+  eligibilityConfirmed: boolean
+  originHospital?: string
+  originCity?: string
+  familyContactPhone?: string
+  documentReferenceUrl?: string
+  admissionStage?: 'referencia' | 'borrador_extraido'
+}) {
+  return apiRequest<AdmissionRecord>('/admissions', { method: 'POST', token, body: payload })
+}
+
+export function extractAdmissionReference(token: string, payload: { fileName: string; hintText?: string }) {
+  return apiRequest<ExtractedAdmissionReference>('/admissions/extract', { method: 'POST', token, body: payload })
+}
+
+export function updateAdmissionRecord(token: string, payload: {
+  referralId: number
+  action: 'enrich' | 'approve' | 'clinical-feedback'
+  socialWorkerName?: string
+  familyContactPhone?: string
+  dossierSummary?: string
+  originHospital?: string
+  originCity?: string
+  childName?: string
+  diagnosis?: string
+  familyId?: number
+  requestId?: number
+  clinicName?: string
+  feedbackMessage?: string
+  estimatedCheckoutDate?: string | null
+}) {
+  return apiRequest<AdmissionRecord | ClinicalHistoryRecord>('/admissions', { method: 'PATCH', token, body: payload })
+}
+
+export function getClinicalHistory(token: string, params: { familyId?: number | null; referralId?: number | null; siteId?: number | null }) {
+  const query = new URLSearchParams()
+  if (params.familyId) query.set('familyId', String(params.familyId))
+  if (params.referralId) query.set('referralId', String(params.referralId))
+  if (params.siteId) query.set('siteId', String(params.siteId))
+  return apiRequest<ClinicalHistoryRecord[]>(`/admissions/clinical-history?${query.toString()}`, { token })
+}
+
+export function getDepartureReminders(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<DepartureReminderRecord[]>(`/admissions/departure-reminders${query}`, { token })
+}
+
+export function markDepartureReminderPreparedApi(token: string, familyId: number) {
+  return apiRequest<{ FamilyId: number; DepartureReminderSentAt: string; Message: string }>('/admissions/departure-reminders', {
+    method: 'PATCH',
+    token,
+    body: { familyId },
+  })
 }
 
 export function updateReferralStatus(token: string, referralId: number, status: 'enviada' | 'en_revision' | 'aceptada') {
@@ -474,6 +658,13 @@ export function getStaffRoster(token: string, siteId?: number | null) {
   return apiRequest<BackendStaffRosterItem[]>(`/staff/roster${query}`, { token })
 }
 
+export function getStaffTasks(token: string, params: { siteId?: number | null; status?: 'pendiente' | 'en_proceso' | 'completada' } = {}) {
+  const query = new URLSearchParams()
+  if (params.siteId) query.set('siteId', String(params.siteId))
+  if (params.status) query.set('status', params.status)
+  return apiRequest<StaffTaskRecord[]>(`/staff/tasks${query.toString() ? `?${query.toString()}` : ''}`, { token })
+}
+
 export function sendVolunteerAlert(token: string, payload: { toVolunteerUserId: number; alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me' }) {
   return apiRequest<{ message: string }>('/volunteer-alerts', { method: 'POST', token, body: payload })
 }
@@ -513,6 +704,24 @@ export function getEvents() {
   return apiRequest<DonorEvent[]>('/donor/events')
 }
 
+export interface RoomArrivalFlow {
+  FamilyId: number
+  CaregiverName: string
+  FamilyLastName: string
+  ArrivalDate: string
+  SiteId: number
+  SiteName: string
+  RequiredCapacity: number
+  FlowStatus: 'ready' | 'assigned' | 'reserved' | 'preparing' | 'prep_pending' | 'unavailable'
+  Message: string
+  SuggestedRoomId: number | null
+  SuggestedRoomCode: string | null
+  SuggestedRoomStatus: 'disponible' | 'ocupada' | 'reservada' | 'mantenimiento' | null
+  AssignedVolunteerUserId: number | null
+  AssignedVolunteerName: string | null
+  ExistingTaskId: number | null
+}
+
 export interface Room {
   RoomId: number
   SiteId: number
@@ -520,11 +729,15 @@ export interface Room {
   Capacity: number
   RoomType?: 'normal' | 'especial'
   OccupiedCount: number
-  RoomStatus?: 'disponible' | 'ocupada' | 'mantenimiento'
+  RoomStatus?: 'disponible' | 'ocupada' | 'reservada' | 'mantenimiento'
   AvailableAt?: string | null
   RoomNote?: string | null
   IsActive: boolean
   SiteName: string
+  AssignedFamilyId?: number | null
+  AssignedFamilyName?: string | null
+  AssignedFamilyLastName?: string | null
+  AssignedFamilyAdmissionStatus?: 'pendiente' | 'checkin_completado' | null
   assignedfamilies: string | null
 }
 
@@ -548,8 +761,35 @@ export function getRooms(token: string, siteId?: number | null) {
   return apiRequest<Room[]>(`/staff/rooms${query}`, { token })
 }
 
-export function updateRoom(token: string, payload: { roomId: number; availableAt?: string | null; roomNote?: string | null; roomStatus?: 'disponible' | 'ocupada' | 'mantenimiento' }) {
+export function updateRoom(token: string, payload: { roomId: number; availableAt?: string | null; roomNote?: string | null; roomStatus?: 'disponible' | 'ocupada' | 'reservada' | 'mantenimiento' }) {
   return apiRequest<Room>('/staff/rooms', { method: 'PATCH', token, body: payload })
+}
+
+export function getRoomArrivalFlow(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<RoomArrivalFlow[]>(`/staff/arrival-flow${query}`, { token })
+}
+
+export function confirmRoomArrivalAssignment(token: string, payload: { familyId: number; roomId: number }) {
+  return apiRequest<{ FamilyId: number; Room: Pick<Room, 'RoomId' | 'RoomCode' | 'RoomStatus'>; Message: string }>('/staff/arrival-flow', {
+    method: 'POST',
+    token,
+    body: payload,
+  })
+}
+
+export function releaseRoom(token: string, roomId: number) {
+  return apiRequest<{
+    Room: Pick<Room, 'RoomId' | 'RoomCode' | 'RoomStatus'>
+    AssignedVolunteerUserId: number | null
+    AssignedVolunteerName: string | null
+    VolunteerTaskId: number | null
+    Message: string
+  }>('/staff/rooms/release', {
+    method: 'PATCH',
+    token,
+    body: { roomId },
+  })
 }
 
 export interface BackendInventoryReport {
@@ -610,12 +850,25 @@ export function getPendingReferrals(token: string, siteId?: number | null) {
   return apiRequest<PendingReferral[]>(`/admin/pending-referrals${query}`, { token })
 }
 
-export function activateFamily(token: string, referralId: number) {
-  return apiRequest<ActivationResponse>('/admin/activate-family', { method: 'POST', token, body: { referralId } })
+export function activateFamily(token: string, referralId: number, stayDays?: number) {
+  return apiRequest<ActivationResponse>('/admin/activate-family', { method: 'POST', token, body: { referralId, stayDays } })
 }
 
 export function updateFamilyAccess(token: string, familyId: number, action: 'pause' | 'reactivate' | 'reset-pin') {
   return apiRequest<{ message: string; newPin?: string; ticketCode?: string; qrCode?: string }>('/admin/family-access', { method: 'PATCH', token, body: { familyId, action } })
+}
+
+export function getFamilyStayAutomation(token: string, siteId?: number | null) {
+  const query = siteId ? `?siteId=${siteId}` : ''
+  return apiRequest<FamilyStayAutomationRecord[]>(`/admin/family-stays${query}`, { token })
+}
+
+export function extendFamilyStayApi(token: string, payload: { familyId: number; extraDays: number }) {
+  return apiRequest<FamilyStayAutomationRecord[]>('/admin/family-stays', {
+    method: 'PATCH',
+    token,
+    body: { familyId: payload.familyId, extraDays: payload.extraDays, action: 'extend' },
+  })
 }
 
 export function getInventoryStock(token: string, siteId?: number | null) {
@@ -667,3 +920,4 @@ export function createReturnPassApi(token: string, payload: { familyId: number; 
     body: payload,
   })
 }
+

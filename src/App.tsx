@@ -5,25 +5,11 @@ import { AppProvider } from './context/AppContext'
 import { AccountPage } from './pages/AccountPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminPanelPage } from './pages/admin/AdminPanelPage'
-import { DonorDonatePage } from './pages/donor/DonorDonatePage'
-import { DonorGalleryPage } from './pages/donor/DonorGalleryPage'
-import { DonorHomePage } from './pages/donor/DonorHomePage'
-import { DonorImpactPage } from './pages/donor/DonorImpactPage'
-import { FamilyCommunityPage } from './pages/family/FamilyCommunityPage'
-import { FamilyGuidePage } from './pages/family/FamilyGuidePage'
-import { FamilyLoginPage } from './pages/family/FamilyLoginPage'
-import { FamilyPausePage } from './pages/family/FamilyPausePage'
-import { FamilyRequestPage } from './pages/family/FamilyRequestPage'
-import { FamilyReturnPassPage } from './pages/family/FamilyReturnPassPage'
-import { FamilyStatusPage } from './pages/family/FamilyStatusPage'
 import { KioskPage } from './pages/family/KioskPage'
 import { OperationalAccessPage } from './pages/OperationalAccessPage'
-import { HospitalLoginPage } from './pages/hospital/HospitalLoginPage'
-import { HospitalReferralDetailPage } from './pages/hospital/HospitalReferralDetailPage'
-import { HospitalReferralsPage } from './pages/hospital/HospitalReferralsPage'
-import { ProfileSelectorPage } from './pages/ProfileSelectorPage'
 import { StaffAnalyticsPage } from './pages/staff/StaffAnalyticsPage'
 import { StaffDashboardPage } from './pages/staff/StaffDashboardPage'
+import { StaffEntriesPage } from './pages/staff/StaffEntriesPage'
 import { StaffInventoryPage } from './pages/staff/StaffInventoryPage'
 import { StaffLoginPage } from './pages/staff/StaffLoginPage'
 import { StaffReceptionPage } from './pages/staff/StaffReceptionPage'
@@ -31,9 +17,6 @@ import { StaffRequestsPage } from './pages/staff/StaffRequestsPage'
 import { StaffRoomsPage } from './pages/staff/StaffRoomsPage'
 import { StaffTripsPage } from './pages/staff/StaffTripsPage'
 import { StaffVolunteersPage } from './pages/staff/StaffVolunteersPage'
-import { VolunteerLoginPage } from './pages/volunteer/VolunteerLoginPage'
-import { VolunteerRequestsPage } from './pages/volunteer/VolunteerRequestsPage'
-import { VolunteerTripsPage } from './pages/volunteer/VolunteerTripsPage'
 
 function App() {
   return (
@@ -41,7 +24,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route path="/" element={<ProfileSelectorPage />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<OperationalAccessPage />} />
             <Route path="/access" element={<Navigate to="/login" replace />} />
 
@@ -54,24 +37,9 @@ function App() {
                 </RequireRole>
               }
             />
-
-            <Route path="/hospital/login" element={<HospitalLoginPage />} />
-            <Route
-              path="/hospital/referrals"
-              element={
-                <RequireRole allowed={['hospital', 'admin', 'superadmin']}>
-                  <HospitalReferralsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/hospital/referrals/:id"
-              element={
-                <RequireRole allowed={['hospital', 'admin', 'superadmin']}>
-                  <HospitalReferralDetailPage />
-                </RequireRole>
-              }
-            />
+            <Route path="/hospital/login" element={<Navigate to="/login" replace />} />
+            <Route path="/hospital/referrals" element={<Navigate to="/staff/entries" replace />} />
+            <Route path="/hospital/referrals/:id" element={<Navigate to="/staff/entries" replace />} />
 
             <Route path="/staff/login" element={<StaffLoginPage />} />
             <Route
@@ -79,6 +47,14 @@ function App() {
               element={
                 <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffDashboardPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/staff/entries"
+              element={
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
+                  <StaffEntriesPage />
                 </RequireRole>
               }
             />
@@ -147,89 +123,33 @@ function App() {
               }
             />
 
-            <Route path="/volunteer/login" element={<VolunteerLoginPage />} />
-            <Route
-              path="/volunteer/requests"
-              element={
-                <RequireRole allowed={['volunteer', 'admin', 'superadmin']}>
-                  <VolunteerRequestsPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/volunteer/trips"
-              element={
-                <RequireRole allowed={['volunteer', 'admin', 'superadmin']}>
-                  <VolunteerTripsPage />
-                </RequireRole>
-              }
-            />
+            <Route path="/volunteer/login" element={<Navigate to="/login" replace />} />
+            <Route path="/volunteer/requests" element={<Navigate to="/login" replace />} />
+            <Route path="/volunteer/trips" element={<Navigate to="/login" replace />} />
 
-            <Route path="/family/login" element={<FamilyLoginPage />} />
-            <Route
-              path="/family/request"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyRequestPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/family/guide"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyGuidePage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/family/pause"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyPausePage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/family/return-pass"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyReturnPassPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/family/community"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyCommunityPage />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/family/status"
-              element={
-                <RequireRole allowed={['family']}>
-                  <FamilyStatusPage />
-                </RequireRole>
-              }
-            />
+            <Route path="/family/login" element={<Navigate to="/login" replace />} />
+            <Route path="/family/request" element={<Navigate to="/login" replace />} />
+            <Route path="/family/guide" element={<Navigate to="/login" replace />} />
+            <Route path="/family/pause" element={<Navigate to="/login" replace />} />
+            <Route path="/family/return-pass" element={<Navigate to="/login" replace />} />
+            <Route path="/family/community" element={<Navigate to="/login" replace />} />
+            <Route path="/family/status" element={<Navigate to="/login" replace />} />
 
             <Route
               path="/account"
               element={
-                <RequireRole allowed={['superadmin', 'admin', 'hospital', 'staff', 'volunteer', 'family']}>
+                <RequireRole allowed={['superadmin', 'admin', 'staff']}>
                   <AccountPage />
                 </RequireRole>
               }
             />
 
-            <Route path="/donor/home" element={<DonorHomePage />} />
-            <Route path="/donor/gallery" element={<DonorGalleryPage />} />
-            <Route path="/donor/impact" element={<DonorImpactPage />} />
-            <Route path="/donor/donate" element={<DonorDonatePage />} />
+            <Route path="/donor/home" element={<Navigate to="/login" replace />} />
+            <Route path="/donor/gallery" element={<Navigate to="/login" replace />} />
+            <Route path="/donor/impact" element={<Navigate to="/login" replace />} />
+            <Route path="/donor/donate" element={<Navigate to="/login" replace />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

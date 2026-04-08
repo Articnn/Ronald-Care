@@ -1,13 +1,16 @@
-import { getPool, sql } from '../../src/lib/db.js'
+﻿import { getPool, sql } from '../../src/lib/db.js'
 import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
 import { hashPassword } from '../../src/lib/security.js'
 import { makeFamilyQr, makeFamilyTicket, makeNumericPin } from '../../src/lib/sql-helpers.js'
+import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
+import { automateFamilyStayAssignment, extendFamilyStay, listFamilyStayAutomation, syncExpiredFamilyStays } from '../../src/lib/family-stay-automation.js'
 import { required, toInt } from '../../src/lib/validation.js'
 
 export const pendingReferralsHandler = withApi({ methods: ['GET'], roles: ['superadmin', 'admin'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   const pool = await getPool()
   const siteId = resolveScopedSiteId(req, req.query.siteId)
   const dbReq = pool.request()
@@ -21,11 +24,13 @@ export const pendingReferralsHandler = withApi({ methods: ['GET'], roles: ['supe
   const result = await dbReq.query(`
     SELECT
       r.ReferralId, r.SiteId, r.CaregiverName, r.FamilyLastName, r.ReferralCode, r.FamilyCode,
-      r.Status, r.ArrivalDate, r.CompanionCount, r.LogisticsNote, r.EligibilityConfirmed,
-      s.Name AS SiteName
+      r.Status, r.AdmissionStage, r.ArrivalDate, r.CompanionCount, r.LogisticsNote, r.EligibilityConfirmed,
+      COALESCE(r.AssignedSiteId, r.SiteId) AS AssignedSiteId,
+      COALESCE(ass.Name, s.Name) AS SiteName
     FROM Referrals r
     LEFT JOIN Families f ON f.ReferralId = r.ReferralId
     INNER JOIN Sites s ON s.SiteId = r.SiteId
+    LEFT JOIN Sites ass ON ass.SiteId = r.AssignedSiteId
     ${where}
     ORDER BY r.CreatedAt DESC
   `)
@@ -34,9 +39,11 @@ export const pendingReferralsHandler = withApi({ methods: ['GET'], roles: ['supe
 })
 
 export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['superadmin', 'admin', 'staff'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   required(req.body, ['referralId'])
   const pool = await getPool()
   const referralId = toInt(req.body.referralId, 'referralId')
+  const stayDays = Math.max(1, Number(req.body.stayDays || 3))
 
   const referralResult = await pool
     .request()
@@ -44,7 +51,7 @@ export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['super
     .query(`
       SELECT r.*, s.Name AS SiteName
       FROM Referrals r
-      INNER JOIN Sites s ON s.SiteId = r.SiteId
+      INNER JOIN Sites s ON s.SiteId = COALESCE(r.AssignedSiteId, r.SiteId)
       WHERE r.ReferralId = @referralId
     `)
 
@@ -61,12 +68,14 @@ export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['super
   const familyResult = await pool
     .request()
     .input('referralId', sql.Int, referral.ReferralId)
-    .input('siteId', sql.Int, referral.SiteId)
+    .input('siteId', sql.Int, referral.AssignedSiteId || referral.SiteId)
     .input('caregiverName', sql.NVarChar(100), referral.CaregiverName)
     .input('familyLastName', sql.NVarChar(100), referral.FamilyLastName)
+    .input('stayDays', sql.Int, stayDays)
+    .input('plannedCheckoutDate', sql.Date, new Date(new Date(referral.ArrivalDate).getTime() + stayDays * 24 * 60 * 60 * 1000))
     .query(`
-      INSERT INTO Families (ReferralId, SiteId, CaregiverName, FamilyLastName, AdmissionStatus, CreatedAt, UpdatedAt)
-      VALUES (@referralId, @siteId, @caregiverName, @familyLastName, 'pendiente', NOW(), NOW())
+      INSERT INTO Families (ReferralId, SiteId, CaregiverName, FamilyLastName, StayDays, PlannedCheckoutDate, AutomationStatus, AdmissionStatus, CreatedAt, UpdatedAt)
+      VALUES (@referralId, @siteId, @caregiverName, @familyLastName, @stayDays, @plannedCheckoutDate, 'pendiente', 'pendiente', NOW(), NOW())
       RETURNING *
     `)
 
@@ -87,23 +96,62 @@ export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['super
       RETURNING *
     `)
 
+  const automation = await automateFamilyStayAssignment(pool, { familyId: family.FamilyId, actorUserId: req.auth.sub })
+
   await logAudit({
     siteId: referral.SiteId,
     actorUserId: req.auth.sub,
     eventType: 'family.activated',
     entityType: 'family',
     entityId: family.FamilyId,
-    metadata: { referralId, ticketCode, qrCode },
+    metadata: { referralId, ticketCode, qrCode, stayDays },
   })
 
   return {
     family,
     access: accessResult.recordset[0],
     generatedPin: pin,
+    automation,
   }
 })
 
+export const familyStayAutomationHandler = withApi({ methods: ['GET', 'PATCH'], roles: ['superadmin', 'admin', 'staff'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
+  const pool = await getPool()
+  const siteId = resolveScopedSiteId(req, req.query.siteId)
+
+  if (req.method === 'GET') {
+    await syncExpiredFamilyStays(pool, req.auth.sub)
+    return listFamilyStayAutomation(pool, siteId)
+  }
+
+  required(req.body, ['familyId', 'action'])
+  const familyId = toInt(req.body.familyId, 'familyId')
+  const action = String(req.body.action)
+
+  if (action === 'extend') {
+    const extraDays = Math.max(1, Number(req.body.extraDays || 1))
+    const updated = await extendFamilyStay(pool, { familyId, extraDays })
+    if (!updated) throw new ApiError(404, 'Familia no encontrada')
+
+    await logAudit({
+      siteId: updated.SiteId,
+      actorUserId: req.auth.sub,
+      eventType: 'family.stay_extended',
+      entityType: 'family',
+      entityId: familyId,
+      metadata: { extraDays },
+    })
+
+    await syncExpiredFamilyStays(pool, req.auth.sub)
+    return listFamilyStayAutomation(pool, siteId)
+  }
+
+  throw new ApiError(400, 'Accion no soportada')
+})
+
 export const familyAccessAdminHandler = withApi({ methods: ['PATCH'], roles: ['superadmin', 'admin', 'staff'] }, async (req) => {
+  await ensureVolunteerManagementSchema()
   required(req.body, ['familyId', 'action'])
   const familyId = toInt(req.body.familyId, 'familyId')
   const action = req.body.action

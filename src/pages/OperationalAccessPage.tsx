@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, ShieldCheck, UserCog, Users } from 'lucide-react'
+﻿import { ArrowRight, ShieldCheck, UserCog } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card } from '../components/ui/Card'
 import { SectionHeader } from '../components/ui/SectionHeader'
@@ -10,38 +10,20 @@ const accessCards = [
     route: '/admin/login',
     icon: <UserCog className="h-8 w-8" />,
   },
-  /*
-  {
-    title: 'Hospital / Trabajo Social',
-    description: 'Captura y seguimiento de referencias no clínicas.',
-    route: '/hospital/login',
-    icon: <Building2 className="h-8 w-8" />,
-  },
-  */
   {
     title: 'Staff / Operación',
-    description: 'Recepción, ayuda asistida, solicitudes, viajes, voluntariado e inventario.',
+    description: 'Recepción, entradas, ayuda asistida, habitaciones, solicitudes e inventario.',
     route: '/staff/login',
     icon: <ShieldCheck className="h-8 w-8" />,
-  },
-  {
-    title: 'Voluntariado',
-    description: 'Tareas del día, viajes y solicitudes asignadas.',
-    route: '/volunteer/login',
-    icon: <Users className="h-8 w-8" />,
   },
 ]
 
 export function OperationalAccessPage() {
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Login"
-        title="Selecciona tu acceso"
-        subtitle="Accede a los roles internos desde aquí."
-      />
+    <div className="space-y-8">
+      <SectionHeader eyebrow="Login" title="Acceso operativo" subtitle="Inicia sesión para entrar al flujo interno de RonaldCare." />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {accessCards.map((item) => (
           <Link key={item.title} className="text-left" to={item.route}>
             <Card className="flex h-full flex-col gap-4 border border-warm-100 transition hover:-translate-y-1">
