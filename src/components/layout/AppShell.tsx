@@ -1,4 +1,4 @@
-﻿import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, ShieldCheck, UserCircle2 } from 'lucide-react'
+import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
@@ -83,6 +83,186 @@ export function AppShell() {
   }, [])
 
   const canChange = canChangeSite(role)
+  const isAdminLayout = role === 'admin' || role === 'superadmin'
+
+  // ─── ADMIN / SUPERADMIN: sidebar layout ───────────────────────────────────
+  if (isAdminLayout) {
+    return (
+      <div className={`flex min-h-screen bg-gray-50 ${easyRead ? 'text-xl' : ''}`}>
+        {/* Sidebar */}
+        <aside className="sticky top-0 h-screen w-64 shrink-0 flex flex-col bg-warm-900 shadow-lg z-30">
+          {/* Logo */}
+          <div className="px-5 py-5 border-b border-warm-800">
+            <Link to="/login" className="flex items-center gap-3">
+              <HeartHandshake className="h-7 w-7 text-gold-300" />
+              <p className="text-lg font-extrabold text-white">RonaldCare</p>
+            </Link>
+          </div>
+
+          {/* Site selector */}
+          <div className="px-3 py-3 border-b border-warm-800" ref={siteRef}>
+            <button
+              disabled={!canChange}
+              onClick={() => setIsSiteOpen(!isSiteOpen)}
+              className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-warm-200 hover:bg-warm-800 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Building2 className="h-4 w-4 shrink-0 text-warm-400" />
+              <div className="flex flex-col items-start leading-none flex-1 min-w-0">
+                <span className="text-[10px] font-medium uppercase tracking-widest text-warm-400">Sede activa</span>
+                <span className="font-semibold text-white truncate">{site}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-warm-400 transition-transform shrink-0 ${isSiteOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isSiteOpen && (
+              <div className="mt-1 rounded-lg border border-warm-700 bg-warm-800 p-1">
+                {availableSites.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => { setSite(item); setIsSiteOpen(false) }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-semibold transition ${
+                      site === item ? 'bg-warm-700 text-white' : 'text-warm-200 hover:bg-warm-700 hover:text-white'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest text-warm-500">Menú principal</p>
+            {links.map((link) => {
+              const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`)
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition ${
+                    active
+                      ? 'bg-warm-700 text-white'
+                      : 'text-warm-300 hover:bg-warm-800 hover:text-white'
+                  }`}
+                >
+                  <span className={active ? 'text-white' : 'text-warm-400'}>{link.icon}</span>
+                  {link.label}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Bottom: role badge + actions */}
+          <div className="px-3 py-4 border-t border-warm-800 space-y-2">
+            {role && (
+              <div className="px-3 py-2.5 rounded-lg bg-warm-800">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-warm-400">Rol</p>
+                <p className="text-sm font-bold text-white">{roleLabels[role]}</p>
+              </div>
+            )}
+            <button
+              onClick={toggleEasyRead}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-warm-300 hover:bg-warm-800 hover:text-white transition text-left"
+            >
+              {easyRead ? 'Vista normal' : 'Lectura fácil'}
+            </button>
+            {role && (
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-warm-300 hover:bg-warm-800 hover:text-white transition"
+              >
+                <LogOut className="h-4 w-4" />
+                Cerrar sesión
+              </button>
+            )}
+          </div>
+        </aside>
+
+        {/* Main area */}
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Top bar */}
+          <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Vista filtrada en</p>
+              <p className="text-sm font-semibold text-gray-700">{site}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {role && (
+                <span className="inline-flex items-center rounded-full bg-warm-100 px-3 py-1 text-xs font-bold text-warm-800">
+                  {roleLabels[role]}
+                </span>
+              )}
+              <div className="relative" ref={notificationsRef}>
+                <button
+                  onClick={() => setIsNotificationsOpen((v) => !v)}
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+                >
+                  <Bell className="h-4 w-4" />
+                  <span className="hidden sm:inline">Notificaciones</span>
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -right-1 -top-1 h-5 min-w-5 flex items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                      {unreadNotifications}
+                    </span>
+                  )}
+                </button>
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-96 max-w-[90vw] rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                    <div className="space-y-1">
+                      {notifications.length > 0 ? (
+                        notifications.map((n) => (
+                          <button
+                            key={n.id}
+                            onClick={async () => {
+                              await markNotificationAsRead(Number(n.id))
+                              setIsNotificationsOpen(false)
+                            }}
+                            className={`w-full text-left px-4 py-3 rounded-lg transition text-sm ${
+                              n.isRead ? 'text-gray-500 hover:bg-gray-50' : 'bg-warm-50 text-gray-900 hover:bg-warm-100'
+                            }`}
+                          >
+                            <p className="font-semibold">{n.title}</p>
+                            <p className="text-gray-600">{n.message}</p>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-gray-500">No hay notificaciones pendientes.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* Page content */}
+          <main className="flex-1 p-6 relative">
+            {isSyncing && <LoadingOverlay message="Cargando información..." className="absolute inset-0 min-h-[400px]" />}
+            <Outlet />
+          </main>
+        </div>
+
+        {/* Toasts */}
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-sm flex-col gap-3">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto rounded-xl border px-4 py-3 shadow-lg backdrop-blur ${
+                toast.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                  : toast.type === 'error'
+                    ? 'border-red-200 bg-red-50 text-red-900'
+                    : 'border-sky-200 bg-sky-50 text-sky-900'
+              }`}
+            >
+              <p className="text-sm font-semibold">{toast.message}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ─── STANDARD LAYOUT (staff, volunteer, hospital, family) ─────────────────
   const glassClass = 'border border-white/10 bg-white/5 backdrop-blur-md shadow-lg'
 
   return (
@@ -237,5 +417,3 @@ export function AppShell() {
     </div>
   )
 }
-
-

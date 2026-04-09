@@ -1,9 +1,7 @@
-﻿import { ChevronDown } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, MoreVertical, Plus, Search, Users, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/Button'
-import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
-import { SectionHeader } from '../../components/ui/SectionHeader'
 import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 import {
@@ -75,6 +73,114 @@ function formatReadableDate(value?: string | null) {
   return date.toLocaleDateString('es-MX')
 }
 
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((n) => n[0] ?? '')
+    .join('')
+    .toUpperCase()
+}
+
+const avatarColors = [
+  'bg-warm-700 text-white',
+  'bg-sky-600 text-white',
+  'bg-emerald-600 text-white',
+  'bg-violet-600 text-white',
+  'bg-amber-600 text-white',
+  'bg-rose-600 text-white',
+]
+
+function avatarColor(id: string | number) {
+  const n = typeof id === 'string' ? id.charCodeAt(0) : id
+  return avatarColors[n % avatarColors.length] ?? avatarColors[0]
+}
+
+// ─── Reusable section card ────────────────────────────────────────────────────
+function SectionCard({ title, subtitle, children, action }: {
+  title: string
+  subtitle?: string
+  children: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
+
+// ─── KPI stat card ────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 text-3xl font-bold text-gray-900">{value}</p>
+      {sub && <p className="mt-1 text-sm text-gray-500">{sub}</p>}
+    </div>
+  )
+}
+
+// ─── Action dropdown for table rows ───────────────────────────────────────────
+function RowActions({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-9 z-20 min-w-[160px] rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
+          onClick={() => setOpen(false)}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DropdownItem({ onClick, danger, children, disabled }: {
+  onClick: () => void
+  danger?: boolean
+  children: React.ReactNode
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
+        danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-100'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export function AdminPanelPage() {
   const {
     authToken,
@@ -98,6 +204,9 @@ export function AdminPanelPage() {
   } = useAppState()
 
   const seedSites = useMemo(() => availableSites.filter((item) => item !== 'Todas las sedes'), [availableSites])
+
+  // Form state
+  const [isFormOpen, setIsFormOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('Demo123!')
@@ -109,10 +218,17 @@ export function AdminPanelPage() {
   const [endTime, setEndTime] = useState('16:00')
   const [shiftLabel, setShiftLabel] = useState<'manana' | 'tarde' | 'noche'>('manana')
   const [isCreatingUser, setIsCreatingUser] = useState(false)
+
+  // Table state
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
+  const [siteDrafts, setSiteDrafts] = useState<Record<string, number>>({})
+  const [userSearch, setUserSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  // Other operations state
   const [activatingReferralId, setActivatingReferralId] = useState<string | null>(null)
   const [familyActionId, setFamilyActionId] = useState<string | null>(null)
-  const [siteDrafts, setSiteDrafts] = useState<Record<string, number>>({})
   const [selectedAlertTypeByUser, setSelectedAlertTypeByUser] = useState<Record<number, (typeof staffAlertOptions)[number]['value']>>({})
   const [stayDaysByReferral, setStayDaysByReferral] = useState<Record<string, number>>({})
   const [admissions, setAdmissions] = useState<AdmissionRecord[]>([])
@@ -122,7 +238,6 @@ export function AdminPanelPage() {
   const [originHospitalByReferral, setOriginHospitalByReferral] = useState<Record<number, string>>({})
   const [clinicalNoteByFamily, setClinicalNoteByFamily] = useState<Record<number, string>>({})
   const [clinicalDateByFamily, setClinicalDateByFamily] = useState<Record<number, string>>({})
-  const [userSearch, setUserSearch] = useState('')
   const [clinicalSearch, setClinicalSearch] = useState('')
   const [isStayTrackingOpen, setIsStayTrackingOpen] = useState(false)
 
@@ -137,20 +252,13 @@ export function AdminPanelPage() {
     ])
     setAdmissions(admissionsData)
     setDepartureReminders(remindersData)
-
     const familyIds = Array.from(new Set(admissionsData.map((item) => item.FamilyId).filter(Boolean))) as number[]
-    if (familyIds.length === 0) {
-      setClinicalHistory([])
-      return
-    }
-
+    if (familyIds.length === 0) { setClinicalHistory([]); return }
     const historyChunks = await Promise.all(familyIds.map((familyId) => getClinicalHistory(authToken, { familyId, siteId: selectedSiteId })))
     setClinicalHistory(historyChunks.flat())
   }
 
-  useEffect(() => {
-    setShiftLabel(inferShiftLabel(startTime))
-  }, [startTime])
+  useEffect(() => { setShiftLabel(inferShiftLabel(startTime)) }, [startTime])
 
   useEffect(() => {
     const nextDrafts = Object.fromEntries(internalUsers.map((user) => [user.id, user.siteId || 1]))
@@ -187,7 +295,6 @@ export function AdminPanelPage() {
   useEffect(() => {
     if (!authToken) return
     let active = true
-
     void Promise.all([
       getAdmissions(authToken, { siteId: selectedSiteId }),
       getDepartureReminders(authToken, selectedSiteId),
@@ -196,13 +303,8 @@ export function AdminPanelPage() {
         if (!active) return
         setAdmissions(admissionsData)
         setDepartureReminders(remindersData)
-
         const familyIds = Array.from(new Set(admissionsData.map((item) => item.FamilyId).filter(Boolean))) as number[]
-        if (familyIds.length === 0) {
-          setClinicalHistory([])
-          return
-        }
-
+        if (familyIds.length === 0) { setClinicalHistory([]); return }
         const historyChunks = await Promise.all(familyIds.map((familyId) => getClinicalHistory(authToken, { familyId, siteId: selectedSiteId })))
         if (!active) return
         setClinicalHistory(historyChunks.flat())
@@ -213,383 +315,420 @@ export function AdminPanelPage() {
         setClinicalHistory([])
         setDepartureReminders([])
       })
-
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [authToken, selectedSiteId])
 
   const staffUsers = useMemo(() => internalUsers.filter((user) => user.role === 'Staff'), [internalUsers])
   const executiveUsers = useMemo(() => internalUsers.filter((user) => user.role === 'Admin'), [internalUsers])
+
   const filteredUsers = useMemo(() => {
+    let list = internalUsers
     const query = userSearch.trim().toLowerCase()
-    if (!query) return internalUsers
-    return internalUsers.filter((user) => `${user.fullName} ${user.email}`.toLowerCase().includes(query))
-  }, [internalUsers, userSearch])
+    if (query) list = list.filter((user) => `${user.fullName} ${user.email}`.toLowerCase().includes(query))
+    if (roleFilter !== 'all') list = list.filter((user) => user.role.toLowerCase() === roleFilter)
+    if (statusFilter !== 'all') list = list.filter((user) => statusFilter === 'active' ? user.isActive : !user.isActive)
+    return list
+  }, [internalUsers, userSearch, roleFilter, statusFilter])
+
   const filteredFamiliesForClinical = useMemo(() => {
     const query = clinicalSearch.trim().toLowerCase()
     if (!query) return families
     return families.filter((family) => `${family.caregiverName} ${family.familyLastName}`.toLowerCase().includes(query))
   }, [clinicalSearch, families])
 
+  // ── SELECT style ──────────────────────────────────────────────────────────
+  const selectCls = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100'
+
   return (
-    <div className="space-y-6">
-      <SectionHeader title="Panel ejecutivo" subtitle={`Usuarios internos, activacion familiar y control operativo por sede. Vista filtrada en: ${site}.`} />
-
-      <Card className="space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-black text-warm-900">Crear usuario interno</h2>
-          <p className="text-sm text-warm-700">Organizamos la captura por bloques para que la alta de usuarios sea más clara y menos saturada.</p>
+    <div className="space-y-5">
+      {/* ── Page header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Panel ejecutivo</h1>
+          <p className="mt-0.5 text-sm text-gray-500">Usuarios internos, activación familiar y control operativo · {site}</p>
         </div>
+        <button
+          onClick={() => setIsFormOpen((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-lg bg-warm-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-warm-800 transition"
+        >
+          {isFormOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {isFormOpen ? 'Cancelar' : 'Nuevo usuario'}
+        </button>
+      </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="space-y-4 rounded-2xl border border-warm-200 bg-warm-50/70 p-5">
-            <div className="border-b border-warm-200 pb-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Información personal</p>
-              <h3 className="text-lg font-bold text-warm-900">Datos básicos</h3>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Input label="Nombre completo" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-              <Input label="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
-              <Input label="Contraseña inicial" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </div>
+      {/* ── KPI strip ───────────────────────────────────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Usuarios totales" value={internalUsers.length} sub={`${site}`} />
+        <StatCard label="Staff operativo" value={staffUsers.length} sub="Área operativa" />
+        <StatCard label="Dirección ejecutiva" value={executiveUsers.length} sub="Gerentes y admins" />
+      </div>
+
+      {/* ── New user form (toggle) ───────────────────────────────────────────── */}
+      {isFormOpen && (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-5 py-4">
+            <h2 className="text-base font-semibold text-gray-900">Crear usuario interno</h2>
+            <p className="mt-0.5 text-sm text-gray-500">Captura por bloques para que el alta sea clara y rápida.</p>
           </div>
+          <div className="space-y-5 p-5">
+            <div className="grid gap-5 xl:grid-cols-2">
+              {/* Personal */}
+              <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Información personal</p>
+                  <p className="text-sm font-semibold text-gray-800">Datos básicos</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Input label="Nombre completo" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                  <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input label="Contraseña inicial" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+              </div>
 
-          <div className="space-y-4 rounded-2xl border border-warm-200 bg-white p-5">
-            <div className="border-b border-warm-200 pb-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Sede asignada</p>
-              <h3 className="text-lg font-bold text-warm-900">Rol y ubicación</h3>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block space-y-2">
-                <span className="text-base font-semibold text-warm-900">Rol</span>
-                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={role} onChange={(event) => setRole(event.target.value as (typeof userRoles)[number])}>
-                  {userRoles.map((item) => (
-                    <option key={item} value={item}>
-                      {item === 'admin' ? 'Gerente de Sede' : 'Staff / Operación'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-2">
-                <span className="text-base font-semibold text-warm-900">Sede</span>
-                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={siteId} onChange={(event) => setSiteId(Number(event.target.value))}>
-                  {seedSites.map((item, index) => (
-                    <option key={item} value={index + 1}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {role === 'staff' ? (
-          <div className="space-y-5 rounded-2xl border border-warm-200 bg-warm-50 p-5">
-            <div className="border-b border-warm-200 pb-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Horario laboral</p>
-              <h3 className="text-lg font-bold text-warm-900">Perfil operativo</h3>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label className="block space-y-2">
-                <span className="text-base font-semibold text-warm-900">Area de trabajo</span>
-                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={staffWorkArea} onChange={(event) => setStaffWorkArea(event.target.value as (typeof staffWorkAreas)[number])}>
-                  {staffWorkAreas.map((item) => (
-                    <option key={item} value={item}>
-                      {formatArea(item)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Input label="Hora de inicio" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
-              <Input label="Hora de fin" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
-              <label className="block space-y-2">
-                <span className="text-base font-semibold text-warm-900">Turno</span>
-                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={shiftLabel} onChange={(event) => setShiftLabel(event.target.value as 'manana' | 'tarde' | 'noche')}>
-                  <option value="manana">Manana</option>
-                  <option value="tarde">Tarde</option>
-                  <option value="noche">Noche</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="space-y-3 rounded-2xl bg-white/80 p-4">
-              <p className="text-base font-semibold text-warm-900">Dias de trabajo</p>
-              <div className="grid gap-2 md:grid-cols-4 xl:grid-cols-7">
-                {weekDays.map((day) => (
-                  <label key={day} className="flex items-center gap-2 rounded-xl border border-warm-200 bg-white px-3 py-2 text-sm font-semibold text-warm-800">
-                    <input
-                      type="checkbox"
-                      checked={selectedWorkDays.includes(day)}
-                      onChange={(event) => {
-                        setSelectedWorkDays((current) => (event.target.checked ? [...current, day] : current.filter((item) => item !== day)))
-                      }}
-                    />
-                    {day}
+              {/* Role & site */}
+              <div className="space-y-4 rounded-lg border border-gray-100 bg-white p-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Sede asignada</p>
+                  <p className="text-sm font-semibold text-gray-800">Rol y ubicación</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block space-y-1">
+                    <span className="text-sm font-semibold text-gray-700">Rol</span>
+                    <select className={selectCls} value={role} onChange={(e) => setRole(e.target.value as (typeof userRoles)[number])}>
+                      {userRoles.map((item) => (
+                        <option key={item} value={item}>{item === 'admin' ? 'Gerente de Sede' : 'Staff / Operación'}</option>
+                      ))}
+                    </select>
                   </label>
-                ))}
+                  <label className="block space-y-1">
+                    <span className="text-sm font-semibold text-gray-700">Sede</span>
+                    <select className={selectCls} value={siteId} onChange={(e) => setSiteId(Number(e.target.value))}>
+                      {seedSites.map((item, index) => (
+                        <option key={item} value={index + 1}>{item}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl bg-white p-4">
-                <p className="text-sm font-semibold text-warm-700">Horas registradas automaticas</p>
-                <p className="text-2xl font-extrabold text-warm-900">{derivedHours} hrs</p>
+            {/* Staff schedule */}
+            {role === 'staff' && (
+              <div className="space-y-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Horario laboral</p>
+                  <p className="text-sm font-semibold text-gray-800">Perfil operativo</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="block space-y-1">
+                    <span className="text-sm font-semibold text-gray-700">Área de trabajo</span>
+                    <select className={selectCls} value={staffWorkArea} onChange={(e) => setStaffWorkArea(e.target.value as (typeof staffWorkAreas)[number])}>
+                      {staffWorkAreas.map((item) => <option key={item} value={item}>{formatArea(item)}</option>)}
+                    </select>
+                  </label>
+                  <Input label="Hora de inicio" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <Input label="Hora de fin" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <label className="block space-y-1">
+                    <span className="text-sm font-semibold text-gray-700">Turno</span>
+                    <select className={selectCls} value={shiftLabel} onChange={(e) => setShiftLabel(e.target.value as 'manana' | 'tarde' | 'noche')}>
+                      <option value="manana">Mañana</option>
+                      <option value="tarde">Tarde</option>
+                      <option value="noche">Noche</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="space-y-2 rounded-lg bg-white p-3">
+                  <p className="text-sm font-semibold text-gray-700">Días de trabajo</p>
+                  <div className="flex flex-wrap gap-2">
+                    {weekDays.map((day) => (
+                      <label key={day} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
+                        selectedWorkDays.includes(day)
+                          ? 'border-warm-600 bg-warm-50 text-warm-800'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={selectedWorkDays.includes(day)}
+                          onChange={(e) => setSelectedWorkDays((curr) => e.target.checked ? [...curr, day] : curr.filter((d) => d !== day))}
+                        />
+                        {day.slice(0, 3)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[
+                    { label: 'Horas registradas', value: `${derivedHours} hrs` },
+                    { label: 'Disponibilidad', value: derivedAvailability },
+                    { label: 'Turno sugerido', value: shiftLabel },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-lg border border-gray-100 bg-white p-3">
+                      <p className="text-xs font-medium text-gray-400">{item.label}</p>
+                      <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-2xl bg-white p-4">
-                <p className="text-sm font-semibold text-warm-700">Disponibilidad automatica</p>
-                <p className="text-2xl font-extrabold text-warm-900">{derivedAvailability}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-4">
-                <p className="text-sm font-semibold text-warm-700">Turno sugerido</p>
-                <p className="text-2xl font-extrabold text-warm-900">{shiftLabel}</p>
-              </div>
+            )}
+
+            <div className="flex justify-end border-t border-gray-100 pt-4">
+              <Button
+                isLoading={isCreatingUser}
+                onClick={async () => {
+                  setIsCreatingUser(true)
+                  try {
+                    await createInternalUser({
+                      fullName, email, role, siteId, password,
+                      volunteerShift: undefined,
+                      staffProfile: role === 'staff' ? { workArea: staffWorkArea, workDays: selectedWorkDays, startTime, endTime, shiftLabel } : undefined,
+                    })
+                    setFullName(''); setEmail(''); setPassword('Demo123!')
+                    setIsFormOpen(false)
+                    pushToast({ type: 'success', message: 'Usuario interno creado con éxito.' })
+                  } finally {
+                    setIsCreatingUser(false)
+                  }
+                }}
+              >
+                Crear usuario
+              </Button>
             </div>
           </div>
-        ) : null}
+        </div>
+      )}
 
-        <div className="flex justify-end">
-          <Button
-            isLoading={isCreatingUser}
-            onClick={async () => {
-              setIsCreatingUser(true)
-              try {
-                await createInternalUser({
-                  fullName,
-                  email,
-                  role,
-                  siteId,
-                  password,
-                  volunteerShift: undefined,
-                  staffProfile:
-                    role === 'staff'
-                      ? {
-                          workArea: staffWorkArea,
-                          workDays: selectedWorkDays,
-                          startTime,
-                          endTime,
-                          shiftLabel,
-                        }
-                      : undefined,
-                })
-                setFullName('')
-                setEmail('')
-                setPassword('Demo123!')
-                pushToast({ type: 'success', message: 'Usuario interno creado con éxito.' })
-              } finally {
-                setIsCreatingUser(false)
-              }
-            }}
+      {/* ── Users table ─────────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Usuarios por sede"
+        subtitle="Pausa, elimina o traslada usuarios. Respeta la sede seleccionada."
+        action={
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Users className="h-4 w-4" />
+            <span>{filteredUsers.length} usuario{filteredUsers.length !== 1 ? 's' : ''}</span>
+          </div>
+        }
+      >
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Buscar por nombre o correo..."
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none"
           >
-            Crear usuario
-          </Button>
+            <option value="all">Todos los roles</option>
+            <option value="admin">Gerente</option>
+            <option value="staff">Staff</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none"
+          >
+            <option value="all">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="paused">Pausados</option>
+          </select>
         </div>
-      </Card>
 
-      <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Usuarios por sede</h2>
-        <p className="text-sm text-warm-700">Desde aqui puedes pausar, eliminar o trasladar usuarios a otra sede. La lista respeta la sede seleccionada en el header.</p>
-        <div className="rounded-2xl bg-warm-50 p-3">
-          <input
-            value={userSearch}
-            onChange={(event) => setUserSearch(event.target.value)}
-            placeholder="Buscar staff por nombre o correo"
-            className="w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-sm text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
-          />
-        </div>
-        <div className="overflow-x-auto rounded-2xl border border-warm-200">
+        {/* Table */}
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full bg-white text-sm">
-            <thead className="bg-warm-50 text-left text-warm-900">
-              <tr>
-                <th className="px-4 py-3 font-bold">Nombre</th>
-                <th className="px-4 py-3 font-bold">Correo</th>
-                <th className="px-4 py-3 font-bold">Rol</th>
-                <th className="px-4 py-3 font-bold">Sede</th>
-                <th className="px-4 py-3 font-bold">Estado</th>
-                <th className="px-4 py-3 font-bold">Traslado</th>
-                <th className="px-4 py-3 font-bold">Acciones</th>
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Usuario</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Correo</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Rol</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Estado</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Traslado</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="border-t border-warm-100 align-top">
-                  <td className="px-4 py-4 font-semibold text-warm-900">{user.fullName}</td>
-                  <td className="px-4 py-4 text-warm-700">{user.email}</td>
-                  <td className="px-4 py-4 text-warm-700">{user.role}</td>
-                  <td className="px-4 py-4 text-warm-700">{user.site || 'Global'}</td>
-                  <td className="px-4 py-4 text-warm-700">{user.isActive ? 'Activo' : 'Pausado'}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-2">
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarColor(user.id)}`}>
+                        {getInitials(user.fullName)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{user.fullName}</p>
+                        <p className="text-xs text-gray-400">{user.site || 'Global'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{user.email}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      user.role === 'Admin' ? 'bg-warm-100 text-warm-800' : 'bg-sky-100 text-sky-800'
+                    }`}>
+                      {user.role === 'Admin' ? 'Gerente' : 'Staff'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      user.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                      {user.isActive ? 'Activo' : 'Pausado'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                       <select
-                        className="w-full rounded-2xl border border-warm-200 px-3 py-2 text-sm"
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-gray-700 focus:outline-none"
                         value={siteDrafts[user.id] || user.siteId || 1}
-                        onChange={(event) => setSiteDrafts((current) => ({ ...current, [user.id]: Number(event.target.value) }))}
+                        onChange={(e) => setSiteDrafts((curr) => ({ ...curr, [user.id]: Number(e.target.value) }))}
                       >
                         {seedSites.map((item, index) => (
-                          <option key={`${user.id}-${item}`} value={index + 1}>
-                            {item}
-                          </option>
+                          <option key={`${user.id}-${item}`} value={index + 1}>{item}</option>
                         ))}
                       </select>
-                      <Button
-                        variant="ghost"
-                        isLoading={loadingUserId === `move-${user.id}`}
-                        disabled={(siteDrafts[user.id] || user.siteId || 1) === (user.siteId || 1)}
+                      <button
+                        disabled={(siteDrafts[user.id] || user.siteId || 1) === (user.siteId || 1) || loadingUserId === `move-${user.id}`}
                         onClick={async () => {
                           setLoadingUserId(`move-${user.id}`)
                           try {
                             await updateInternalUser({ userId: Number(user.id), siteId: siteDrafts[user.id] || user.siteId || 1 })
                             pushToast({ type: 'success', message: `Usuario trasladado a ${seedSites[(siteDrafts[user.id] || user.siteId || 1) - 1]}.` })
-                          } finally {
-                            setLoadingUserId(null)
-                          }
+                          } finally { setLoadingUserId(null) }
                         }}
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
                       >
                         Guardar
-                      </Button>
+                      </button>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="ghost"
-                        isLoading={loadingUserId === user.id}
+                  <td className="px-4 py-3 text-right">
+                    <RowActions>
+                      <DropdownItem
+                        disabled={loadingUserId === user.id}
                         onClick={async () => {
                           setLoadingUserId(user.id)
                           try {
                             await updateInternalUser({ userId: Number(user.id), isActive: !user.isActive })
                             pushToast({ type: 'info', message: user.isActive ? 'Cuenta pausada.' : 'Cuenta reactivada.' })
-                          } finally {
-                            setLoadingUserId(null)
-                          }
+                          } finally { setLoadingUserId(null) }
                         }}
                       >
-                        {user.isActive ? 'Pausar' : 'Reactivar'}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        isLoading={loadingUserId === `del-${user.id}`}
+                        {user.isActive ? 'Pausar cuenta' : 'Reactivar cuenta'}
+                      </DropdownItem>
+                      <DropdownItem
+                        danger
+                        disabled={loadingUserId === `del-${user.id}`}
                         onClick={async () => {
                           setLoadingUserId(`del-${user.id}`)
                           try {
                             await deleteInternalUser(Number(user.id))
                             pushToast({ type: 'success', message: 'Usuario eliminado.' })
-                          } finally {
-                            setLoadingUserId(null)
-                          }
+                          } finally { setLoadingUserId(null) }
                         }}
                       >
-                        Eliminar
-                      </Button>
-                    </div>
+                        Eliminar usuario
+                      </DropdownItem>
+                    </RowActions>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {filteredUsers.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-gray-400">
+              No hay usuarios que coincidan con los filtros actuales.
+            </div>
+          )}
         </div>
-        {filteredUsers.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">No hay usuarios que coincidan con la búsqueda actual.</div> : null}
-      </Card>
+      </SectionCard>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="space-y-4">
-          <h2 className="text-xl font-bold text-warm-900">Staff operativo</h2>
-          <p className="text-sm text-warm-700">Carga actual y alertas operativas para staff de la sede filtrada.</p>
-          <div className="grid gap-3">
+      {/* ── Staff operativo + Resumen por rol ────────────────────────────────── */}
+      <div className="grid gap-5 xl:grid-cols-2">
+        <SectionCard title="Staff operativo" subtitle="Carga actual y alertas operativas para la sede filtrada.">
+          <div className="space-y-3">
             {staffRoster.map((staff) => {
               const workload = workloadMeta(staff.currentLoad)
               return (
-                <div key={staff.userId} className="rounded-2xl bg-warm-50 p-4">
+                <div key={staff.userId} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-bold text-warm-900">{staff.fullName}</p>
-                      <p className="text-sm text-warm-700">{staff.site} · {staff.workArea}</p>
-                      <p className="text-sm text-warm-700">{staff.workDays.join(', ') || 'Sin dias'} · {staff.startTime} - {staff.endTime}</p>
-                      <p className="text-sm font-semibold text-warm-600">{staff.shiftLabel} · {staff.availability}</p>
+                      <p className="font-semibold text-gray-900">{staff.fullName}</p>
+                      <p className="text-xs text-gray-500">{staff.site} · {staff.workArea}</p>
+                      <p className="text-xs text-gray-500">{staff.workDays.join(', ') || 'Sin días'} · {staff.startTime} – {staff.endTime}</p>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-sm font-bold ${workload.className}`}>{workload.label}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${workload.className}`}>{workload.label}</span>
                   </div>
-                  <p className="mt-2 text-sm text-warm-700">Carga activa: {staff.currentLoad}</p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <p className="mt-1.5 text-xs text-gray-500">Carga activa: {staff.currentLoad}</p>
+                  <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
                     <select
-                      className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-sm"
+                      className={selectCls}
                       value={selectedAlertTypeByUser[staff.userId] || 'incoming_families'}
-                      onChange={(event) =>
-                        setSelectedAlertTypeByUser((current) => ({
-                          ...current,
-                          [staff.userId]: event.target.value as (typeof staffAlertOptions)[number]['value'],
-                        }))
-                      }
+                      onChange={(e) => setSelectedAlertTypeByUser((curr) => ({ ...curr, [staff.userId]: e.target.value as (typeof staffAlertOptions)[number]['value'] }))}
                     >
-                      {staffAlertOptions.map((option) => (
-                        <option key={`${staff.userId}-${option.value}`} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      {staffAlertOptions.map((opt) => <option key={`${staff.userId}-${opt.value}`} value={opt.value}>{opt.label}</option>)}
                     </select>
-                    <Button
-                      variant="ghost"
-                      isLoading={loadingUserId === `staff-alert-${staff.userId}`}
+                    <button
+                      disabled={loadingUserId === `staff-alert-${staff.userId}`}
                       onClick={async () => {
                         setLoadingUserId(`staff-alert-${staff.userId}`)
-                      try {
-                        await sendStaffAlertToUser(staff.userId, selectedAlertTypeByUser[staff.userId] || 'incoming_families')
-                        pushToast({ type: 'info', message: `Notificación enviada a ${staff.fullName}.` })
-                      } finally {
-                        setLoadingUserId(null)
-                      }
+                        try {
+                          await sendStaffAlertToUser(staff.userId, selectedAlertTypeByUser[staff.userId] || 'incoming_families')
+                          pushToast({ type: 'info', message: `Notificación enviada a ${staff.fullName}.` })
+                        } finally { setLoadingUserId(null) }
                       }}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
                     >
                       Enviar alerta
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )
             })}
-            {staffRoster.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay staff operativo cargado para la sede seleccionada.</div> : null}
+            {staffRoster.length === 0 && <p className="text-sm text-gray-400">No hay staff operativo para la sede seleccionada.</p>}
           </div>
-        </Card>
+        </SectionCard>
 
-        <Card className="space-y-3">
-          <h2 className="text-xl font-bold text-warm-900">Resumen rapido por rol</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl bg-warm-50 p-4">
-              <p className="text-sm font-semibold text-warm-700">Dirección Ejecutiva</p>
-              <p className="text-3xl font-extrabold text-warm-900">{executiveUsers.length}</p>
+        <SectionCard title="Resumen por rol" subtitle="Distribución de usuarios según la sede activa.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Dirección Ejecutiva</p>
+              <p className="mt-1 text-3xl font-bold text-gray-900">{executiveUsers.length}</p>
             </div>
-            <div className="rounded-2xl bg-warm-50 p-4">
-              <p className="text-sm font-semibold text-warm-700">Staff visibles</p>
-              <p className="text-3xl font-extrabold text-warm-900">{staffUsers.length}</p>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Staff visibles</p>
+              <p className="mt-1 text-3xl font-bold text-gray-900">{staffUsers.length}</p>
             </div>
           </div>
-          <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">
-            Esta vista respeta la sede activa del header. Si eliges otra sede o "Todas las sedes", veras la distribucion real que llega desde backend.
-          </div>
-        </Card>
+          <p className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-xs text-gray-500">
+            Esta vista respeta la sede activa del sidebar. Si eliges otra sede o "Todas las sedes", verás la distribución real del backend.
+          </p>
+        </SectionCard>
       </div>
 
-      <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Referencias pendientes de activar</h2>
-        <div className="grid gap-3">
+      {/* ── Pending referrals ────────────────────────────────────────────────── */}
+      <SectionCard title="Referencias pendientes de activar" subtitle="Activa familias referidas y asígnales una estancia.">
+        <div className="space-y-3">
           {pendingReferrals.map((referral) => (
-            <div key={referral.id} className="rounded-2xl bg-warm-50 p-4">
+            <div key={referral.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-warm-900">{referral.caregiverName} {referral.familyLastName}</p>
-                  <p className="text-sm text-warm-700">{referral.site} · llegada {referral.arrivalDate}</p>
+                  <p className="font-semibold text-gray-900">{referral.caregiverName} {referral.familyLastName}</p>
+                  <p className="text-xs text-gray-500">{referral.site} · llegada {referral.arrivalDate}</p>
                 </div>
                 <StatusChip status={referral.status} />
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-[180px_auto]">
-                <Input
-                  label="Dias de estancia"
-                  type="number"
-                  min="1"
+                <Input label="Días de estancia" type="number" min="1"
                   value={String(stayDaysByReferral[referral.id] || 3)}
-                  onChange={(event) =>
-                    setStayDaysByReferral((current) => ({ ...current, [referral.id]: Number(event.target.value || 3) }))
-                  }
+                  onChange={(e) => setStayDaysByReferral((curr) => ({ ...curr, [referral.id]: Number(e.target.value || 3) }))}
                 />
                 <div className="flex items-end">
                   <Button
@@ -598,13 +737,8 @@ export function AdminPanelPage() {
                       setActivatingReferralId(referral.id)
                       try {
                         const result = await activateReferralFamily(Number(referral.id), stayDaysByReferral[referral.id] || 3)
-                        pushToast({
-                          type: 'success',
-                          message: `Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}${result.automation ? ` · ${result.automation.Message}` : ''}`,
-                        })
-                      } finally {
-                        setActivatingReferralId(null)
-                      }
+                        pushToast({ type: 'success', message: `Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}${result.automation ? ` · ${result.automation.Message}` : ''}` })
+                      } finally { setActivatingReferralId(null) }
                     }}
                   >
                     Activar familia
@@ -613,193 +747,162 @@ export function AdminPanelPage() {
               </div>
             </div>
           ))}
+          {pendingReferrals.length === 0 && <p className="text-sm text-gray-400">No hay referencias pendientes para la sede seleccionada.</p>}
         </div>
-      </Card>
+      </SectionCard>
 
-      <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Automatizacion de estancias</h2>
-        <p className="text-sm text-warm-700">Buscando habitaciones disponibles, validando el tiempo acordado de residencia y liberando automaticamente cuando termina la estancia si no hubo prorroga.</p>
-        <div className="grid gap-3">
+      {/* ── Stay automation ──────────────────────────────────────────────────── */}
+      <SectionCard title="Automatización de estancias" subtitle="Control de habitaciones, tiempos de residencia y liberación automática.">
+        <div className="space-y-3">
           {familyStayAutomation.map((item) => (
-            <div key={item.familyId} className="rounded-2xl bg-warm-50 p-4">
+            <div key={item.familyId} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-bold text-warm-900">{item.caregiverName} {item.familyLastName}</p>
-                  <p className="text-sm text-warm-700">{item.site} · llegada {item.arrivalDate} · estancia {item.stayDays} dias</p>
-                  <p className="text-sm text-warm-700">Salida prevista: {item.plannedCheckoutDate || 'Pendiente'} · Habitacion: {item.plannedRoomCode || 'Por asignar'}</p>
+                  <p className="font-semibold text-gray-900">{item.caregiverName} {item.familyLastName}</p>
+                  <p className="text-xs text-gray-500">{item.site} · llegada {item.arrivalDate} · estancia {item.stayDays} días</p>
+                  <p className="text-xs text-gray-500">Salida prevista: {item.plannedCheckoutDate || 'Pendiente'} · Habitación: {item.plannedRoomCode || 'Por asignar'}</p>
                 </div>
                 <StatusChip status={item.automationStatus} />
               </div>
-              <div className="mt-3 rounded-2xl bg-white p-4 text-sm text-warm-700">
+              <div className="mt-3 rounded-lg bg-white px-4 py-3 text-sm text-gray-600">
                 {item.message}
-                {item.assignedVolunteerName ? <p className="mt-2 font-semibold text-warm-900">Voluntario asignado: {item.assignedVolunteerName}</p> : null}
+                {item.assignedVolunteerName && <p className="mt-1.5 font-semibold text-gray-800">Voluntario asignado: {item.assignedVolunteerName}</p>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  variant="ghost"
-                  isLoading={loadingUserId === `extend-1-${item.familyId}`}
-                  onClick={async () => {
-                    setLoadingUserId(`extend-1-${item.familyId}`)
-                    try {
-                      await extendFamilyStay(item.familyId, 1)
-                      pushToast({ type: 'success', message: 'Estancia prorrogada un día.' })
-                    } finally {
-                      setLoadingUserId(null)
-                    }
-                  }}
-                >
-                  Prorrogar 1 dia
-                </Button>
-                <Button
-                  variant="ghost"
-                  isLoading={loadingUserId === `extend-3-${item.familyId}`}
-                  onClick={async () => {
-                    setLoadingUserId(`extend-3-${item.familyId}`)
-                    try {
-                      await extendFamilyStay(item.familyId, 3)
-                      pushToast({ type: 'success', message: 'Estancia prorrogada tres días.' })
-                    } finally {
-                      setLoadingUserId(null)
-                    }
-                  }}
-                >
-                  Prorrogar 3 dias
-                </Button>
+                {[1, 3].map((days) => (
+                  <button
+                    key={days}
+                    disabled={loadingUserId === `extend-${days}-${item.familyId}`}
+                    onClick={async () => {
+                      setLoadingUserId(`extend-${days}-${item.familyId}`)
+                      try {
+                        await extendFamilyStay(item.familyId, days)
+                        pushToast({ type: 'success', message: `Estancia prorrogada ${days} día${days > 1 ? 's' : ''}.` })
+                      } finally { setLoadingUserId(null) }
+                    }}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
+                  >
+                    Prorrogar {days} día{days > 1 ? 's' : ''}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
-          {familyStayAutomation.length === 0 ? (
-            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">
-              No hay automatizaciones de estancia activas para la sede seleccionada.
-            </div>
-          ) : null}
+          {familyStayAutomation.length === 0 && <p className="text-sm text-gray-400">No hay automatizaciones activas para la sede seleccionada.</p>}
         </div>
-      </Card>
+      </SectionCard>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="space-y-4">
+      {/* ── Stay tracking + Departure reminders ─────────────────────────────── */}
+      <div className="grid gap-5 xl:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <button
             type="button"
-            onClick={() => setIsStayTrackingOpen((current) => !current)}
-            className="flex w-full items-start justify-between gap-4 text-left"
+            onClick={() => setIsStayTrackingOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-4 border-b border-gray-100 px-5 py-4 text-left"
           >
             <div>
-              <h2 className="text-xl font-bold text-warm-900">Seguimiento de Estancia</h2>
-              <p className="text-sm text-warm-700">Cada actualización de estancia queda guardada con la nueva fecha estimada de salida para no perder el contexto operativo del caso.</p>
+              <h2 className="text-base font-semibold text-gray-900">Seguimiento de estancia</h2>
+              <p className="mt-0.5 text-sm text-gray-500">Cada actualización queda guardada con la nueva fecha estimada de salida.</p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-2xl bg-warm-50 px-4 py-2 text-sm font-semibold text-warm-800">
-              {isStayTrackingOpen ? 'Ocultar' : 'Mostrar'}
-              <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isStayTrackingOpen ? 'rotate-180' : ''}`} />
-            </span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${isStayTrackingOpen ? 'rotate-180' : ''}`} />
           </button>
-          <div className={`grid overflow-hidden transition-all duration-300 ease-out ${isStayTrackingOpen ? 'max-h-[2600px] gap-4 opacity-100' : 'max-h-0 gap-0 opacity-0'}`}>
-            <div className="rounded-2xl bg-warm-50 p-3">
+
+          {isStayTrackingOpen && (
+            <div className="space-y-4 p-5">
               <input
                 value={clinicalSearch}
-                onChange={(event) => setClinicalSearch(event.target.value)}
-                placeholder="Buscar familia para seguimiento de estancia"
-                className="w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-sm text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
+                onChange={(e) => setClinicalSearch(e.target.value)}
+                placeholder="Buscar familia..."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
               />
-            </div>
-            <div className="space-y-4">
-            {filteredFamiliesForClinical.map((family) => {
-              const familyId = Number(family.id)
-              const relatedReferral = admissions.find((item) => item.FamilyId === familyId || item.ReferralId === Number(family.referralId || 0))
-              const familyHistory = clinicalHistory.filter((item) => item.FamilyId === familyId).slice(0, 3)
-
-              return (
-                <div key={`clinical-${family.id}`} className="rounded-2xl bg-warm-50 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-warm-900">{family.caregiverName} {family.familyLastName}</p>
-                      <p className="text-sm text-warm-700">Salida estimada: {formatReadableDate(family.plannedCheckoutDate)} · estancia {family.stayDays || 3} dias</p>
-                    </div>
-                    <StatusChip status={family.automationStatus || 'Pendiente'} />
-                  </div>
-
-                  <div className="mt-3 grid gap-3">
-                    <Input
-                      label="Nueva fecha estimada de salida"
-                      type="date"
-                      value={clinicalDateByFamily[familyId] || ''}
-                      onChange={(event) => setClinicalDateByFamily((current) => ({ ...current, [familyId]: event.target.value }))}
-                    />
-                    <label className="block space-y-2">
-                      <span className="text-base font-semibold text-warm-900">Actualización de estancia</span>
-                      <textarea
-                        className="min-h-[100px] w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-base text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
-                        value={clinicalNoteByFamily[familyId] || ''}
-                        onChange={(event) => setClinicalNoteByFamily((current) => ({ ...current, [familyId]: event.target.value }))}
-                        placeholder="Ejemplo: la estancia se extiende 2 dias mas por seguimiento operativo."
-                      />
-                    </label>
-                    <Button
-                      variant="ghost"
-                      isLoading={admissionBusyId === `feedback-${familyId}`}
-                      onClick={async () => {
-                        if (!authToken || !relatedReferral) return
-                        setAdmissionBusyId(`feedback-${familyId}`)
-                        try {
-                          await updateAdmissionRecord(authToken, {
-                            referralId: relatedReferral.ReferralId,
-                            action: 'clinical-feedback',
-                            familyId,
-                            clinicName: originHospitalByReferral[relatedReferral.ReferralId] || relatedReferral.OriginHospital || '',
-                            feedbackMessage: clinicalNoteByFamily[familyId] || 'Seguimiento de estancia actualizado.',
-                            estimatedCheckoutDate: clinicalDateByFamily[familyId] || null,
-                          })
-                          setClinicalNoteByFamily((current) => ({ ...current, [familyId]: '' }))
-                          pushToast({ type: 'success', message: `Seguimiento actualizado para ${family.caregiverName}.` })
-                          await refreshConnectedData()
-                          await reloadAdmissions()
-                        } finally {
-                          setAdmissionBusyId(null)
-                        }
-                      }}
-                    >
-                      Registrar actualización
-                    </Button>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    {familyHistory.length > 0 ? (
-                      familyHistory.map((entry) => (
-                        <div key={entry.FollowUpId} className="rounded-2xl bg-white p-3 text-sm text-warm-700">
-                          <p className="font-semibold text-warm-900">{entry.ClinicName || 'Seguimiento de estancia'} · {formatReadableDate(entry.RecordedAt)}</p>
-                          <p>{entry.FeedbackMessage}</p>
-                          <p className="mt-1 text-warm-600">Salida previa: {formatReadableDate(entry.PreviousCheckoutDate)} · nueva estimada: {formatReadableDate(entry.EstimatedCheckoutDate)}</p>
+              <div className="space-y-4">
+                {filteredFamiliesForClinical.map((family) => {
+                  const familyId = Number(family.id)
+                  const relatedReferral = admissions.find((a) => a.FamilyId === familyId || a.ReferralId === Number(family.referralId || 0))
+                  const familyHistory = clinicalHistory.filter((h) => h.FamilyId === familyId).slice(0, 3)
+                  return (
+                    <div key={`clinical-${family.id}`} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">{family.caregiverName} {family.familyLastName}</p>
+                          <p className="text-xs text-gray-500">Salida estimada: {formatReadableDate(family.plannedCheckoutDate)} · estancia {family.stayDays || 3} días</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl bg-white p-3 text-sm text-warm-700">Aun no hay movimientos registrados para esta estancia.</div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-            {filteredFamiliesForClinical.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">No hay familias que coincidan con la búsqueda actual.</div> : null}
+                        <StatusChip status={family.automationStatus || 'Pendiente'} />
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        <Input label="Nueva fecha estimada de salida" type="date"
+                          value={clinicalDateByFamily[familyId] || ''}
+                          onChange={(e) => setClinicalDateByFamily((curr) => ({ ...curr, [familyId]: e.target.value }))}
+                        />
+                        <label className="block space-y-1">
+                          <span className="text-sm font-semibold text-gray-700">Actualización de estancia</span>
+                          <textarea
+                            className="min-h-[80px] w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
+                            value={clinicalNoteByFamily[familyId] || ''}
+                            onChange={(e) => setClinicalNoteByFamily((curr) => ({ ...curr, [familyId]: e.target.value }))}
+                            placeholder="Ejemplo: la estancia se extiende 2 días más por seguimiento operativo."
+                          />
+                        </label>
+                        <button
+                          disabled={admissionBusyId === `feedback-${familyId}`}
+                          onClick={async () => {
+                            if (!authToken || !relatedReferral) return
+                            setAdmissionBusyId(`feedback-${familyId}`)
+                            try {
+                              await updateAdmissionRecord(authToken, {
+                                referralId: relatedReferral.ReferralId,
+                                action: 'clinical-feedback',
+                                familyId,
+                                clinicName: originHospitalByReferral[relatedReferral.ReferralId] || relatedReferral.OriginHospital || '',
+                                feedbackMessage: clinicalNoteByFamily[familyId] || 'Seguimiento de estancia actualizado.',
+                                estimatedCheckoutDate: clinicalDateByFamily[familyId] || null,
+                              })
+                              setClinicalNoteByFamily((curr) => ({ ...curr, [familyId]: '' }))
+                              pushToast({ type: 'success', message: `Seguimiento actualizado para ${family.caregiverName}.` })
+                              await refreshConnectedData()
+                              await reloadAdmissions()
+                            } finally { setAdmissionBusyId(null) }
+                          }}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
+                        >
+                          Registrar actualización
+                        </button>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {familyHistory.length > 0 ? familyHistory.map((entry) => (
+                          <div key={entry.FollowUpId} className="rounded-lg bg-white p-3 text-xs text-gray-600">
+                            <p className="font-semibold text-gray-800">{entry.ClinicName || 'Seguimiento'} · {formatReadableDate(entry.RecordedAt)}</p>
+                            <p className="mt-0.5">{entry.FeedbackMessage}</p>
+                            <p className="mt-1 text-gray-400">Salida previa: {formatReadableDate(entry.PreviousCheckoutDate)} · nueva: {formatReadableDate(entry.EstimatedCheckoutDate)}</p>
+                          </div>
+                        )) : (
+                          <p className="text-xs text-gray-400">Sin movimientos registrados para esta estancia.</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+                {filteredFamiliesForClinical.length === 0 && <p className="text-sm text-gray-400">No hay familias que coincidan con la búsqueda.</p>}
+              </div>
             </div>
-          </div>
-        </Card>
+          )}
+        </div>
 
-        <Card className="space-y-4">
-          <h2 className="text-xl font-bold text-warm-900">Salida / recordatorios</h2>
-          <p className="text-sm text-warm-700">Servicio listo para detectar partidas proximas y dejar preparado el disparo del recordatorio a familia cuando se integre mensajeria.</p>
-          <div className="grid gap-3">
+        <SectionCard title="Salida / recordatorios" subtitle="Detecta partidas próximas y prepara recordatorios para las familias.">
+          <div className="space-y-3">
             {departureReminders.map((reminder) => (
-              <div key={`departure-${reminder.FamilyId}`} className="rounded-2xl bg-warm-50 p-3">
+              <div key={`departure-${reminder.FamilyId}`} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-bold text-warm-900">{reminder.CaregiverName} {reminder.FamilyLastName}</p>
-                    <p className="text-sm text-warm-700">{reminder.SiteName} · salida estimada {formatReadableDate(reminder.PlannedCheckoutDate)} · habitacion {reminder.RoomCode || 'Por asignar'}</p>
+                    <p className="font-semibold text-gray-900">{reminder.CaregiverName} {reminder.FamilyLastName}</p>
+                    <p className="text-xs text-gray-500">{reminder.SiteName} · salida {formatReadableDate(reminder.PlannedCheckoutDate)} · habitación {reminder.RoomCode || 'Por asignar'}</p>
                   </div>
                   <StatusChip status={reminder.DepartureReminderSentAt ? 'Enviado' : 'Por salir'} />
                 </div>
-                <div className="mt-2 rounded-2xl bg-white p-3 text-sm text-warm-700">{reminder.ReminderMessage}</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    variant="ghost"
-                    isLoading={admissionBusyId === `reminder-${reminder.FamilyId}`}
+                <div className="mt-2 rounded-lg bg-white px-3 py-2 text-xs text-gray-600">{reminder.ReminderMessage}</div>
+                <div className="mt-3">
+                  <button
+                    disabled={admissionBusyId === `reminder-${reminder.FamilyId}`}
                     onClick={async () => {
                       if (!authToken) return
                       setAdmissionBusyId(`reminder-${reminder.FamilyId}`)
@@ -807,69 +910,67 @@ export function AdminPanelPage() {
                         await markDepartureReminderPreparedApi(authToken, reminder.FamilyId)
                         pushToast({ type: 'info', message: 'Recordatorio preparado.' })
                         await reloadAdmissions()
-                      } finally {
-                        setAdmissionBusyId(null)
-                      }
+                      } finally { setAdmissionBusyId(null) }
                     }}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
                   >
                     Preparar recordatorio
-                  </Button>
+                  </button>
                 </div>
               </div>
             ))}
-            {departureReminders.length === 0 ? (
-              <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">No hay salidas proximas registradas para la sede seleccionada.</div>
-            ) : null}
+            {departureReminders.length === 0 && <p className="text-sm text-gray-400">No hay salidas próximas para la sede seleccionada.</p>}
           </div>
-        </Card>
+        </SectionCard>
       </div>
 
-      <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Cuentas familiares activas</h2>
-        <div className="grid gap-3">
+      {/* ── Active family accounts ───────────────────────────────────────────── */}
+      <SectionCard title="Cuentas familiares activas" subtitle="Gestión de acceso, PIN y estado de cada familia registrada.">
+        <div className="space-y-3">
           {families.map((family) => (
-            <div key={family.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warm-50 p-4">
-              <div>
-                <p className="font-bold text-warm-900">{family.caregiverName} {family.familyLastName}</p>
-                <p className="text-sm text-warm-700">{family.site} · ticket {family.kioskCode || 'pendiente'} · QR {family.qrCode || 'pendiente'}</p>
+            <div key={family.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarColor(family.id)}`}>
+                  {getInitials(`${family.caregiverName} ${family.familyLastName}`)}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">{family.caregiverName} {family.familyLastName}</p>
+                  <p className="text-xs text-gray-500">{family.site} · ticket {family.kioskCode || 'pendiente'} · QR {family.qrCode || 'pendiente'}</p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="ghost"
-                  isLoading={familyActionId === `pause-${family.id}`}
+                <button
+                  disabled={familyActionId === `pause-${family.id}`}
                   onClick={async () => {
                     setFamilyActionId(`pause-${family.id}`)
                     try {
                       await setFamilyAccessState(Number(family.id), family.isActive === false ? 'reactivate' : 'pause')
                       pushToast({ type: 'info', message: family.isActive === false ? 'Cuenta familiar reactivada.' : 'Cuenta familiar pausada.' })
-                    } finally {
-                      setFamilyActionId(null)
-                    }
+                    } finally { setFamilyActionId(null) }
                   }}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
                 >
                   {family.isActive === false ? 'Reactivar' : 'Pausar'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  isLoading={familyActionId === `reset-${family.id}`}
+                </button>
+                <button
+                  disabled={familyActionId === `reset-${family.id}`}
                   onClick={async () => {
                     setFamilyActionId(`reset-${family.id}`)
                     try {
                       const result = await setFamilyAccessState(Number(family.id), 'reset-pin')
                       pushToast({ type: 'success', message: `Nuevo PIN temporal para ${family.caregiverName}: ${result.newPin || 'generado'}` })
-                    } finally {
-                      setFamilyActionId(null)
-                    }
+                    } finally { setFamilyActionId(null) }
                   }}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
                 >
                   Resetear PIN
-                </Button>
+                </button>
               </div>
             </div>
           ))}
+          {families.length === 0 && <p className="text-sm text-gray-400">No hay cuentas familiares activas para la sede seleccionada.</p>}
         </div>
-      </Card>
+      </SectionCard>
     </div>
   )
 }
-
