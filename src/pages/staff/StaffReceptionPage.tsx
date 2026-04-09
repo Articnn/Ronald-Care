@@ -1,15 +1,20 @@
 import { useState } from 'react'
+import { Plus, Users } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Button } from '../../components/ui/Button'
-import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
-import { SectionHeader } from '../../components/ui/SectionHeader'
 import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 import { activateFamily, type ActivationResponse } from '../../lib/api'
 import type { Referral } from '../../types'
 
 type View = 'list' | 'create' | 'qr'
+
+function formatArrivalDate(value?: string | null) {
+  if (!value) return 'Pendiente'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString('es-MX')
+}
 
 export function StaffReceptionPage() {
   const { referrals, site, availableSites, setSite, createReferral, updateReferralStatus, authToken } = useAppState()
@@ -71,41 +76,59 @@ export function StaffReceptionPage() {
     }
   }
 
+  // ── QR Credential view ──────────────────────────────────────────────────────
   if (view === 'qr' && activationResult) {
     const qrUrl = `${window.location.origin}/family/login?qr_token=${activationResult.access.QrCode}`
     return (
       <>
         <style>{`@media print { body > * { display: none !important; } #qr-credential { display: flex !important; } }`}</style>
-        <div className="space-y-5">
-          <SectionHeader title="Familia registrada" subtitle="Entrega esta credencial a la familia para que pueda acceder al portal." />
+        <div className="space-y-6">
+          <div className="border-b border-gray-200 pb-4">
+            <h1 className="text-xl font-bold text-gray-900">Familia registrada</h1>
+            <p className="mt-1 text-sm text-gray-500">Entrega esta credencial a la familia para que pueda acceder al portal.</p>
+          </div>
+
           <div
             id="qr-credential"
-            className="mx-auto flex max-w-md flex-col items-center gap-6 rounded-3xl border border-warm-200 bg-white p-8 shadow-lg"
+            className="mx-auto flex max-w-sm flex-col items-center gap-5 rounded-xl border border-gray-200 bg-white p-8 shadow-sm"
           >
-            <div className="text-center">
-              <p className="text-xl font-bold text-warm-900">Familia {activationResult.family.FamilyLastName}</p>
-              <p className="mt-1 text-base text-warm-600">Cuidador: {activationResult.family.CaregiverName}</p>
+            {/* Header */}
+            <div className="w-full border-b border-gray-100 pb-4 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Credencial de acceso</p>
+              <p className="mt-1 text-base font-bold text-gray-900">Familia {activationResult.family.FamilyLastName}</p>
+              <p className="text-sm text-gray-500">Cuidador: {activationResult.family.CaregiverName}</p>
             </div>
 
-            <div className="rounded-2xl bg-warm-50 p-4">
-              <QRCodeSVG value={qrUrl} size={220} level="M" />
+            {/* QR */}
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <QRCodeSVG value={qrUrl} size={200} level="M" />
             </div>
 
-            <div className="w-full rounded-2xl border border-warm-200 bg-warm-50 p-4 text-center">
-              <p className="text-sm font-semibold text-warm-700">PIN de acceso</p>
-              <p className="mt-1 text-3xl font-bold tracking-widest text-warm-900">{activationResult.generatedPin}</p>
-              <p className="mt-2 text-xs text-warm-500">Entrega este PIN a la familia. Solo se muestra una vez.</p>
+            {/* PIN */}
+            <div className="w-full rounded-lg border border-warm-200 bg-warm-50 px-5 py-4 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">PIN de acceso</p>
+              <p className="mt-2 text-4xl font-bold tracking-[0.3em] text-warm-900">{activationResult.generatedPin}</p>
+              <p className="mt-2 text-xs text-warm-500">Solo se muestra una vez. Entrégalo a la familia.</p>
             </div>
 
-            <p className="max-w-xs text-center text-sm text-warm-500">
+            <p className="text-center text-xs text-gray-400">
               Escanea el QR con la cámara del teléfono e ingresa el PIN para acceder al portal familiar.
             </p>
 
-            <div className="flex w-full flex-col gap-3 print:hidden">
-              <Button fullWidth onClick={() => window.print()}>Imprimir credencial</Button>
-              <Button fullWidth variant="secondary" onClick={() => { setActivationResult(null); setView('list') }}>
+            {/* Actions */}
+            <div className="flex w-full flex-col gap-2 print:hidden">
+              <button
+                onClick={() => window.print()}
+                className="w-full rounded-md bg-warm-700 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800"
+              >
+                Imprimir credencial
+              </button>
+              <button
+                onClick={() => { setActivationResult(null); setView('list') }}
+                className="w-full rounded-md border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
                 Volver a recepción
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -113,105 +136,181 @@ export function StaffReceptionPage() {
     )
   }
 
+  // ── Create referral view ────────────────────────────────────────────────────
   if (view === 'create') {
     return (
-      <div className="space-y-5">
-        <SectionHeader title="Nueva referencia" subtitle="Registra los datos de la familia entrante." />
-        <Card className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-2">
-              <span className="text-base font-semibold text-warm-900">Sede</span>
-              <select
-                className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg"
-                value={site}
-                onChange={(event) => setSite(event.target.value)}
-              >
-                {availableSites.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+      <div className="space-y-6">
+        <div className="border-b border-gray-200 pb-4">
+          <h1 className="text-xl font-bold text-gray-900">Nueva referencia</h1>
+          <p className="mt-1 text-sm text-gray-500">Registra los datos de la familia entrante.</p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Datos de la referencia</p>
+          </div>
+          <div className="p-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-gray-700">Sede</span>
+                <select
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
+                  value={site}
+                  onChange={(event) => setSite(event.target.value)}
+                >
+                  {availableSites.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <Input label="Nombre cuidador" value={caregiverName} onChange={(event) => setCaregiverName(event.target.value)} />
+              <Input label="Apellido familia" value={familyLastName} onChange={(event) => setFamilyLastName(event.target.value)} />
+              <Input label="Fecha de llegada" type="date" value={arrivalDate} onChange={(event) => setArrivalDate(event.target.value)} />
+              <Input
+                label="Número de acompañantes"
+                type="number"
+                min="1"
+                value={companions}
+                onChange={(event) => setCompanions(event.target.value)}
+              />
+              <Input
+                label="Nota logística"
+                value={logisticsNote}
+                onChange={(event) => setLogisticsNote(event.target.value)}
+                placeholder="Traslado, horario o acceso"
+              />
+            </div>
+
+            <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 accent-warm-700"
+                checked={eligible}
+                onChange={(event) => setEligible(event.target.checked)}
+              />
+              <span className="text-sm font-medium text-gray-700">Elegibilidad confirmada</span>
             </label>
-            <Input label="Nombre cuidador" value={caregiverName} onChange={(event) => setCaregiverName(event.target.value)} />
-            <Input label="Apellido familia" value={familyLastName} onChange={(event) => setFamilyLastName(event.target.value)} />
-            <Input label="Fecha llegada" type="date" value={arrivalDate} onChange={(event) => setArrivalDate(event.target.value)} />
-            <Input
-              label="Número de acompañantes"
-              type="number"
-              min="1"
-              value={companions}
-              onChange={(event) => setCompanions(event.target.value)}
-            />
-            <Input
-              label="Nota logística"
-              value={logisticsNote}
-              onChange={(event) => setLogisticsNote(event.target.value)}
-              placeholder="Traslado, horario o acceso"
-            />
+
+            {error && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {error}
+              </div>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <button
+                disabled={isCreating}
+                onClick={handleCreateReferral}
+                className="rounded-md bg-warm-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800 disabled:opacity-60"
+              >
+                {isCreating ? 'Guardando...' : 'Guardar referencia'}
+              </button>
+              <button
+                onClick={() => { setView('list'); setError(null) }}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-          <label className="flex items-center gap-3 rounded-2xl border border-warm-200 p-4 text-lg font-semibold text-warm-900">
-            <input type="checkbox" className="h-5 w-5" checked={eligible} onChange={(event) => setEligible(event.target.checked)} />
-            Elegibilidad confirmada
-          </label>
-          {error && <p className="text-sm font-semibold text-red-700">{error}</p>}
-          <div className="flex gap-3">
-            <Button isLoading={isCreating} onClick={handleCreateReferral}>
-              Guardar referencia
-            </Button>
-            <Button variant="secondary" onClick={() => { setView('list'); setError(null) }}>
-              Cancelar
-            </Button>
-          </div>
-        </Card>
+        </div>
       </div>
     )
   }
 
+  // ── List view ───────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
-      <SectionHeader title="Recepción" subtitle="Gestión de referencias y activación de familias." />
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Recepción</h1>
+          <p className="mt-1 text-sm text-gray-500">Gestión de referencias y activación de familias.</p>
+        </div>
+        <button
+          onClick={() => { setView('create'); setError(null) }}
+          className="inline-flex items-center gap-1.5 rounded-md bg-warm-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva referencia
+        </button>
+      </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-700">{error}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {error}
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button onClick={() => { setView('create'); setError(null) }}>+ Nueva referencia</Button>
-      </div>
+      {/* Referrals table */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        {/* Table header */}
+        <div className="hidden border-b border-gray-100 bg-gray-50 px-6 py-3 lg:grid lg:grid-cols-[minmax(0,1.6fr)_160px_minmax(0,1fr)_160px_120px] lg:gap-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Familia</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Llegada</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Sede</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Estado</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Acción</span>
+        </div>
 
-      <Card className="space-y-3">
-        <h2 className="text-xl font-bold text-warm-900">Referencias</h2>
-        {referrals.length === 0 && (
-          <p className="text-warm-600">No hay referencias registradas.</p>
-        )}
-        {referrals.map((referral) => (
-          <div
-            key={referral.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warm-50 p-4"
-          >
-            <div className="space-y-1">
-              <p className="font-semibold text-warm-900">
-                {referral.id} · Familia {referral.familyLastName}
-              </p>
-              <p className="text-sm text-warm-600">
-                {referral.site} · Llegada {referral.arrivalDate} · {referral.companions} acompañante{referral.companions !== 1 ? 's' : ''}
-              </p>
+        <div className="divide-y divide-gray-100">
+          {referrals.map((referral) => (
+            <div
+              key={referral.id}
+              className="grid gap-3 px-6 py-3.5 lg:grid-cols-[minmax(0,1.6fr)_160px_minmax(0,1fr)_160px_120px] lg:items-center lg:gap-4"
+            >
+              {/* Family name */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Familia {referral.familyLastName}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  #{referral.id} · {referral.companions} acompañante{referral.companions !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              {/* Arrival date */}
+              <div className="text-sm text-gray-600">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 lg:hidden">Llegada · </span>
+                {formatArrivalDate(referral.arrivalDate)}
+              </div>
+
+              {/* Site */}
+              <div className="text-sm text-gray-600">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 lg:hidden">Sede · </span>
+                {referral.site}
+              </div>
+
+              {/* Status */}
+              <div>
+                <StatusChip status={referral.status} />
+              </div>
+
+              {/* Action */}
+              <div>
+                {referral.status !== 'Aceptada' && (
+                  <button
+                    disabled={loadingId === referral.id}
+                    onClick={() => handleAcceptReferral(referral)}
+                    className="rounded-md bg-warm-700 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-warm-800 disabled:opacity-60"
+                  >
+                    {loadingId === referral.id ? 'Aceptando...' : 'Aceptar'}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <StatusChip status={referral.status} />
-              {referral.status !== 'Aceptada' && (
-                <Button
-                  isLoading={loadingId === referral.id}
-                  onClick={() => handleAcceptReferral(referral)}
-                >
-                  Aceptar
-                </Button>
-              )}
+          ))}
+
+          {referrals.length === 0 && (
+            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50">
+                <Users className="h-5 w-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">No hay referencias registradas.</p>
             </div>
-          </div>
-        ))}
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

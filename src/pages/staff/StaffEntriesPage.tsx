@@ -1,11 +1,8 @@
-﻿import { useMemo, useState } from 'react'
-import { FileUp, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Check, FileUp, Sparkles, Upload } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Tesseract from 'tesseract.js'
-import { Button } from '../../components/ui/Button'
-import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
-import { SectionHeader } from '../../components/ui/SectionHeader'
 import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
 import { createAdmissionReferral } from '../../lib/api'
@@ -84,6 +81,55 @@ function extractFieldsFromRawText(rawText: string) {
     extractedOfficePhone,
     extractedDate,
   }
+}
+
+function StepIndicator({ activeStep }: { activeStep: number }) {
+  return (
+    <div className="flex items-center">
+      {steps.map((step, index) => {
+        const completed = index < activeStep
+        const active = index === activeStep
+        return (
+          <div key={step} className="flex flex-1 items-center">
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all ${
+                  completed
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : active
+                      ? 'border-warm-700 bg-warm-700 text-white'
+                      : 'border-gray-300 bg-white text-gray-400'
+                }`}
+              >
+                {completed ? <Check className="h-4 w-4" /> : <span>{index + 1}</span>}
+              </div>
+              <div className="text-center">
+                <p className={`text-[10px] font-semibold uppercase tracking-widest ${active ? 'text-warm-600' : completed ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  Paso {index + 1}
+                </p>
+                <p className={`text-xs font-medium ${active ? 'text-warm-900' : completed ? 'text-gray-600' : 'text-gray-400'}`}>{step}</p>
+              </div>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`mx-3 h-0.5 flex-1 transition-all ${completed ? 'bg-emerald-400' : 'bg-gray-200'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FormSection({ label, title, children }: { label: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 px-5 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">{label}</p>
+        <h3 className="mt-0.5 text-sm font-semibold text-gray-900">{title}</h3>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
 }
 
 export function StaffEntriesPage() {
@@ -221,221 +267,254 @@ export function StaffEntriesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <SectionHeader
-        title="Admisiones"
-        subtitle="El staff centraliza la referencia logística, extrae solo datos no clínicos y crea expedientes en estado REFERENCIA sin saturar la operación."
-      />
+    <div className="space-y-6">
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-xl font-bold text-gray-900">Admisiones</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          El staff centraliza la referencia logística, extrae solo datos no clínicos y crea expedientes en estado{' '}
+          <span className="font-medium text-warm-700">REFERENCIA</span> sin saturar la operación.
+        </p>
+      </div>
 
-      <Card className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          {steps.map((step, index) => {
-            const active = index === activeStep
-            const completed = index < activeStep
-            return (
-              <div
-                key={step}
-                className={`rounded-2xl border px-5 py-4 transition ${
-                  completed ? 'border-emerald-200 bg-emerald-50' : active ? 'border-warm-300 bg-warm-50' : 'border-warm-200 bg-white'
-                }`}
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Paso {index + 1}</p>
-                <p className="mt-2 text-lg font-bold text-warm-900">{step}</p>
-              </div>
-            )
-          })}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 px-6 py-5">
+          <StepIndicator activeStep={activeStep} />
         </div>
 
-        {activeStep === 0 ? (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div
-              className="rounded-[28px] border-2 border-dashed border-warm-200 bg-warm-50/80 p-6 text-center"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault()
-                const file = event.dataTransfer.files?.[0]
-                if (file) handleFileSelect(file)
-              }}
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Carga documental</p>
-              <h2 className="mt-3 text-2xl font-black text-warm-900">Carga una referencia de gestión</h2>
-              <p className="mt-2 text-sm text-warm-600">
-                Arrastra un PDF o imagen. Después podemos extraer información del documento automáticamente para prellenar únicamente datos logísticos.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                <label className="rounded-2xl bg-warm-700 px-5 py-3 font-semibold text-white transition hover:bg-warm-800">
-                  Seleccionar archivo
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0]
-                      if (file) handleFileSelect(file)
-                    }}
-                  />
-                </label>
-                <Button variant="ghost" onClick={handleExtraction} disabled={isExtracting || !selectedFile}>
-                  <Sparkles className="h-4 w-4" />
-                  {isExtracting ? 'Extrayendo...' : 'Extraer datos'}
-                </Button>
-              </div>
-              {selectedFile ? (
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-warm-700 shadow-soft">
-                  <FileUp className="h-4 w-4" />
-                  {selectedFile.name}
+        <div className="p-6">
+          {activeStep === 0 && (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div
+                className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center transition hover:border-warm-300 hover:bg-warm-50/40"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  const file = event.dataTransfer.files?.[0]
+                  if (file) handleFileSelect(file)
+                }}
+              >
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm">
+                  <Upload className="h-5 w-5 text-warm-600" />
                 </div>
-              ) : null}
-            </div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Carga documental</p>
+                <h2 className="mt-1 text-base font-semibold text-gray-900">Carga una referencia de gestión</h2>
+                <p className="mt-1.5 max-w-xs text-xs text-gray-500">
+                  Arrastra un PDF o imagen. Extraemos información automáticamente para prellenar solo datos logísticos.
+                </p>
 
-            <div className="space-y-5">
-              <div className="space-y-4 rounded-2xl border border-warm-200 bg-white p-5">
-                <div className="border-b border-warm-200 pb-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Identificación</p>
-                  <h3 className="text-lg font-bold text-warm-900">Datos del menor</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Nombre completo del menor" value={cleanSummaryValue(childFullName)} onChange={(event) => setChildFullName(event.target.value)} />
-                  <Input label="Edad" value={age} onChange={(event) => setAge(event.target.value)} />
-                </div>
-              </div>
+                {selectedFile ? (
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                    <FileUp className="h-3.5 w-3.5" />
+                    {selectedFile.name}
+                  </div>
+                ) : null}
 
-              <div className="space-y-4 rounded-2xl border border-warm-200 bg-white p-5">
-                <div className="border-b border-warm-200 pb-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Procedencia y logística</p>
-                  <h3 className="text-lg font-bold text-warm-900">Institución que refiere</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Hospital de origen" value={cleanSummaryValue(originHospital)} onChange={(event) => setOriginHospital(event.target.value)} />
-                  <Input label="Departamento / área" value={originDepartment} onChange={(event) => setOriginDepartment(event.target.value)} />
-                  <Input label="Médico que refiere" value={cleanSummaryValue(referringDoctorName)} onChange={(event) => setReferringDoctorName(event.target.value)} />
-                  <Input label="Teléfono oficina médica" value={cleanSummaryValue(doctorOfficePhone)} onChange={(event) => setDoctorOfficePhone(event.target.value)} />
-                  <Input label="Fecha programada de cita o ingreso" type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
-                  <Input label="Motivo de estancia" value="Apoyo Logístico" disabled />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button onClick={() => setActiveStep(1)}>Continuar</Button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {activeStep === 1 ? (
-          <div className="space-y-5">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="space-y-4 rounded-2xl border border-warm-200 bg-warm-50/70 p-5">
-                <div className="border-b border-warm-200 pb-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Datos de familia</p>
-                  <h3 className="text-lg font-bold text-warm-900">Tutor y contacto</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Nombre del tutor o tutora" value={cleanSummaryValue(tutorFullName)} onChange={(event) => setTutorFullName(event.target.value)} />
-                  <Input label="Teléfono del tutor" value={cleanSummaryValue(tutorPhone)} onChange={(event) => setTutorPhone(event.target.value)} />
-                  <Input label="Acompañantes" type="number" min="0" value={companions} onChange={(event) => setCompanions(event.target.value)} />
-                  <label className="block space-y-2">
-                    <span className="text-base font-semibold text-warm-900">Sede operativa</span>
-                    <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={site} onChange={(event) => setSite(event.target.value)}>
-                      {availableSites.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  <label className="cursor-pointer rounded-md bg-warm-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-warm-800 focus-within:ring-2 focus-within:ring-warm-500 focus-within:ring-offset-1">
+                    Seleccionar archivo
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        if (file) handleFileSelect(file)
+                      }}
+                    />
                   </label>
+                  <button
+                    onClick={handleExtraction}
+                    disabled={isExtracting || !selectedFile}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {isExtracting ? 'Extrayendo...' : 'Extraer datos'}
+                  </button>
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-warm-200 bg-white p-5">
-                <div className="border-b border-warm-200 pb-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Apoyo operativo</p>
-                  <h3 className="text-lg font-bold text-warm-900">Notas de logística</h3>
+              <div className="space-y-4">
+                <FormSection label="Identificación" title="Datos del menor">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input label="Nombre completo del menor" value={cleanSummaryValue(childFullName)} onChange={(event) => setChildFullName(event.target.value)} />
+                    <Input label="Edad" value={age} onChange={(event) => setAge(event.target.value)} />
+                  </div>
+                </FormSection>
+
+                <FormSection label="Procedencia y logística" title="Institución que refiere">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input label="Hospital de origen" value={cleanSummaryValue(originHospital)} onChange={(event) => setOriginHospital(event.target.value)} />
+                    <Input label="Departamento / área" value={originDepartment} onChange={(event) => setOriginDepartment(event.target.value)} />
+                    <Input label="Médico que refiere" value={cleanSummaryValue(referringDoctorName)} onChange={(event) => setReferringDoctorName(event.target.value)} />
+                    <Input label="Teléfono oficina médica" value={cleanSummaryValue(doctorOfficePhone)} onChange={(event) => setDoctorOfficePhone(event.target.value)} />
+                    <Input label="Fecha programada de cita o ingreso" type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
+                    <Input label="Motivo de estancia" value="Apoyo Logístico" disabled />
+                  </div>
+                </FormSection>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setActiveStep(1)}
+                    className="rounded-md bg-warm-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800"
+                  >
+                    Continuar
+                  </button>
                 </div>
-                <label className="block space-y-2">
-                  <span className="text-base font-semibold text-warm-900">Observaciones</span>
-                  <textarea
-                    className="min-h-[150px] w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-base text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
-                    value={logisticsNote}
-                    onChange={(event) => setLogisticsNote(event.target.value)}
-                    placeholder="Barreras de llegada, horarios, necesidades de recepción o información útil de coordinación."
-                  />
-                </label>
               </div>
             </div>
+          )}
 
-            <div className="flex flex-wrap gap-3">
-              <Button variant="ghost" onClick={() => setActiveStep(0)}>
-                Volver
-              </Button>
-              <Button onClick={() => setActiveStep(2)}>Revisar y guardar</Button>
-            </div>
-          </div>
-        ) : null}
+          {activeStep === 1 && (
+            <div className="space-y-4">
+              <div className="grid gap-4 xl:grid-cols-2">
+                <FormSection label="Datos de familia" title="Tutor y contacto">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input label="Nombre del tutor o tutora" value={cleanSummaryValue(tutorFullName)} onChange={(event) => setTutorFullName(event.target.value)} />
+                    <Input label="Teléfono del tutor" value={cleanSummaryValue(tutorPhone)} onChange={(event) => setTutorPhone(event.target.value)} />
+                    <Input label="Acompañantes" type="number" min="0" value={companions} onChange={(event) => setCompanions(event.target.value)} />
+                    <label className="block space-y-1.5">
+                      <span className="text-sm font-medium text-gray-700">Sede operativa</span>
+                      <select
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
+                        value={site}
+                        onChange={(event) => setSite(event.target.value)}
+                      >
+                        {availableSites.map((item) => (
+                          <option key={item} value={item}>{item}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </FormSection>
 
-        {activeStep === 2 ? (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <div className="rounded-3xl bg-warm-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Resumen de admisión</p>
-              <div className="mt-4 grid gap-3 text-sm text-warm-700 md:grid-cols-2">
-                <p><strong>Menor:</strong> {cleanSummaryValue(childFullName) || 'Pendiente'}</p>
-                <p><strong>Edad:</strong> {age || 'Pendiente'}</p>
-                <p><strong>Hospital:</strong> {cleanSummaryValue(originHospital) || 'Pendiente'}</p>
-                <p><strong>Área:</strong> {cleanSummaryValue(originDepartment) || 'Pendiente'}</p>
-                <p><strong>Médico referente:</strong> {cleanSummaryValue(referringDoctorName) || 'Pendiente'}</p>
-                <p><strong>Tel. oficina:</strong> {cleanSummaryValue(doctorOfficePhone) || 'Pendiente'}</p>
-                <p><strong>Tutor:</strong> {cleanSummaryValue(tutorFullName) || 'Pendiente'}</p>
-                <p><strong>Tel. tutor:</strong> {cleanSummaryValue(tutorPhone) || 'Pendiente'}</p>
-                <p><strong>Fecha programada:</strong> {scheduledDate}</p>
-                <p><strong>Sede:</strong> {site}</p>
-                <p><strong>Documento:</strong> {documentName || 'Captura manual'}</p>
-                <p><strong>Motivo:</strong> Apoyo Logístico</p>
+                <FormSection label="Apoyo operativo" title="Notas de logística">
+                  <label className="block space-y-1.5">
+                    <span className="text-sm font-medium text-gray-700">Observaciones</span>
+                    <textarea
+                      className="min-h-[148px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-warm-400 focus:outline-none focus:ring-2 focus:ring-warm-100"
+                      value={logisticsNote}
+                      onChange={(event) => setLogisticsNote(event.target.value)}
+                      placeholder="Barreras de llegada, horarios, necesidades de recepción o información útil de coordinación."
+                    />
+                  </label>
+                </FormSection>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveStep(0)}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={() => setActiveStep(2)}
+                  className="rounded-md bg-warm-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800"
+                >
+                  Revisar y guardar
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="rounded-3xl bg-white p-5 shadow-soft">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Impacto operativo</p>
-              <p className="mt-4 text-sm text-warm-700">
-                Al guardar, se crea una referencia en estado <strong>REFERENCIA</strong> y un registro operativo en <strong>solicitudes</strong> para alimentar el conteo de expedientes por completar.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button variant="ghost" onClick={() => setActiveStep(1)}>
-                  Editar
-                </Button>
-                <Button isLoading={isSaving} onClick={handleSave}>
-                  Guardar admisión
-                </Button>
+          {activeStep === 2 && (
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="rounded-lg border border-gray-200 bg-gray-50">
+                <div className="border-b border-gray-200 px-5 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Resumen de admisión</p>
+                </div>
+                <div className="grid gap-x-6 gap-y-3 p-5 text-sm md:grid-cols-2">
+                  {[
+                    ['Menor', cleanSummaryValue(childFullName) || 'Pendiente'],
+                    ['Edad', age || 'Pendiente'],
+                    ['Hospital', cleanSummaryValue(originHospital) || 'Pendiente'],
+                    ['Área', cleanSummaryValue(originDepartment) || 'Pendiente'],
+                    ['Médico referente', cleanSummaryValue(referringDoctorName) || 'Pendiente'],
+                    ['Tel. oficina', cleanSummaryValue(doctorOfficePhone) || 'Pendiente'],
+                    ['Tutor', cleanSummaryValue(tutorFullName) || 'Pendiente'],
+                    ['Tel. tutor', cleanSummaryValue(tutorPhone) || 'Pendiente'],
+                    ['Fecha programada', scheduledDate],
+                    ['Sede', site],
+                    ['Documento', documentName || 'Captura manual'],
+                    ['Motivo', 'Apoyo Logístico'],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+                      <p className="mt-0.5 font-medium text-gray-800">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="border-b border-gray-100 px-5 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Impacto operativo</p>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-gray-600">
+                    Al guardar, se crea una referencia en estado{' '}
+                    <span className="rounded bg-warm-100 px-1.5 py-0.5 font-semibold text-warm-700">REFERENCIA</span>{' '}
+                    y un registro operativo en{' '}
+                    <span className="font-semibold text-gray-800">solicitudes</span>{' '}
+                    para alimentar el conteo de expedientes por completar.
+                  </p>
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      onClick={() => setActiveStep(1)}
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="rounded-md bg-warm-700 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-warm-800 disabled:opacity-60"
+                    >
+                      {isSaving ? 'Guardando...' : 'Guardar admisión'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
-      </Card>
+          )}
+        </div>
+      </div>
 
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Admisiones recientes</p>
-            <h2 className="text-2xl font-bold text-warm-900">Referencias ya capturadas en {site}</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-warm-500">Admisiones recientes</p>
+            <h2 className="mt-0.5 text-sm font-semibold text-gray-900">Referencias capturadas en {site}</h2>
           </div>
-          <Link to="/staff/dashboard">
-            <Button variant="secondary">Ir a la bandeja de casos</Button>
+          <Link
+            to="/staff/dashboard"
+            className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Ir a bandeja de casos
           </Link>
         </div>
-        <div className="grid gap-4">
+
+        <div className="divide-y divide-gray-100">
           {recentEntries.map((referral) => (
-            <div key={referral.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warm-50 p-4">
-              <div className="space-y-1">
-                <p className="font-bold text-warm-900">
+            <div key={referral.id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
                   {referral.caregiverName} {referral.familyLastName}
                 </p>
-                <p className="text-sm text-warm-700">Llegada {referral.arrivalDate} · acompañantes {referral.companions}</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Llegada {referral.arrivalDate} · {referral.companions} acompañantes
+                </p>
               </div>
               <StatusChip status={referral.status} />
             </div>
           ))}
-          {recentEntries.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">Aún no hay admisiones registradas para esta sede.</div> : null}
+          {recentEntries.length === 0 && (
+            <div className="px-6 py-8 text-center text-sm text-gray-400">
+              Aún no hay admisiones registradas para esta sede.
+            </div>
+          )}
         </div>
-      </Card>
+      </div>
     </div>
   )
 }
