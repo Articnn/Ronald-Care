@@ -1,4 +1,4 @@
-﻿import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, Package, ShieldCheck, UserCircle2 } from 'lucide-react'
+﻿import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
@@ -9,33 +9,33 @@ const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; t
   superadmin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   admin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   hospital: [],
   staff: [
     { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
+    { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Inventario', to: '/staff/inventory', icon: <Package className="h-4 w-4" /> },
-    { label: 'Entradas', to: '/staff/entries', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   volunteer: [],
 }
 
 const roleLabels: Record<Exclude<Role, null>, string> = {
-  superadmin: 'superadmin',
-  admin: 'admin',
+  superadmin: 'Dirección Ejecutiva',
+  admin: 'Gerente de Sede',
   hospital: 'hospital',
   staff: 'staff',
   volunteer: 'voluntario',
@@ -58,6 +58,7 @@ export function AppShell() {
     notifications,
     unreadNotifications,
     markNotificationAsRead,
+    toasts,
     isSyncing,
   } = useAppState()
   const location = useLocation()
@@ -140,7 +141,7 @@ export function AppShell() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <Bell className="h-4 w-4" />
-                    Alertas
+                    Notificaciones
                   </span>
                   {unreadNotifications > 0 ? (
                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
@@ -216,6 +217,25 @@ export function AppShell() {
         {isSyncing && <LoadingOverlay message="Cargando información..." className="absolute inset-0 min-h-[400px]" />}
         <Outlet />
       </main>
+
+      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-sm flex-col gap-3">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-soft backdrop-blur ${
+              toast.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                : toast.type === 'error'
+                  ? 'border-red-200 bg-red-50 text-red-900'
+                  : 'border-sky-200 bg-sky-50 text-sky-900'
+            }`}
+          >
+            <p className="text-sm font-semibold">{toast.message}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
+
+

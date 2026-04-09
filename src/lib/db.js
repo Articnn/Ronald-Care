@@ -181,6 +181,7 @@ const KEY_ALIASES = {
   childname: 'ChildName',
   diagnosis: 'Diagnosis',
   documentreferenceurl: 'DocumentReferenceUrl',
+  documentoreferenciaurl: 'DocumentReferenceUrl',
   transporteventready: 'TransportEventReady',
   familycontactphone: 'FamilyContactPhone',
   requestid: 'RequestId',

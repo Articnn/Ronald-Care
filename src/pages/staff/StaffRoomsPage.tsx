@@ -239,7 +239,7 @@ function RoomCard({
 }
 
 export function StaffRoomsPage() {
-  const { authToken, currentUser, volunteerRoster, createVolunteerTaskForUser } = useAppState()
+  const { authToken, currentUser, site, availableSites, volunteerRoster, createVolunteerTaskForUser } = useAppState()
   const [rooms, setRooms] = useState<Room[]>([])
   const [arrivalFlows, setArrivalFlows] = useState<RoomArrivalFlow[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -254,18 +254,27 @@ export function StaffRoomsPage() {
   const [assigningFamilyId, setAssigningFamilyId] = useState<number | null>(null)
   const [releasingRoomId, setReleasingRoomId] = useState<number | null>(null)
 
+  const selectedSiteId =
+    currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+      ? site === 'Todas las sedes'
+        ? null
+        : availableSites.findIndex((item) => item === site) + 1 || null
+      : currentUser?.siteId || null
+
   const loadRooms = async () => {
     if (!authToken) return
-    const data = await getRooms(authToken, currentUser?.siteId ?? null)
+    const data = await getRooms(authToken, selectedSiteId)
     setRooms(data)
-    if (!selectedRoomId && data[0]) setSelectedRoomId(data[0].RoomId)
+    if (!data.some((room) => room.RoomId === selectedRoomId)) {
+      setSelectedRoomId(data[0]?.RoomId ?? null)
+    }
   }
 
   const loadArrivalFlows = async () => {
     if (!authToken) return
     setIsLoadingFlows(true)
     try {
-      const data = await getRoomArrivalFlow(authToken, currentUser?.siteId ?? null)
+      const data = await getRoomArrivalFlow(authToken, selectedSiteId)
       setArrivalFlows(data)
     } finally {
       setIsLoadingFlows(false)
@@ -288,7 +297,7 @@ export function StaffRoomsPage() {
   useEffect(() => {
     void loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, currentUser?.siteId])
+  }, [authToken, selectedSiteId])
 
   const selectedRoom = useMemo(() => rooms.find((room) => room.RoomId === selectedRoomId) || null, [rooms, selectedRoomId])
 
@@ -306,6 +315,28 @@ export function StaffRoomsPage() {
     [volunteerRoster, selectedRoom],
   )
 
+  const groupedRooms = useMemo(
+    () =>
+      rooms.reduce<Record<string, Room[]>>((acc, room) => {
+        const group = room.SiteName || 'Sin sede'
+        if (!acc[group]) acc[group] = []
+        acc[group].push(room)
+        return acc
+      }, {}),
+    [rooms],
+  )
+
+  const groupedArrivalFlows = useMemo(
+    () =>
+      arrivalFlows.reduce<Record<string, RoomArrivalFlow[]>>((acc, flow) => {
+        const group = flow.SiteName || 'Sin sede'
+        if (!acc[group]) acc[group] = []
+        acc[group].push(flow)
+        return acc
+      }, {}),
+    [arrivalFlows],
+  )
+
   useEffect(() => {
     if (!selectedVolunteerUserId && cleaningVolunteers[0]) {
       setSelectedVolunteerUserId(cleaningVolunteers[0].userId)
@@ -314,67 +345,81 @@ export function StaffRoomsPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Room planning" subtitle="Habitaciones, ocupacion y disponibilidad por sede." />
+      <SectionHeader
+        title="Room planning"
+        subtitle={selectedSiteId === null ? 'Vista global con habitaciones agrupadas por sede.' : `Habitaciones, ocupacion y disponibilidad para ${site}.`}
+      />
 
       <div className="space-y-4 rounded-2xl bg-white p-5 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-2xl font-bold text-warm-900">Flujo automático de llegadas</p>
-            <p className="text-sm text-warm-600">Seguimiento automático para familias que llegan mañana en esta sede.</p>
+            <p className="text-sm text-warm-600">
+              {selectedSiteId === null
+                ? 'Seguimiento automático para familias que llegan mañana en todas las sedes.'
+                : 'Seguimiento automático para familias que llegan mañana en esta sede.'}
+            </p>
           </div>
           {isLoadingFlows ? <LoaderCircle className="h-5 w-5 animate-spin text-[#950606]" /> : null}
         </div>
 
         {arrivalFlows.length > 0 ? (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {arrivalFlows.map((flow) => (
-              <div key={flow.FamilyId} className="space-y-3 rounded-2xl bg-warm-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-bold text-warm-900">{`${flow.CaregiverName} ${flow.FamilyLastName}`}</p>
-                    <p className="text-sm text-warm-600">Llega el {formatDate(flow.ArrivalDate)} · capacidad inicial {flow.RequiredCapacity}</p>
-                  </div>
-                  <FlowBadge flow={flow} />
+          <div className="space-y-5">
+            {Object.entries(groupedArrivalFlows).map(([groupName, flows]) => (
+              <div key={groupName} className="space-y-4">
+                {selectedSiteId === null ? <p className="text-sm font-bold uppercase tracking-[0.18em] text-warm-500">{groupName}</p> : null}
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {flows.map((flow) => (
+                    <div key={flow.FamilyId} className="space-y-3 rounded-2xl bg-warm-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-bold text-warm-900">{`${flow.CaregiverName} ${flow.FamilyLastName}`}</p>
+                          <p className="text-sm text-warm-600">Llega el {formatDate(flow.ArrivalDate)} · capacidad inicial {flow.RequiredCapacity}</p>
+                        </div>
+                        <FlowBadge flow={flow} />
+                      </div>
+
+                      <div className="rounded-2xl border border-dashed border-warm-200 bg-white p-4 text-sm text-warm-700">
+                        <p className="font-semibold text-warm-900">Buscando habitación disponible para la familia {flow.CaregiverName} que llega el {formatDate(flow.ArrivalDate)}...</p>
+                        <p className="mt-2">{flow.Message}</p>
+                        {flow.AssignedVolunteerName ? (
+                          <p className="mt-2 text-sm font-semibold text-warm-800">Tarea asignada a {flow.AssignedVolunteerName} para preparar la habitación.</p>
+                        ) : null}
+                      </div>
+
+                      {flow.FlowStatus === 'ready' && flow.SuggestedRoomId && flow.SuggestedRoomCode ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-sm font-semibold text-green-700">✅ Habitación {flow.SuggestedRoomCode} encontrada y lista</p>
+                          <Button
+                            isLoading={assigningFamilyId === flow.FamilyId}
+                            onClick={async () => {
+                              if (!authToken || !flow.SuggestedRoomId) return
+                              setAssigningFamilyId(flow.FamilyId)
+                              try {
+                                await confirmRoomArrivalAssignment(authToken, { familyId: flow.FamilyId, roomId: flow.SuggestedRoomId })
+                                await loadData()
+                              } finally {
+                                setAssigningFamilyId(null)
+                              }
+                            }}
+                          >
+                            Confirmar y asignar a familia
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      {flow.FlowStatus === 'preparing' ? (
+                        <p className="text-sm font-semibold text-amber-700">🔍 Habitación encontrada pero necesita preparación</p>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-
-                <div className="rounded-2xl border border-dashed border-warm-200 bg-white p-4 text-sm text-warm-700">
-                  <p className="font-semibold text-warm-900">Buscando habitación disponible para la familia {flow.CaregiverName} que llega el {formatDate(flow.ArrivalDate)}...</p>
-                  <p className="mt-2">{flow.Message}</p>
-                  {flow.AssignedVolunteerName ? (
-                    <p className="mt-2 text-sm font-semibold text-warm-800">Tarea asignada a {flow.AssignedVolunteerName} para preparar la habitación.</p>
-                  ) : null}
-                </div>
-
-                {flow.FlowStatus === 'ready' && flow.SuggestedRoomId && flow.SuggestedRoomCode ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <p className="text-sm font-semibold text-green-700">✅ Habitación {flow.SuggestedRoomCode} encontrada y lista</p>
-                    <Button
-                      isLoading={assigningFamilyId === flow.FamilyId}
-                      onClick={async () => {
-                        if (!authToken || !flow.SuggestedRoomId) return
-                        setAssigningFamilyId(flow.FamilyId)
-                        try {
-                          await confirmRoomArrivalAssignment(authToken, { familyId: flow.FamilyId, roomId: flow.SuggestedRoomId })
-                          await loadData()
-                        } finally {
-                          setAssigningFamilyId(null)
-                        }
-                      }}
-                    >
-                      Confirmar y asignar a familia
-                    </Button>
-                  </div>
-                ) : null}
-
-                {flow.FlowStatus === 'preparing' ? (
-                  <p className="text-sm font-semibold text-amber-700">🔍 Habitación encontrada pero necesita preparación</p>
-                ) : null}
               </div>
             ))}
           </div>
         ) : !isLoadingFlows ? (
           <div className="rounded-2xl bg-warm-50 p-6 text-sm text-warm-700">
-            No hay familias registradas con llegada para mañana en esta sede.
+            No hay familias registradas con llegada para mañana en la sede seleccionada.
           </div>
         ) : null}
       </div>
@@ -382,27 +427,61 @@ export function StaffRoomsPage() {
       {!isLoading && !error && rooms.length > 0 ? <OccupancyMeter rooms={rooms} /> : null}
 
       {!isLoading && !error ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {rooms.map((room) => (
-            <RoomCard
-              key={room.RoomId}
-              room={room}
-              isSelected={room.RoomId === selectedRoomId}
-              onSelect={() => setSelectedRoomId(room.RoomId)}
-              isReleasing={releasingRoomId === room.RoomId}
-              onRelease={async () => {
-                if (!authToken) return
-                setReleasingRoomId(room.RoomId)
-                try {
-                  await releaseRoom(authToken, room.RoomId)
-                  await loadData()
-                } finally {
-                  setReleasingRoomId(null)
-                }
-              }}
-            />
-          ))}
-        </div>
+        selectedSiteId === null ? (
+          <div className="space-y-6">
+            {Object.entries(groupedRooms).map(([groupName, groupRooms]) => (
+              <div key={groupName} className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-warm-500">{groupName}</p>
+                  <p className="text-sm font-semibold text-warm-700">{groupRooms.length} habitaciones</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {groupRooms.map((room) => (
+                    <RoomCard
+                      key={room.RoomId}
+                      room={room}
+                      isSelected={room.RoomId === selectedRoomId}
+                      onSelect={() => setSelectedRoomId(room.RoomId)}
+                      isReleasing={releasingRoomId === room.RoomId}
+                      onRelease={async () => {
+                        if (!authToken) return
+                        setReleasingRoomId(room.RoomId)
+                        try {
+                          await releaseRoom(authToken, room.RoomId)
+                          await loadData()
+                        } finally {
+                          setReleasingRoomId(null)
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {rooms.map((room) => (
+              <RoomCard
+                key={room.RoomId}
+                room={room}
+                isSelected={room.RoomId === selectedRoomId}
+                onSelect={() => setSelectedRoomId(room.RoomId)}
+                isReleasing={releasingRoomId === room.RoomId}
+                onRelease={async () => {
+                  if (!authToken) return
+                  setReleasingRoomId(room.RoomId)
+                  try {
+                    await releaseRoom(authToken, room.RoomId)
+                    await loadData()
+                  } finally {
+                    setReleasingRoomId(null)
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )
       ) : null}
 
       {selectedRoom ? (

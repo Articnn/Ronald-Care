@@ -48,7 +48,14 @@ INSERT INTO rooms (roomid, siteid, roomcode, capacity, roomtype, occupiedcount, 
   (21, 3, 'TLA-N5', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
   (22, 3, 'TLA-E1', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
   (23, 3, 'TLA-E2', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
-  (24, 3, 'TLA-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW());
+  (24, 3, 'TLA-E3', 4, 'especial', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (25, 3, 'TLA-N6', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (26, 3, 'TLA-N7', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (27, 3, 'TLA-N8', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (28, 3, 'TLA-N9', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (29, 3, 'TLA-N10', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (30, 3, 'TLA-N11', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW()),
+  (31, 3, 'TLA-N12', 2, 'normal', 0, 'disponible', NULL, NULL, TRUE, NOW());
 
 INSERT INTO referrals (
   referralid, siteid, createdbyuserid, caregivername, familylastname, referralcode, familycode, status, admissionstage,

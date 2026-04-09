@@ -1,14 +1,16 @@
 import { withApi } from '../../src/lib/http.js'
-import { extractClinicalReference } from '../../src/lib/admission-workflow.js'
+import { extractClinicalReference, runOcrWithTesseract } from '../../src/lib/admission-workflow.js'
 
 export default withApi({ methods: ['POST'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
-  const extracted = extractClinicalReference({
-    fileName: req.body.fileName,
-    hintText: req.body.hintText,
+  const ocrText = await runOcrWithTesseract({
+    dataUrl: req.body.dataUrl,
   })
 
-  return {
-    ...extracted,
-    message: 'Información del documento extraída automáticamente.',
-  }
+  const extracted = await extractClinicalReference({
+    fileName: req.body.fileName,
+    hintText: req.body.hintText,
+    ocrText,
+  })
+
+  return extracted
 })

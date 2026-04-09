@@ -34,7 +34,7 @@ export default withApi({ methods: ['GET', 'POST'], roles: ['staff', 'volunteer',
       dbReq.input('status', sql.NVarChar(30), req.query.status)
       filters.push('Status = @status')
     } else {
-      filters.push(`Status <> 'borrador_extraido'`)
+      filters.push(`Status NOT IN ('referencia', 'borrador_extraido')`)
     }
     if (req.query.requestType) {
       dbReq.input('requestType', sql.NVarChar(30), req.query.requestType)

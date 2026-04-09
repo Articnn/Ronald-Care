@@ -17,6 +17,7 @@ import { StaffRequestsPage } from './pages/staff/StaffRequestsPage'
 import { StaffRoomsPage } from './pages/staff/StaffRoomsPage'
 import { StaffTripsPage } from './pages/staff/StaffTripsPage'
 import { StaffVolunteersPage } from './pages/staff/StaffVolunteersPage'
+import { StaffWaitlistPage } from './pages/staff/StaffWaitlistPage'
 
 function App() {
   return (
@@ -38,8 +39,8 @@ function App() {
               }
             />
             <Route path="/hospital/login" element={<Navigate to="/login" replace />} />
-            <Route path="/hospital/referrals" element={<Navigate to="/staff/entries" replace />} />
-            <Route path="/hospital/referrals/:id" element={<Navigate to="/staff/entries" replace />} />
+            <Route path="/hospital/referrals" element={<Navigate to="/staff/admissions" replace />} />
+            <Route path="/hospital/referrals/:id" element={<Navigate to="/staff/admissions" replace />} />
 
             <Route path="/staff/login" element={<StaffLoginPage />} />
             <Route
@@ -51,13 +52,22 @@ function App() {
               }
             />
             <Route
-              path="/staff/entries"
+              path="/staff/admissions"
               element={
                 <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffEntriesPage />
                 </RequireRole>
               }
             />
+            <Route
+              path="/staff/waitlist"
+              element={
+                <RequireRole allowed={['staff', 'admin', 'superadmin']}>
+                  <StaffWaitlistPage />
+                </RequireRole>
+              }
+            />
+            <Route path="/staff/entries" element={<Navigate to="/staff/admissions" replace />} />
             <Route
               path="/staff/reception"
               element={

@@ -106,6 +106,7 @@ import type {
   StaffDashboardSummary,
   StaffRosterItem,
   Trip,
+  AppToast,
   VolunteerNotification,
   VolunteerRosterItem,
   VolunteerChangeRequest,
@@ -169,6 +170,7 @@ interface AppContextValue {
   staffDashboard: StaffDashboardSummary
   notifications: VolunteerNotification[]
   unreadNotifications: number
+  toasts: AppToast[]
   availableSites: string[]
   setRole: (role: Role) => void
   setSite: (site: string) => void
@@ -262,6 +264,7 @@ interface AppContextValue {
   sendVolunteerAlertToPeer: (toVolunteerUserId: number, alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me') => Promise<void>
   sendStaffAlertToUser: (toStaffUserId: number, alertType: 'incoming_families' | 'prepare_kits' | 'reception_help' | 'checkin_pending') => Promise<void>
   markNotificationAsRead: (notificationId: number) => Promise<void>
+  pushToast: (payload: { type: 'success' | 'error' | 'info'; message: string }) => void
 }
 
 const ROLE_STORAGE_KEY = 'ops-role'
@@ -725,6 +728,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [staffDashboard, setStaffDashboard] = useState<StaffDashboardSummary>(emptyStaffDashboard)
   const [notifications, setNotifications] = useState<VolunteerNotification[]>([])
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [toasts, setToasts] = useState<AppToast[]>([])
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>(initialCommunityPosts)
   const [returnPasses, setReturnPasses] = useState<ReturnPass[]>(initialReturnPasses)
 
@@ -1305,6 +1309,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!authToken || !role || !['staff', 'admin', 'superadmin'].includes(role)) return
     await sendStaffAlert(authToken, { toStaffUserId, alertType })
   }
+
+  const pushToast = ({ type, message }: { type: 'success' | 'error' | 'info'; message: string }) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    setToasts((current) => [...current, { id, type, message }])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 3600)
+  }
   return (
     <AppContext.Provider
       value={{
@@ -1342,6 +1354,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         staffDashboard,
         notifications,
         unreadNotifications,
+        toasts,
         availableSites,
         setRole,
         setSite,
@@ -1383,6 +1396,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sendVolunteerAlertToPeer,
         sendStaffAlertToUser,
         markNotificationAsRead,
+        pushToast,
       }}
     >
       {children}

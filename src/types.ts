@@ -150,6 +150,12 @@ export interface VolunteerNotification {
   createdAt: string
 }
 
+export interface AppToast {
+  id: number
+  type: 'success' | 'error' | 'info'
+  message: string
+}
+
 export interface VolunteerRosterItem {
   userId: number
   fullName: string

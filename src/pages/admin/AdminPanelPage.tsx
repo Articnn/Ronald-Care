@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
@@ -16,9 +17,7 @@ import {
   type DepartureReminderRecord,
 } from '../../lib/api'
 
-const userRoles = ['admin', 'staff', 'volunteer'] as const
-const volunteerTypes = ['individual', 'escolar', 'empresarial'] as const
-const volunteerRoleOptions = ['traslados', 'recepcion', 'acompanamiento', 'cocina', 'lavanderia', 'limpieza'] as const
+const userRoles = ['admin', 'staff'] as const
 const staffWorkAreas = ['recepcion', 'checkin', 'habitaciones', 'inventario', 'coordinacion', 'analitica', 'apoyo_familiar'] as const
 const weekDays = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'] as const
 const staffAlertOptions = [
@@ -69,12 +68,6 @@ function formatArea(area: (typeof staffWorkAreas)[number]) {
   return map[area]
 }
 
-function formatAdmissionStage(stage?: AdmissionRecord['AdmissionStage']) {
-  if (stage === 'expediente_armado') return 'Expediente armado'
-  if (stage === 'aprobada') return 'Aprobada'
-  return 'Referencia'
-}
-
 function formatReadableDate(value?: string | null) {
   if (!value) return 'Pendiente'
   const date = new Date(value)
@@ -101,6 +94,7 @@ export function AdminPanelPage() {
     refreshConnectedData,
     setFamilyAccessState,
     sendStaffAlertToUser,
+    pushToast,
   } = useAppState()
 
   const seedSites = useMemo(() => availableSites.filter((item) => item !== 'Todas las sedes'), [availableSites])
@@ -110,14 +104,10 @@ export function AdminPanelPage() {
   const [role, setRole] = useState<(typeof userRoles)[number]>('staff')
   const [siteId, setSiteId] = useState(1)
   const [selectedWorkDays, setSelectedWorkDays] = useState<string[]>(['Lunes', 'Miercoles', 'Viernes'])
-  const [volunteerType, setVolunteerType] = useState<(typeof volunteerTypes)[number]>('individual')
-  const [volunteerRole, setVolunteerRole] = useState<(typeof volunteerRoleOptions)[number]>('recepcion')
   const [staffWorkArea, setStaffWorkArea] = useState<(typeof staffWorkAreas)[number]>('recepcion')
-  const [profileDay, setProfileDay] = useState('2026-04-06')
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('16:00')
   const [shiftLabel, setShiftLabel] = useState<'manana' | 'tarde' | 'noche'>('manana')
-  const [generatedAccess, setGeneratedAccess] = useState<string | null>(null)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null)
   const [activatingReferralId, setActivatingReferralId] = useState<string | null>(null)
@@ -129,13 +119,12 @@ export function AdminPanelPage() {
   const [clinicalHistory, setClinicalHistory] = useState<ClinicalHistoryRecord[]>([])
   const [departureReminders, setDepartureReminders] = useState<DepartureReminderRecord[]>([])
   const [admissionBusyId, setAdmissionBusyId] = useState<string | null>(null)
-  const [socialWorkerByReferral, setSocialWorkerByReferral] = useState<Record<number, string>>({})
   const [originHospitalByReferral, setOriginHospitalByReferral] = useState<Record<number, string>>({})
-  const [originCityByReferral, setOriginCityByReferral] = useState<Record<number, string>>({})
-  const [familyPhoneByReferral, setFamilyPhoneByReferral] = useState<Record<number, string>>({})
-  const [dossierByReferral, setDossierByReferral] = useState<Record<number, string>>({})
   const [clinicalNoteByFamily, setClinicalNoteByFamily] = useState<Record<number, string>>({})
   const [clinicalDateByFamily, setClinicalDateByFamily] = useState<Record<number, string>>({})
+  const [userSearch, setUserSearch] = useState('')
+  const [clinicalSearch, setClinicalSearch] = useState('')
+  const [isStayTrackingOpen, setIsStayTrackingOpen] = useState(false)
 
   const derivedHours = useMemo(() => calculateHours(startTime, endTime), [startTime, endTime])
   const derivedAvailability = useMemo(() => inferAvailability(derivedHours), [derivedHours])
@@ -179,38 +168,10 @@ export function AdminPanelPage() {
   }, [pendingReferrals])
 
   useEffect(() => {
-    setSocialWorkerByReferral((current) => {
-      const next = { ...current }
-      for (const admission of admissions) {
-        if (next[admission.ReferralId] === undefined) next[admission.ReferralId] = admission.SocialWorkerName || ''
-      }
-      return next
-    })
     setOriginHospitalByReferral((current) => {
       const next = { ...current }
       for (const admission of admissions) {
         if (next[admission.ReferralId] === undefined) next[admission.ReferralId] = admission.OriginHospital || ''
-      }
-      return next
-    })
-    setOriginCityByReferral((current) => {
-      const next = { ...current }
-      for (const admission of admissions) {
-        if (next[admission.ReferralId] === undefined) next[admission.ReferralId] = admission.OriginCity || ''
-      }
-      return next
-    })
-    setFamilyPhoneByReferral((current) => {
-      const next = { ...current }
-      for (const admission of admissions) {
-        if (next[admission.ReferralId] === undefined) next[admission.ReferralId] = admission.FamilyContactPhone || ''
-      }
-      return next
-    })
-    setDossierByReferral((current) => {
-      const next = { ...current }
-      for (const admission of admissions) {
-        if (next[admission.ReferralId] === undefined) next[admission.ReferralId] = admission.DossierSummary || ''
       }
       return next
     })
@@ -259,11 +220,21 @@ export function AdminPanelPage() {
   }, [authToken, selectedSiteId])
 
   const staffUsers = useMemo(() => internalUsers.filter((user) => user.role === 'Staff'), [internalUsers])
-  const volunteerUsers = useMemo(() => internalUsers.filter((user) => user.role === 'Voluntario'), [internalUsers])
+  const executiveUsers = useMemo(() => internalUsers.filter((user) => user.role === 'Admin'), [internalUsers])
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase()
+    if (!query) return internalUsers
+    return internalUsers.filter((user) => `${user.fullName} ${user.email}`.toLowerCase().includes(query))
+  }, [internalUsers, userSearch])
+  const filteredFamiliesForClinical = useMemo(() => {
+    const query = clinicalSearch.trim().toLowerCase()
+    if (!query) return families
+    return families.filter((family) => `${family.caregiverName} ${family.familyLastName}`.toLowerCase().includes(query))
+  }, [clinicalSearch, families])
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Panel de admin" subtitle={`Usuarios internos, activacion familiar y control operativo por sede. Vista filtrada en: ${site}.`} />
+      <SectionHeader title="Panel ejecutivo" subtitle={`Usuarios internos, activacion familiar y control operativo por sede. Vista filtrada en: ${site}.`} />
 
       <Card className="space-y-6">
         <div className="space-y-1">
@@ -295,7 +266,7 @@ export function AdminPanelPage() {
                 <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={role} onChange={(event) => setRole(event.target.value as (typeof userRoles)[number])}>
                   {userRoles.map((item) => (
                     <option key={item} value={item}>
-                      {item}
+                      {item === 'admin' ? 'Gerente de Sede' : 'Staff / Operación'}
                     </option>
                   ))}
                 </select>
@@ -314,48 +285,23 @@ export function AdminPanelPage() {
           </div>
         </div>
 
-        {role === 'staff' || role === 'volunteer' ? (
+        {role === 'staff' ? (
           <div className="space-y-5 rounded-2xl border border-warm-200 bg-warm-50 p-5">
             <div className="border-b border-warm-200 pb-3">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Horario laboral</p>
               <h3 className="text-lg font-bold text-warm-900">Perfil operativo</h3>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              {role === 'volunteer' ? (
-                <>
-                  <label className="block space-y-2">
-                    <span className="text-base font-semibold text-warm-900">Tipo de voluntariado</span>
-                    <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerType} onChange={(event) => setVolunteerType(event.target.value as (typeof volunteerTypes)[number])}>
-                      {volunteerTypes.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block space-y-2">
-                    <span className="text-base font-semibold text-warm-900">Rol de trabajo</span>
-                    <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={volunteerRole} onChange={(event) => setVolunteerRole(event.target.value as (typeof volunteerRoleOptions)[number])}>
-                      {volunteerRoleOptions.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </>
-              ) : (
-                <label className="block space-y-2">
-                  <span className="text-base font-semibold text-warm-900">Area de trabajo</span>
-                  <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={staffWorkArea} onChange={(event) => setStaffWorkArea(event.target.value as (typeof staffWorkAreas)[number])}>
-                    {staffWorkAreas.map((item) => (
-                      <option key={item} value={item}>
-                        {formatArea(item)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <label className="block space-y-2">
+                <span className="text-base font-semibold text-warm-900">Area de trabajo</span>
+                <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={staffWorkArea} onChange={(event) => setStaffWorkArea(event.target.value as (typeof staffWorkAreas)[number])}>
+                  {staffWorkAreas.map((item) => (
+                    <option key={item} value={item}>
+                      {formatArea(item)}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <Input label="Hora de inicio" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
               <Input label="Hora de fin" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
               <label className="block space-y-2">
@@ -366,7 +312,6 @@ export function AdminPanelPage() {
                   <option value="noche">Noche</option>
                 </select>
               </label>
-              {role === 'volunteer' ? <Input label="Dia base de captura" type="date" value={profileDay} onChange={(event) => setProfileDay(event.target.value)} /> : null}
             </div>
 
             <div className="space-y-3 rounded-2xl bg-white/80 p-4">
@@ -416,21 +361,7 @@ export function AdminPanelPage() {
                   role,
                   siteId,
                   password,
-                  volunteerShift:
-                    role === 'volunteer'
-                      ? {
-                          volunteerType,
-                          roleName: volunteerRole,
-                          shiftDay: profileDay,
-                          workDays: selectedWorkDays,
-                          startTime,
-                          endTime,
-                          shiftPeriod: shiftLabel === 'manana' ? 'AM' : 'PM',
-                          shiftLabel,
-                          availabilityStatus: derivedAvailability === 'Disponible' ? 'disponible' : derivedAvailability === 'Cupo limitado' ? 'cupo_limitado' : 'no_disponible',
-                          hoursLogged: derivedHours,
-                        }
-                      : undefined,
+                  volunteerShift: undefined,
                   staffProfile:
                     role === 'staff'
                       ? {
@@ -445,6 +376,7 @@ export function AdminPanelPage() {
                 setFullName('')
                 setEmail('')
                 setPassword('Demo123!')
+                pushToast({ type: 'success', message: 'Usuario interno creado con éxito.' })
               } finally {
                 setIsCreatingUser(false)
               }
@@ -458,81 +390,106 @@ export function AdminPanelPage() {
       <Card className="space-y-4">
         <h2 className="text-xl font-bold text-warm-900">Usuarios por sede</h2>
         <p className="text-sm text-warm-700">Desde aqui puedes pausar, eliminar o trasladar usuarios a otra sede. La lista respeta la sede seleccionada en el header.</p>
-        <div className="grid gap-3">
-          {internalUsers.map((user) => (
-            <div key={user.id} className="rounded-2xl bg-warm-50 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-bold text-warm-900">{user.fullName}</p>
-                  <p className="text-sm text-warm-700">{user.email} · {user.role} · {user.site || 'Global'}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="ghost"
-                    isLoading={loadingUserId === user.id}
-                    onClick={async () => {
-                      setLoadingUserId(user.id)
-                      try {
-                        await updateInternalUser({ userId: Number(user.id), isActive: !user.isActive })
-                      } finally {
-                        setLoadingUserId(null)
-                      }
-                    }}
-                  >
-                    {user.isActive ? 'Pausar' : 'Reactivar'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    isLoading={loadingUserId === `del-${user.id}`}
-                    onClick={async () => {
-                      setLoadingUserId(`del-${user.id}`)
-                      try {
-                        await deleteInternalUser(Number(user.id))
-                      } finally {
-                        setLoadingUserId(null)
-                      }
-                    }}
-                  >
-                    Eliminar
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="block space-y-2">
-                  <span className="text-sm font-semibold text-warm-900">Trasladar a sede</span>
-                  <select
-                    className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-base"
-                    value={siteDrafts[user.id] || user.siteId || 1}
-                    onChange={(event) => setSiteDrafts((current) => ({ ...current, [user.id]: Number(event.target.value) }))}
-                  >
-                    {seedSites.map((item, index) => (
-                      <option key={`${user.id}-${item}`} value={index + 1}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="flex items-end">
-                  <Button
-                    variant="ghost"
-                    isLoading={loadingUserId === `move-${user.id}`}
-                    disabled={(siteDrafts[user.id] || user.siteId || 1) === (user.siteId || 1)}
-                    onClick={async () => {
-                      setLoadingUserId(`move-${user.id}`)
-                      try {
-                        await updateInternalUser({ userId: Number(user.id), siteId: siteDrafts[user.id] || user.siteId || 1 })
-                      } finally {
-                        setLoadingUserId(null)
-                      }
-                    }}
-                  >
-                    Guardar sede
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="rounded-2xl bg-warm-50 p-3">
+          <input
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+            placeholder="Buscar staff por nombre o correo"
+            className="w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-sm text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
+          />
         </div>
+        <div className="overflow-x-auto rounded-2xl border border-warm-200">
+          <table className="min-w-full bg-white text-sm">
+            <thead className="bg-warm-50 text-left text-warm-900">
+              <tr>
+                <th className="px-4 py-3 font-bold">Nombre</th>
+                <th className="px-4 py-3 font-bold">Correo</th>
+                <th className="px-4 py-3 font-bold">Rol</th>
+                <th className="px-4 py-3 font-bold">Sede</th>
+                <th className="px-4 py-3 font-bold">Estado</th>
+                <th className="px-4 py-3 font-bold">Traslado</th>
+                <th className="px-4 py-3 font-bold">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="border-t border-warm-100 align-top">
+                  <td className="px-4 py-4 font-semibold text-warm-900">{user.fullName}</td>
+                  <td className="px-4 py-4 text-warm-700">{user.email}</td>
+                  <td className="px-4 py-4 text-warm-700">{user.role}</td>
+                  <td className="px-4 py-4 text-warm-700">{user.site || 'Global'}</td>
+                  <td className="px-4 py-4 text-warm-700">{user.isActive ? 'Activo' : 'Pausado'}</td>
+                  <td className="px-4 py-4">
+                    <div className="flex gap-2">
+                      <select
+                        className="w-full rounded-2xl border border-warm-200 px-3 py-2 text-sm"
+                        value={siteDrafts[user.id] || user.siteId || 1}
+                        onChange={(event) => setSiteDrafts((current) => ({ ...current, [user.id]: Number(event.target.value) }))}
+                      >
+                        {seedSites.map((item, index) => (
+                          <option key={`${user.id}-${item}`} value={index + 1}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="ghost"
+                        isLoading={loadingUserId === `move-${user.id}`}
+                        disabled={(siteDrafts[user.id] || user.siteId || 1) === (user.siteId || 1)}
+                        onClick={async () => {
+                          setLoadingUserId(`move-${user.id}`)
+                          try {
+                            await updateInternalUser({ userId: Number(user.id), siteId: siteDrafts[user.id] || user.siteId || 1 })
+                            pushToast({ type: 'success', message: `Usuario trasladado a ${seedSites[(siteDrafts[user.id] || user.siteId || 1) - 1]}.` })
+                          } finally {
+                            setLoadingUserId(null)
+                          }
+                        }}
+                      >
+                        Guardar
+                      </Button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="ghost"
+                        isLoading={loadingUserId === user.id}
+                        onClick={async () => {
+                          setLoadingUserId(user.id)
+                          try {
+                            await updateInternalUser({ userId: Number(user.id), isActive: !user.isActive })
+                            pushToast({ type: 'info', message: user.isActive ? 'Cuenta pausada.' : 'Cuenta reactivada.' })
+                          } finally {
+                            setLoadingUserId(null)
+                          }
+                        }}
+                      >
+                        {user.isActive ? 'Pausar' : 'Reactivar'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        isLoading={loadingUserId === `del-${user.id}`}
+                        onClick={async () => {
+                          setLoadingUserId(`del-${user.id}`)
+                          try {
+                            await deleteInternalUser(Number(user.id))
+                            pushToast({ type: 'success', message: 'Usuario eliminado.' })
+                          } finally {
+                            setLoadingUserId(null)
+                          }
+                        }}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filteredUsers.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">No hay usuarios que coincidan con la búsqueda actual.</div> : null}
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -576,11 +533,12 @@ export function AdminPanelPage() {
                       isLoading={loadingUserId === `staff-alert-${staff.userId}`}
                       onClick={async () => {
                         setLoadingUserId(`staff-alert-${staff.userId}`)
-                        try {
-                          await sendStaffAlertToUser(staff.userId, selectedAlertTypeByUser[staff.userId] || 'incoming_families')
-                        } finally {
-                          setLoadingUserId(null)
-                        }
+                      try {
+                        await sendStaffAlertToUser(staff.userId, selectedAlertTypeByUser[staff.userId] || 'incoming_families')
+                        pushToast({ type: 'info', message: `Notificación enviada a ${staff.fullName}.` })
+                      } finally {
+                        setLoadingUserId(null)
+                      }
                       }}
                     >
                       Enviar alerta
@@ -593,16 +551,16 @@ export function AdminPanelPage() {
           </div>
         </Card>
 
-        <Card className="space-y-4">
+        <Card className="space-y-3">
           <h2 className="text-xl font-bold text-warm-900">Resumen rapido por rol</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl bg-warm-50 p-4">
-              <p className="text-sm font-semibold text-warm-700">Staff visibles</p>
-              <p className="text-3xl font-extrabold text-warm-900">{staffUsers.length}</p>
+              <p className="text-sm font-semibold text-warm-700">Dirección Ejecutiva</p>
+              <p className="text-3xl font-extrabold text-warm-900">{executiveUsers.length}</p>
             </div>
             <div className="rounded-2xl bg-warm-50 p-4">
-              <p className="text-sm font-semibold text-warm-700">Voluntarios visibles</p>
-              <p className="text-3xl font-extrabold text-warm-900">{volunteerUsers.length}</p>
+              <p className="text-sm font-semibold text-warm-700">Staff visibles</p>
+              <p className="text-3xl font-extrabold text-warm-900">{staffUsers.length}</p>
             </div>
           </div>
           <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">
@@ -640,9 +598,10 @@ export function AdminPanelPage() {
                       setActivatingReferralId(referral.id)
                       try {
                         const result = await activateReferralFamily(Number(referral.id), stayDaysByReferral[referral.id] || 3)
-                        setGeneratedAccess(
-                          `Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}${result.automation ? ` · ${result.automation.Message}` : ''}`,
-                        )
+                        pushToast({
+                          type: 'success',
+                          message: `Familia activada: ${result.access.TicketCode} · ${result.access.QrCode} · PIN ${result.generatedPin}${result.automation ? ` · ${result.automation.Message}` : ''}`,
+                        })
                       } finally {
                         setActivatingReferralId(null)
                       }
@@ -654,128 +613,6 @@ export function AdminPanelPage() {
               </div>
             </div>
           ))}
-        </div>
-        {generatedAccess ? <p className="rounded-2xl bg-gold-100 p-4 font-semibold text-warm-900">{generatedAccess}</p> : null}
-      </Card>
-
-      <Card className="space-y-4">
-        <h2 className="text-xl font-bold text-warm-900">Flujo operativo central</h2>
-        <p className="text-sm text-warm-700">Este bloque conecta referencia, expediente, aprobacion inteligente, seguimiento clinico y recordatorios de salida con datos reales del backend.</p>
-        <div className="grid gap-4">
-          {admissions.map((admission) => (
-            <div key={`admission-${admission.ReferralId}`} className="rounded-2xl bg-warm-50 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-warm-900">{admission.CaregiverName} {admission.FamilyLastName}</p>
-                  <p className="text-sm text-warm-700">
-                    Origen: {admission.OriginHospital || 'Por definir'} · llegada {formatReadableDate(admission.ArrivalDate)}
-                  </p>
-                  <p className="text-sm text-warm-700">
-                    Casa asignada: {admission.AssignedSiteName || admission.SiteName || 'Pendiente'} · telefono {admission.FamilyContactPhone || 'Pendiente'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <StatusChip status={formatAdmissionStage(admission.AdmissionStage)} />
-                  <StatusChip status={admission.Status === 'aceptada' ? 'Aceptada' : admission.Status === 'en_revision' ? 'En revision' : 'Enviada'} />
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-2xl bg-white p-4 text-sm text-warm-700">
-                {admission.Message || 'Referencia recibida y plantilla de solicitud precargada.'}
-              </div>
-
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <Input
-                  label="Hospital de origen"
-                  value={originHospitalByReferral[admission.ReferralId] || ''}
-                  onChange={(event) => setOriginHospitalByReferral((current) => ({ ...current, [admission.ReferralId]: event.target.value }))}
-                />
-                <Input
-                  label="Ciudad de origen"
-                  value={originCityByReferral[admission.ReferralId] || ''}
-                  onChange={(event) => setOriginCityByReferral((current) => ({ ...current, [admission.ReferralId]: event.target.value }))}
-                />
-                <Input
-                  label="Personal socioeconomico"
-                  value={socialWorkerByReferral[admission.ReferralId] || ''}
-                  onChange={(event) => setSocialWorkerByReferral((current) => ({ ...current, [admission.ReferralId]: event.target.value }))}
-                />
-                <Input
-                  label="Telefono familiar"
-                  value={familyPhoneByReferral[admission.ReferralId] || ''}
-                  onChange={(event) => setFamilyPhoneByReferral((current) => ({ ...current, [admission.ReferralId]: event.target.value }))}
-                />
-              </div>
-              <div className="mt-3">
-                <label className="block space-y-2">
-                  <span className="text-base font-semibold text-warm-900">Expediente / resumen de contexto</span>
-                  <textarea
-                    className="min-h-[120px] w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-base text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
-                    value={dossierByReferral[admission.ReferralId] || ''}
-                    onChange={(event) => setDossierByReferral((current) => ({ ...current, [admission.ReferralId]: event.target.value }))}
-                    placeholder="Contexto socioeconomico, necesidades logísticas, acompanantes, y puntos de seguimiento."
-                  />
-                </label>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  variant="ghost"
-                  isLoading={admissionBusyId === `enrich-${admission.ReferralId}`}
-                  onClick={async () => {
-                    if (!authToken) return
-                    setAdmissionBusyId(`enrich-${admission.ReferralId}`)
-                    try {
-                      await updateAdmissionRecord(authToken, {
-                        referralId: admission.ReferralId,
-                        action: 'enrich',
-                        socialWorkerName: socialWorkerByReferral[admission.ReferralId] || '',
-                        familyContactPhone: familyPhoneByReferral[admission.ReferralId] || '',
-                        dossierSummary: dossierByReferral[admission.ReferralId] || '',
-                        originHospital: originHospitalByReferral[admission.ReferralId] || '',
-                        originCity: originCityByReferral[admission.ReferralId] || '',
-                      })
-                      await reloadAdmissions()
-                    } finally {
-                      setAdmissionBusyId(null)
-                    }
-                  }}
-                >
-                  Guardar expediente
-                </Button>
-
-                <Button
-                  isLoading={admissionBusyId === `approve-${admission.ReferralId}`}
-                  onClick={async () => {
-                    if (!authToken) return
-                    setAdmissionBusyId(`approve-${admission.ReferralId}`)
-                    try {
-                      const result = await updateAdmissionRecord(authToken, {
-                        referralId: admission.ReferralId,
-                        action: 'approve',
-                        originHospital: originHospitalByReferral[admission.ReferralId] || admission.OriginHospital || '',
-                        originCity: originCityByReferral[admission.ReferralId] || admission.OriginCity || '',
-                      })
-                      const approval = result as AdmissionRecord & { Message?: string }
-                      setGeneratedAccess(approval.Message || 'Expediente aprobado y casa asignada automaticamente.')
-                      await refreshConnectedData()
-                      await reloadAdmissions()
-                    } finally {
-                      setAdmissionBusyId(null)
-                    }
-                  }}
-                >
-                  Aprobar y asignar casa
-                </Button>
-              </div>
-            </div>
-          ))}
-
-          {admissions.length === 0 ? (
-            <div className="rounded-2xl bg-warm-50 p-4 text-warm-700">
-              No hay admisiones cargadas para la sede seleccionada.
-            </div>
-          ) : null}
         </div>
       </Card>
 
@@ -805,6 +642,7 @@ export function AdminPanelPage() {
                     setLoadingUserId(`extend-1-${item.familyId}`)
                     try {
                       await extendFamilyStay(item.familyId, 1)
+                      pushToast({ type: 'success', message: 'Estancia prorrogada un día.' })
                     } finally {
                       setLoadingUserId(null)
                     }
@@ -819,6 +657,7 @@ export function AdminPanelPage() {
                     setLoadingUserId(`extend-3-${item.familyId}`)
                     try {
                       await extendFamilyStay(item.familyId, 3)
+                      pushToast({ type: 'success', message: 'Estancia prorrogada tres días.' })
                     } finally {
                       setLoadingUserId(null)
                     }
@@ -839,10 +678,31 @@ export function AdminPanelPage() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="space-y-4">
-          <h2 className="text-xl font-bold text-warm-900">Seguimiento clinico</h2>
-          <p className="text-sm text-warm-700">Cada feedback de la clinica queda guardado con la nueva fecha estimada de salida para no perder la evolucion del caso.</p>
-          <div className="grid gap-4">
-            {families.map((family) => {
+          <button
+            type="button"
+            onClick={() => setIsStayTrackingOpen((current) => !current)}
+            className="flex w-full items-start justify-between gap-4 text-left"
+          >
+            <div>
+              <h2 className="text-xl font-bold text-warm-900">Seguimiento de Estancia</h2>
+              <p className="text-sm text-warm-700">Cada actualización de estancia queda guardada con la nueva fecha estimada de salida para no perder el contexto operativo del caso.</p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-2xl bg-warm-50 px-4 py-2 text-sm font-semibold text-warm-800">
+              {isStayTrackingOpen ? 'Ocultar' : 'Mostrar'}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isStayTrackingOpen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+          <div className={`grid overflow-hidden transition-all duration-300 ease-out ${isStayTrackingOpen ? 'max-h-[2600px] gap-4 opacity-100' : 'max-h-0 gap-0 opacity-0'}`}>
+            <div className="rounded-2xl bg-warm-50 p-3">
+              <input
+                value={clinicalSearch}
+                onChange={(event) => setClinicalSearch(event.target.value)}
+                placeholder="Buscar familia para seguimiento de estancia"
+                className="w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-sm text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
+              />
+            </div>
+            <div className="space-y-4">
+            {filteredFamiliesForClinical.map((family) => {
               const familyId = Number(family.id)
               const relatedReferral = admissions.find((item) => item.FamilyId === familyId || item.ReferralId === Number(family.referralId || 0))
               const familyHistory = clinicalHistory.filter((item) => item.FamilyId === familyId).slice(0, 3)
@@ -865,12 +725,12 @@ export function AdminPanelPage() {
                       onChange={(event) => setClinicalDateByFamily((current) => ({ ...current, [familyId]: event.target.value }))}
                     />
                     <label className="block space-y-2">
-                      <span className="text-base font-semibold text-warm-900">Feedback clinico</span>
+                      <span className="text-base font-semibold text-warm-900">Actualización de estancia</span>
                       <textarea
                         className="min-h-[100px] w-full rounded-2xl border border-warm-200 bg-white px-4 py-3 text-base text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
                         value={clinicalNoteByFamily[familyId] || ''}
                         onChange={(event) => setClinicalNoteByFamily((current) => ({ ...current, [familyId]: event.target.value }))}
-                        placeholder="Ejemplo: la clinica confirma que el tratamiento se extiende 2 dias mas."
+                        placeholder="Ejemplo: la estancia se extiende 2 dias mas por seguimiento operativo."
                       />
                     </label>
                     <Button
@@ -885,10 +745,11 @@ export function AdminPanelPage() {
                             action: 'clinical-feedback',
                             familyId,
                             clinicName: originHospitalByReferral[relatedReferral.ReferralId] || relatedReferral.OriginHospital || '',
-                            feedbackMessage: clinicalNoteByFamily[familyId] || 'Seguimiento clinico actualizado.',
+                            feedbackMessage: clinicalNoteByFamily[familyId] || 'Seguimiento de estancia actualizado.',
                             estimatedCheckoutDate: clinicalDateByFamily[familyId] || null,
                           })
                           setClinicalNoteByFamily((current) => ({ ...current, [familyId]: '' }))
+                          pushToast({ type: 'success', message: `Seguimiento actualizado para ${family.caregiverName}.` })
                           await refreshConnectedData()
                           await reloadAdmissions()
                         } finally {
@@ -896,7 +757,7 @@ export function AdminPanelPage() {
                         }
                       }}
                     >
-                      Registrar feedback clinico
+                      Registrar actualización
                     </Button>
                   </div>
 
@@ -904,18 +765,20 @@ export function AdminPanelPage() {
                     {familyHistory.length > 0 ? (
                       familyHistory.map((entry) => (
                         <div key={entry.FollowUpId} className="rounded-2xl bg-white p-3 text-sm text-warm-700">
-                          <p className="font-semibold text-warm-900">{entry.ClinicName || 'Clinica recurrente'} · {formatReadableDate(entry.RecordedAt)}</p>
+                          <p className="font-semibold text-warm-900">{entry.ClinicName || 'Seguimiento de estancia'} · {formatReadableDate(entry.RecordedAt)}</p>
                           <p>{entry.FeedbackMessage}</p>
                           <p className="mt-1 text-warm-600">Salida previa: {formatReadableDate(entry.PreviousCheckoutDate)} · nueva estimada: {formatReadableDate(entry.EstimatedCheckoutDate)}</p>
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-2xl bg-white p-3 text-sm text-warm-700">Aun no hay historial clinico registrado para esta estancia.</div>
+                      <div className="rounded-2xl bg-white p-3 text-sm text-warm-700">Aun no hay movimientos registrados para esta estancia.</div>
                     )}
                   </div>
                 </div>
               )
             })}
+            {filteredFamiliesForClinical.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">No hay familias que coincidan con la búsqueda actual.</div> : null}
+            </div>
           </div>
         </Card>
 
@@ -924,7 +787,7 @@ export function AdminPanelPage() {
           <p className="text-sm text-warm-700">Servicio listo para detectar partidas proximas y dejar preparado el disparo del recordatorio a familia cuando se integre mensajeria.</p>
           <div className="grid gap-3">
             {departureReminders.map((reminder) => (
-              <div key={`departure-${reminder.FamilyId}`} className="rounded-2xl bg-warm-50 p-4">
+              <div key={`departure-${reminder.FamilyId}`} className="rounded-2xl bg-warm-50 p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-warm-900">{reminder.CaregiverName} {reminder.FamilyLastName}</p>
@@ -932,7 +795,7 @@ export function AdminPanelPage() {
                   </div>
                   <StatusChip status={reminder.DepartureReminderSentAt ? 'Enviado' : 'Por salir'} />
                 </div>
-                <div className="mt-3 rounded-2xl bg-white p-4 text-sm text-warm-700">{reminder.ReminderMessage}</div>
+                <div className="mt-2 rounded-2xl bg-white p-3 text-sm text-warm-700">{reminder.ReminderMessage}</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     variant="ghost"
@@ -942,6 +805,7 @@ export function AdminPanelPage() {
                       setAdmissionBusyId(`reminder-${reminder.FamilyId}`)
                       try {
                         await markDepartureReminderPreparedApi(authToken, reminder.FamilyId)
+                        pushToast({ type: 'info', message: 'Recordatorio preparado.' })
                         await reloadAdmissions()
                       } finally {
                         setAdmissionBusyId(null)
@@ -977,6 +841,7 @@ export function AdminPanelPage() {
                     setFamilyActionId(`pause-${family.id}`)
                     try {
                       await setFamilyAccessState(Number(family.id), family.isActive === false ? 'reactivate' : 'pause')
+                      pushToast({ type: 'info', message: family.isActive === false ? 'Cuenta familiar reactivada.' : 'Cuenta familiar pausada.' })
                     } finally {
                       setFamilyActionId(null)
                     }
@@ -991,7 +856,7 @@ export function AdminPanelPage() {
                     setFamilyActionId(`reset-${family.id}`)
                     try {
                       const result = await setFamilyAccessState(Number(family.id), 'reset-pin')
-                      setGeneratedAccess(`Nuevo PIN temporal para ${family.caregiverName}: ${result.newPin || 'generado'}`)
+                      pushToast({ type: 'success', message: `Nuevo PIN temporal para ${family.caregiverName}: ${result.newPin || 'generado'}` })
                     } finally {
                       setFamilyActionId(null)
                     }
@@ -1007,3 +872,4 @@ export function AdminPanelPage() {
     </div>
   )
 }
+

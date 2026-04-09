@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { BellRing, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, MapPinned, Search, ShieldCheck, Users } from 'lucide-react'
+import { BellRing, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, MapPinned, Search, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -26,6 +26,16 @@ const inboxViews = [
 
 type InboxView = (typeof inboxViews)[number]['id']
 
+function toDateInputValue(value?: string | null) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function formatReadableDate(value?: string | null) {
   if (!value) return 'Pendiente'
   const date = new Date(value)
@@ -37,6 +47,7 @@ function mapStageLabel(stage?: AdmissionRecord['AdmissionStage']) {
   if (stage === 'borrador_extraido') return 'Referencia'
   if (stage === 'expediente_armado') return 'Expediente armado'
   if (stage === 'aprobada') return 'Aprobada'
+  if (stage === 'lista_espera') return 'Lista de espera'
   return 'Referencia'
 }
 
@@ -68,9 +79,10 @@ function isWithinHours(dateValue: string | null | undefined, hours: number) {
 }
 
 export function StaffDashboardPage() {
-  const { authToken, currentUser, site, isSyncing, staffDashboard } = useAppState()
+  const { authToken, currentUser, site, availableSites, isSyncing, staffDashboard } = useAppState()
   const [inboxView, setInboxView] = useState<InboxView>('socioeconomico')
   const [inboxSearch, setInboxSearch] = useState('')
+  const [inboxDate, setInboxDate] = useState(() => toDateInputValue(new Date().toISOString()))
   const [isInboxOpen, setIsInboxOpen] = useState(true)
   const [rooms, setRooms] = useState<Room[]>([])
   const [admissions, setAdmissions] = useState<AdmissionRecord[]>([])
@@ -80,6 +92,13 @@ export function StaffDashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const selectedSiteId =
+    currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+      ? site === 'Todas las sedes'
+        ? null
+        : availableSites.findIndex((item) => item === site) + 1 || null
+      : currentUser?.siteId || null
+
   useEffect(() => {
     if (!authToken) return
     let active = true
@@ -87,10 +106,10 @@ export function StaffDashboardPage() {
     setError(null)
 
     void Promise.all([
-      getRooms(authToken, currentUser?.siteId ?? null),
-      getAdmissions(authToken, { siteId: currentUser?.siteId ?? null }),
-      getStaffTasks(authToken, { siteId: currentUser?.siteId ?? null }),
-      getDepartureReminders(authToken, currentUser?.siteId ?? null),
+      getRooms(authToken, selectedSiteId),
+      getAdmissions(authToken, { siteId: selectedSiteId }),
+      getStaffTasks(authToken, { siteId: selectedSiteId }),
+      getDepartureReminders(authToken, selectedSiteId),
     ])
       .then(async ([roomsData, admissionsData, tasksData, remindersData]) => {
         if (!active) return
@@ -106,7 +125,7 @@ export function StaffDashboardPage() {
         }
 
         const historyChunks = await Promise.all(
-          familyIds.map((familyId) => getClinicalHistory(authToken, { familyId, siteId: currentUser?.siteId ?? null })),
+          familyIds.map((familyId) => getClinicalHistory(authToken, { familyId, siteId: selectedSiteId })),
         )
         if (!active) return
         setClinicalHistory(historyChunks.flat().slice(0, 5))
@@ -123,7 +142,7 @@ export function StaffDashboardPage() {
     return () => {
       active = false
     }
-  }, [authToken, currentUser?.siteId])
+  }, [authToken, selectedSiteId])
 
   const roomSummary = useMemo(() => roomCounts(rooms), [rooms])
   const socioeconomicInbox = useMemo(
@@ -134,14 +153,14 @@ export function StaffDashboardPage() {
   const visibleInbox = inboxView === 'socioeconomico' ? socioeconomicInbox : approverInbox
   const filteredInbox = useMemo(() => {
     const query = inboxSearch.trim().toLowerCase()
-    if (!query) return visibleInbox
     return visibleInbox.filter((admission) => {
       const familyText = `${admission.ChildName || ''} ${admission.CaregiverName || ''} ${admission.FamilyLastName || ''}`.toLowerCase()
-      const dateText = formatReadableDate(admission.ArrivalDate).toLowerCase()
-      const rawDate = String(admission.ArrivalDate || '').toLowerCase()
-      return familyText.includes(query) || dateText.includes(query) || rawDate.includes(query)
+      const createdDate = toDateInputValue(admission.CreatedAt || admission.ArrivalDate || '')
+      const matchesQuery = !query || familyText.includes(query)
+      const matchesDate = !inboxDate || createdDate === inboxDate
+      return matchesQuery && matchesDate
     })
-  }, [inboxSearch, visibleInbox])
+  }, [inboxDate, inboxSearch, visibleInbox])
   const onboardingTasks = useMemo(() => staffTasks.filter((task) => task.Status !== 'completada').slice(0, 5), [staffTasks])
   const imminentDepartures = useMemo(() => departureReminders.filter((item) => !item.DepartureReminderSentAt).slice(0, 4), [departureReminders])
 
@@ -174,20 +193,20 @@ export function StaffDashboardPage() {
 
       {error ? <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-red-700 shadow-soft">{error}</div> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="space-y-4 overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Bandeja priorizada</p>
-              <h2 className="text-2xl font-bold text-warm-900">Inbox operativo</h2>
-              <p className="text-sm text-warm-600">Ahora se puede plegar y buscar para que el dashboard no se sienta amontonado.</p>
+              <h2 className="text-2xl font-bold text-warm-900">Bandeja de Entrada de Casos</h2>
+              <p className="text-sm text-warm-600">Por defecto muestra los registros de hoy. Puedes plegarla, buscar por familia y abrir fechas anteriores cuando lo necesites.</p>
             </div>
             <button
               type="button"
               onClick={() => setIsInboxOpen((current) => !current)}
               className="inline-flex items-center gap-2 rounded-2xl bg-warm-50 px-4 py-2 text-sm font-semibold text-warm-800 transition hover:bg-warm-100"
             >
-              {isInboxOpen ? 'Ocultar inbox' : 'Mostrar inbox'}
+              {isInboxOpen ? 'Ocultar bandeja' : 'Mostrar bandeja'}
               <ChevronDown className={`h-4 w-4 transition duration-300 ${isInboxOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -198,9 +217,20 @@ export function StaffDashboardPage() {
               <input
                 value={inboxSearch}
                 onChange={(event) => setInboxSearch(event.target.value)}
-                placeholder="Buscar por familia o fecha"
+                placeholder="Buscar por nombre de familia"
                 className="w-full rounded-2xl border border-warm-200 bg-white py-2 pl-10 pr-4 text-sm text-warm-900 placeholder:text-warm-400 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
               />
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl bg-white/80 p-2">
+              <input
+                type="date"
+                value={inboxDate}
+                onChange={(event) => setInboxDate(event.target.value)}
+                className="rounded-2xl border border-warm-200 bg-white px-3 py-2 text-sm text-warm-900 focus:border-warm-400 focus:outline-none focus:ring-4 focus:ring-warm-100"
+              />
+              <Button variant="ghost" onClick={() => setInboxDate('')}>
+                Ver todas las fechas
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2 rounded-2xl bg-white/80 p-2">
               {inboxViews.map((view) => (
@@ -223,7 +253,7 @@ export function StaffDashboardPage() {
                   <div>
                     <p className="text-lg font-bold text-warm-900">{admission.ChildName || `${admission.CaregiverName} ${admission.FamilyLastName}`}</p>
                     <p className="text-sm text-warm-700">{admission.OriginHospital || 'Hospital pendiente'} · llegada {formatReadableDate(admission.ArrivalDate)}</p>
-                    <p className="text-sm text-warm-600">Diagnóstico: {admission.Diagnosis || 'Pendiente de captura'}</p>
+                    <p className="text-sm text-warm-600">Motivo de estancia: Apoyo logístico</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <StatusChip status={mapStageLabel(admission.AdmissionStage)} />
@@ -256,13 +286,13 @@ export function StaffDashboardPage() {
 
           {!isInboxOpen ? (
             <div className="rounded-[24px] bg-warm-50 p-4 text-sm text-warm-700">
-              Inbox colapsado. Mantén abierto solo cuando estés procesando expedientes.
+              Bandeja colapsada. Ábrela solo cuando estés procesando expedientes.
             </div>
           ) : null}
         </Card>
 
         <div className="space-y-6">
-          <Card className="space-y-4">
+          <Card className="space-y-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><ClipboardList className="h-5 w-5" /></span>
               <div>
@@ -302,7 +332,7 @@ export function StaffDashboardPage() {
               {imminentDepartures.map((reminder) => {
                 const urgent = isWithinHours(reminder.PlannedCheckoutDate, 48)
                 return (
-                  <div key={reminder.FamilyId} className="rounded-2xl bg-warm-50 p-4">
+                  <div key={reminder.FamilyId} className="rounded-2xl bg-warm-50 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-bold text-warm-900">{reminder.CaregiverName} {reminder.FamilyLastName}</p>
@@ -321,8 +351,8 @@ export function StaffDashboardPage() {
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><ShieldCheck className="h-5 w-5" /></span>
               <div>
-                <h3 className="text-xl font-bold text-warm-900">Historial médico</h3>
-                <p className="text-sm text-warm-600">Feedback clínico acumulado para ajustar estancia y salida.</p>
+                <h3 className="text-xl font-bold text-warm-900">Bitácora de Estancia</h3>
+                <p className="text-sm text-warm-600">Seguimiento acumulado para ajustar estancia y salida sin exponer datos sensibles.</p>
               </div>
             </div>
             <div className="space-y-3">
@@ -351,12 +381,6 @@ export function StaffDashboardPage() {
               </Link>
               <Link to="/staff/rooms" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
                 <div className="flex items-center gap-3"><MapPinned className="h-5 w-5 text-[#950606]" /><span className="font-bold text-warm-900">Habitaciones</span></div>
-              </Link>
-              <Link to="/staff/volunteers" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
-                <div className="flex items-center gap-3"><Users className="h-5 w-5 text-[#950606]" /><span className="font-bold text-warm-900">Voluntariado</span></div>
-              </Link>
-              <Link to="/staff/analytics" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
-                <div className="flex items-center gap-3"><LayoutDashboard className="h-5 w-5 text-[#950606]" /><span className="font-bold text-warm-900">Analítica</span></div>
               </Link>
             </div>
           </Card>

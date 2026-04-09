@@ -5,14 +5,14 @@ import { SectionHeader } from '../components/ui/SectionHeader'
 
 const accessCards = [
   {
-    title: 'Superadmin / Admin',
+    title: 'Dirección Ejecutiva / Gerente de Sede',
     description: 'Coordinación, alta de usuarios, activación familiar y visión transversal por sede.',
     route: '/admin/login',
     icon: <UserCog className="h-8 w-8" />,
   },
   {
     title: 'Staff / Operación',
-    description: 'Recepción, entradas, ayuda asistida, habitaciones, solicitudes e inventario.',
+      description: 'Recepción, admisiones, ayuda asistida, habitaciones, solicitudes e inventario.',
     route: '/staff/login',
     icon: <ShieldCheck className="h-8 w-8" />,
   },
@@ -43,3 +43,4 @@ export function OperationalAccessPage() {
     </div>
   )
 }
+

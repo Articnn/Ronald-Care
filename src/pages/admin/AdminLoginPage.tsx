@@ -14,7 +14,7 @@ export function AdminLoginPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <SectionHeader title="Login admin" subtitle="Superadmin y coordinadores de sede." />
+      <SectionHeader title="Login ejecutivo" subtitle="Dirección Ejecutiva y gerencia de sede." />
       <Card className="space-y-4">
         <Input label="Usuario" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@ronaldcare.demo" />
         <Input label="Contraseña" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="********" />
@@ -33,3 +33,5 @@ export function AdminLoginPage() {
     </div>
   )
 }
+
+

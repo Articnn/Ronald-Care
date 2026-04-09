@@ -107,7 +107,9 @@ export async function ensureVolunteerManagementSchema() {
         ADD COLUMN IF NOT EXISTS familycontactphone VARCHAR(40),
         ADD COLUMN IF NOT EXISTS dossiersummary TEXT,
         ADD COLUMN IF NOT EXISTS assignedsiteid INTEGER REFERENCES sites(siteid),
+        ADD COLUMN IF NOT EXISTS reservedroomid INTEGER REFERENCES rooms(roomid),
         ADD COLUMN IF NOT EXISTS approvedat TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS waitlistenteredat TIMESTAMP,
         ADD COLUMN IF NOT EXISTS transporteventready BOOLEAN NOT NULL DEFAULT FALSE
       `)
 
@@ -119,7 +121,7 @@ export async function ensureVolunteerManagementSchema() {
       await pool.query(`
         ALTER TABLE referrals
         ADD CONSTRAINT referrals_admissionstage_check
-        CHECK (admissionstage IN ('referencia', 'borrador_extraido', 'expediente_armado', 'aprobada'))
+        CHECK (admissionstage IN ('referencia', 'borrador_extraido', 'expediente_armado', 'aprobada', 'lista_espera'))
       `).catch(() => {})
 
       await pool.query(`
@@ -218,7 +220,7 @@ export async function ensureVolunteerManagementSchema() {
       await pool.query(`
         ALTER TABLE requests
         ADD CONSTRAINT requests_status_check
-        CHECK (status IN ('borrador_extraido', 'nueva', 'asignada', 'en_proceso', 'resuelta'))
+        CHECK (status IN ('referencia', 'borrador_extraido', 'nueva', 'asignada', 'en_proceso', 'resuelta'))
       `).catch(() => {})
 
       await pool.query(`
@@ -285,6 +287,30 @@ export async function ensureVolunteerManagementSchema() {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS ix_referrals_stage_site
         ON referrals(admissionstage, COALESCE(assignedsiteid, siteid))
+      `)
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS ix_referrals_waitlistenteredat
+        ON referrals(waitlistenteredat, COALESCE(assignedsiteid, siteid))
+      `)
+
+      await pool.query(`
+        INSERT INTO rooms (siteid, roomcode, capacity, roomtype, occupiedcount, roomstatus, isactive, createdat)
+        SELECT 3, roomcode, 2, 'normal', 0, 'disponible', TRUE, NOW()
+        FROM (
+          VALUES
+            ('TLA-N6'),
+            ('TLA-N7'),
+            ('TLA-N8'),
+            ('TLA-N9'),
+            ('TLA-N10'),
+            ('TLA-N11'),
+            ('TLA-N12')
+        ) AS seed(roomcode)
+        WHERE EXISTS (SELECT 1 FROM sites WHERE siteid = 3)
+          AND NOT EXISTS (
+            SELECT 1 FROM rooms r WHERE r.siteid = 3 AND r.roomcode = seed.roomcode
+          )
       `)
 
       await pool.query(`

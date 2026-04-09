@@ -62,7 +62,7 @@ export interface BackendReferral {
   ReferralCode: string
   FamilyCode: string
   Status: 'enviada' | 'en_revision' | 'aceptada'
-  AdmissionStage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada'
+  AdmissionStage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada' | 'lista_espera'
   OriginHospital?: string | null
   OriginCity?: string | null
   FamilyContactPhone?: string | null
@@ -70,6 +70,7 @@ export interface BackendReferral {
   DossierSummary?: string | null
   SocialWorkerName?: string | null
   ApprovedAt?: string | null
+  WaitlistEnteredAt?: string | null
   ArrivalDate: string
   CompanionCount: number
   LogisticsNote: string | null
@@ -77,6 +78,8 @@ export interface BackendReferral {
   CreatedAt: string
   SiteName?: string
   AssignedSiteName?: string | null
+  ReservedRoomId?: number | null
+  ReservedRoomCode?: string | null
   Message?: string
 }
 
@@ -103,7 +106,7 @@ export interface BackendFamily {
 export interface BackendRequest {
   RequestId: number
   SiteId: number
-  FamilyId: number
+  FamilyId: number | null
   Title: string
   RequestType: 'transporte' | 'kit' | 'alimento' | 'recepcion'
   Urgency: 'baja' | 'media' | 'alta'
@@ -111,7 +114,7 @@ export interface BackendRequest {
   PriorityScore: number
   PriorityLabel: 'baja' | 'media' | 'alta'
   PriorityReason: string
-  Status: 'borrador_extraido' | 'nueva' | 'asignada' | 'en_proceso' | 'resuelta'
+  Status: 'referencia' | 'borrador_extraido' | 'nueva' | 'asignada' | 'en_proceso' | 'resuelta'
   ReferralId?: number | null
   DocumentReferenceUrl?: string | null
   AssignedRole: 'staff' | 'volunteer'
@@ -195,12 +198,16 @@ export interface AdmissionRecord extends BackendReferral {
 }
 
 export interface ExtractedAdmissionReference {
-  childName: string
+  childFullName: string
+  age: string
   originHospital: string
+  originDepartment: string
   originCity: string
-  diagnosis: string
-  caregiverName: string
-  familyLastName: string
+  referringDoctorName: string
+  doctorOfficePhone: string
+  scheduledDate: string
+  tutorFullName: string
+  tutorPhone: string
   siteSuggestion: string
   message: string
 }
@@ -411,7 +418,7 @@ export function createReferral(
   return apiRequest<BackendReferral>('/referrals', { method: 'POST', token, body: payload })
 }
 
-export function getAdmissions(token: string, params: { siteId?: number | null; stage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada' } = {}) {
+export function getAdmissions(token: string, params: { siteId?: number | null; stage?: 'referencia' | 'borrador_extraido' | 'expediente_armado' | 'aprobada' | 'lista_espera' } = {}) {
   const query = new URLSearchParams()
   if (params.siteId) query.set('siteId', String(params.siteId))
   if (params.stage) query.set('stage', params.stage)
@@ -420,30 +427,34 @@ export function getAdmissions(token: string, params: { siteId?: number | null; s
 
 export function createAdmissionReferral(token: string, payload: {
   siteId: number
-  caregiverName: string
-  familyLastName: string
-  childName?: string
-  diagnosis?: string
+  childFullName?: string
+  age?: string
+  originDepartment?: string
+  referringDoctorName?: string
+  doctorOfficePhone?: string
+  tutorFullName: string
+  tutorPhone?: string
+  documentName?: string
+  scheduledDate?: string
   arrivalDate: string
   companionCount: number
   logisticsNote?: string
   eligibilityConfirmed: boolean
   originHospital?: string
   originCity?: string
-  familyContactPhone?: string
   documentReferenceUrl?: string
   admissionStage?: 'referencia' | 'borrador_extraido'
 }) {
   return apiRequest<AdmissionRecord>('/admissions', { method: 'POST', token, body: payload })
 }
 
-export function extractAdmissionReference(token: string, payload: { fileName: string; hintText?: string }) {
+export function extractAdmissionReference(token: string, payload: { fileName: string; hintText?: string; dataUrl?: string }) {
   return apiRequest<ExtractedAdmissionReference>('/admissions/extract', { method: 'POST', token, body: payload })
 }
 
 export function updateAdmissionRecord(token: string, payload: {
   referralId: number
-  action: 'enrich' | 'approve' | 'clinical-feedback'
+  action: 'enrich' | 'approve' | 'clinical-feedback' | 'assign-waitlist-room'
   socialWorkerName?: string
   familyContactPhone?: string
   dossierSummary?: string
@@ -451,6 +462,7 @@ export function updateAdmissionRecord(token: string, payload: {
   originCity?: string
   childName?: string
   diagnosis?: string
+  roomId?: number
   familyId?: number
   requestId?: number
   clinicName?: string

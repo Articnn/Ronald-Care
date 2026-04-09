@@ -3,12 +3,14 @@ import { resolveScopedSiteId } from '../../src/lib/access.js'
 import { ApiError } from '../../src/lib/errors.js'
 import { withApi } from '../../src/lib/http.js'
 import { logAudit } from '../../src/lib/audit.js'
+import { notifySiteStaff } from '../../src/lib/room-automation.js'
 import {
   buildRequestTemplate,
-  createExtractedDraftRequest,
+  createAdmissionReferenceRequest,
   createStaffOnboardingTask,
   inferNearestSiteId,
   registerClinicalFollowUp,
+  splitTutorName,
   suggestOnboardingRoom,
 } from '../../src/lib/admission-workflow.js'
 import { ensureVolunteerManagementSchema } from '../../src/lib/volunteer-management-schema.js'
@@ -17,11 +19,12 @@ import { required, toInt } from '../../src/lib/validation.js'
 function mapAdmissionMessage(stage) {
   if (stage === 'expediente_armado') return 'Expediente armado y listo para aprobacion.'
   if (stage === 'aprobada') return 'Aprobada y enviada a automatizacion de estancia.'
-  if (stage === 'borrador_extraido') return 'Documento recibido y datos extraidos en borrador.'
-  return 'Referencia recibida y plantilla precargada.'
+  if (stage === 'lista_espera') return 'Sin cupo disponible en esta sede. El registro se movio a la Lista de Espera.'
+  if (stage === 'borrador_extraido') return 'Documento recibido y prellenado para revision operativa.'
+  return 'Referencia recibida y lista para completar expediente.'
 }
 
-export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 'staff', 'admin', 'superadmin'] }, async (req) => {
+export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['staff', 'admin', 'superadmin'] }, async (req) => {
   await ensureVolunteerManagementSchema()
   const pool = await getPool()
 
@@ -62,18 +65,22 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
         r.FamilyContactPhone,
         r.DossierSummary,
         r.ApprovedAt,
+        r.WaitlistEnteredAt,
         r.TransportEventReady,
+        r.ReservedRoomId,
         r.ArrivalDate,
         r.CompanionCount,
         r.LogisticsNote,
         r.EligibilityConfirmed,
-        f.FamilyId
+        f.FamilyId,
+        rr.RoomCode AS ReservedRoomCode
       FROM Referrals r
       INNER JOIN Sites rs ON rs.SiteId = r.SiteId
       LEFT JOIN Sites ass ON ass.SiteId = r.AssignedSiteId
       LEFT JOIN Families f ON f.ReferralId = r.ReferralId
+      LEFT JOIN Rooms rr ON rr.RoomId = r.ReservedRoomId
       ${where}
-      ORDER BY r.CreatedAt DESC
+      ORDER BY COALESCE(r.WaitlistEnteredAt, r.CreatedAt) ASC, r.CreatedAt DESC
     `)
 
     return result.recordset.map((item) => ({
@@ -83,58 +90,62 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
   }
 
   if (req.method === 'POST') {
-    required(req.body, ['caregiverName', 'familyLastName', 'arrivalDate', 'companionCount'])
+    required(req.body, ['tutorFullName', 'arrivalDate'])
     const siteId = resolveScopedSiteId(req, req.body.siteId || req.auth.siteId)
     const admissionStage = String(req.body.admissionStage || 'referencia')
-    const shouldCreateDraftRequest = admissionStage === 'borrador_extraido'
+    const tutorNameParts = splitTutorName(req.body.tutorFullName)
 
     const referralCode = `REF-${Date.now().toString().slice(-6)}`
     const familyCode = `FAM-${Math.floor(1000 + Math.random() * 8999)}`
     const requestTemplate = buildRequestTemplate(req.body)
+    const availableRoom = await suggestOnboardingRoom(pool, {
+      siteId,
+      companionCount: req.body.companionCount || 2,
+    })
+    const isWaitlistedOnCreate = !availableRoom
 
     const result = await pool
       .request()
       .input('siteId', sql.Int, siteId)
       .input('createdByUserId', sql.Int, req.auth.sub)
-      .input('caregiverName', sql.NVarChar(100), req.body.caregiverName)
-      .input('familyLastName', sql.NVarChar(100), req.body.familyLastName)
-      .input('childName', sql.NVarChar(120), req.body.childName || null)
-      .input('diagnosis', sql.NVarChar(255), req.body.diagnosis || null)
+      .input('caregiverName', sql.NVarChar(100), tutorNameParts.caregiverName || req.body.tutorFullName)
+      .input('familyLastName', sql.NVarChar(100), tutorNameParts.familyLastName || 'Por confirmar')
+      .input('childName', sql.NVarChar(120), req.body.childFullName || null)
+      .input('diagnosis', sql.NVarChar(255), 'Apoyo Logistico')
       .input('referralCode', sql.NVarChar(30), referralCode)
       .input('familyCode', sql.NVarChar(30), familyCode)
       .input('originHospital', sql.NVarChar(160), req.body.originHospital || null)
       .input('originCity', sql.NVarChar(100), req.body.originCity || null)
-      .input('familyContactPhone', sql.NVarChar(40), req.body.familyContactPhone || null)
+      .input('familyContactPhone', sql.NVarChar(40), req.body.tutorPhone || null)
       .input('requestTemplateJson', sql.NVarChar(sql.MAX), JSON.stringify(requestTemplate))
-      .input('arrivalDate', sql.Date, req.body.arrivalDate)
-      .input('companionCount', sql.Int, toInt(req.body.companionCount, 'companionCount'))
-      .input('logisticsNote', sql.NVarChar(500), req.body.logisticsNote || null)
-      .input('eligibilityConfirmed', sql.Bit, Boolean(req.body.eligibilityConfirmed))
-      .input('admissionStage', sql.NVarChar(30), admissionStage)
+      .input('arrivalDate', sql.Date, req.body.scheduledDate || req.body.arrivalDate)
+      .input('companionCount', sql.Int, toInt(req.body.companionCount || 2, 'companionCount'))
+      .input('logisticsNote', sql.NVarChar(500), req.body.logisticsNote || `Motivo de estancia: Apoyo Logistico. Area de referencia: ${req.body.originDepartment || 'Por confirmar'}.`)
+      .input('eligibilityConfirmed', sql.Bit, Boolean(req.body.eligibilityConfirmed ?? true))
+      .input('admissionStage', sql.NVarChar(30), isWaitlistedOnCreate ? 'lista_espera' : admissionStage)
+      .input('status', sql.NVarChar(30), isWaitlistedOnCreate ? 'aceptada' : 'enviada')
+      .input('approvedAt', sql.DateTime2, isWaitlistedOnCreate ? new Date() : null)
+      .input('waitlistEnteredAt', sql.DateTime2, isWaitlistedOnCreate ? new Date() : null)
       .query(`
         INSERT INTO Referrals (
           SiteId, CreatedByUserId, CaregiverName, FamilyLastName, ChildName, Diagnosis, ReferralCode, FamilyCode, Status, AdmissionStage,
-          OriginHospital, OriginCity, FamilyContactPhone, RequestTemplateJson, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed, CreatedAt
+          OriginHospital, OriginCity, FamilyContactPhone, RequestTemplateJson, ApprovedAt, WaitlistEnteredAt, ArrivalDate, CompanionCount, LogisticsNote, EligibilityConfirmed, CreatedAt
         )
         VALUES (
-          @siteId, @createdByUserId, @caregiverName, @familyLastName, @childName, @diagnosis, @referralCode, @familyCode, 'enviada', @admissionStage,
-          @originHospital, @originCity, @familyContactPhone, @requestTemplateJson, @arrivalDate, @companionCount, @logisticsNote, @eligibilityConfirmed, NOW()
+          @siteId, @createdByUserId, @caregiverName, @familyLastName, @childName, @diagnosis, @referralCode, @familyCode, @status, @admissionStage,
+          @originHospital, @originCity, @familyContactPhone, @requestTemplateJson, @approvedAt, @waitlistEnteredAt, @arrivalDate, @companionCount, @logisticsNote, @eligibilityConfirmed, NOW()
         )
         RETURNING *
       `)
 
     const referral = result.recordset[0]
-    let draftRequest = null
-    if (shouldCreateDraftRequest) {
-      draftRequest = await createExtractedDraftRequest(pool, {
-        siteId,
-        referralId: referral.ReferralId,
-        createdByUserId: req.auth.sub,
-        childName: req.body.childName || req.body.caregiverName,
-        diagnosis: req.body.diagnosis || '',
-        documentReferenceUrl: req.body.documentReferenceUrl || null,
-      })
-    }
+    const referenceRequest = await createAdmissionReferenceRequest(pool, {
+      siteId,
+      referralId: referral.ReferralId,
+      createdByUserId: req.auth.sub,
+      childFullName: req.body.childFullName || req.body.tutorFullName,
+      documentName: req.body.documentName || req.body.documentReferenceUrl || null,
+    })
 
     await logAudit({
       siteId: referral.SiteId,
@@ -142,15 +153,26 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
       eventType: 'admission.referral_ingested',
       entityType: 'referral',
       entityId: referral.ReferralId,
-      metadata: { referralCode, familyCode, admissionStage },
+      metadata: { referralCode, familyCode, admissionStage: isWaitlistedOnCreate ? 'lista_espera' : admissionStage },
     })
+
+    if (isWaitlistedOnCreate) {
+      await notifySiteStaff(
+        pool,
+        siteId,
+        'Sin cupo disponible',
+        `Sin cupo disponible en esta sede. La familia ${referral.CaregiverName} ${referral.FamilyLastName} se movio a la Lista de Espera.`,
+        'referral',
+        referral.ReferralId,
+      )
+    }
 
     return {
       ...referral,
-      DraftRequestId: draftRequest?.RequestId || null,
-      Message: shouldCreateDraftRequest
-        ? 'Referencia clinica extraida y guardada como borrador de solicitud.'
-        : 'Referencia clinica registrada y lista para completar expediente.',
+      DraftRequestId: referenceRequest?.RequestId || null,
+      Message: isWaitlistedOnCreate
+        ? 'Sin cupo disponible en esta sede. El registro se movio a la Lista de Espera.'
+        : 'Admision registrada y enviada a expedientes por completar.',
     }
   }
 
@@ -180,7 +202,7 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
       .input('originHospital', sql.NVarChar(160), req.body.originHospital || referral.OriginHospital || null)
       .input('originCity', sql.NVarChar(100), req.body.originCity || referral.OriginCity || null)
       .input('childName', sql.NVarChar(120), req.body.childName || referral.ChildName || null)
-      .input('diagnosis', sql.NVarChar(255), req.body.diagnosis || referral.Diagnosis || null)
+      .input('diagnosis', sql.NVarChar(255), 'Apoyo Logistico')
       .query(`
         UPDATE Referrals
         SET SocialWorkerName = @socialWorkerName,
@@ -222,6 +244,57 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
       companionCount: referral.CompanionCount,
     })
 
+    const houseResult = await pool
+      .request()
+      .input('siteId', sql.Int, assignedSiteId)
+      .query(`SELECT Name FROM Sites WHERE SiteId = @siteId`)
+    const assignedSiteName = houseResult.recordset[0]?.Name || referral.SiteName
+
+    if (!suggestedRoom) {
+      const waitlistResult = await pool
+        .request()
+        .input('referralId', sql.Int, referralId)
+        .input('assignedSiteId', sql.Int, assignedSiteId)
+        .query(`
+          UPDATE Referrals
+          SET SiteId = @assignedSiteId,
+              AssignedSiteId = @assignedSiteId,
+              AdmissionStage = 'lista_espera',
+              Status = 'aceptada',
+              ApprovedAt = COALESCE(ApprovedAt, NOW()),
+              WaitlistEnteredAt = NOW(),
+              TransportEventReady = FALSE
+          WHERE ReferralId = @referralId
+          RETURNING *
+        `)
+
+      await logAudit({
+        siteId: assignedSiteId,
+        actorUserId: req.auth.sub,
+        eventType: 'admission.waitlisted',
+        entityType: 'referral',
+        entityId: referralId,
+        metadata: { assignedSiteId },
+      })
+
+      await notifySiteStaff(
+        pool,
+        assignedSiteId,
+        'Sin cupo disponible',
+        `Sin cupo disponible en esta sede. La familia ${waitlistResult.recordset[0].CaregiverName} ${waitlistResult.recordset[0].FamilyLastName} se movio a la Lista de Espera.`,
+        'referral',
+        referralId,
+      )
+
+      return {
+        ...waitlistResult.recordset[0],
+        AssignedSiteName: assignedSiteName,
+        SuggestedRoomCode: null,
+        OnboardingTask: null,
+        Message: 'Sin cupo disponible en esta sede. El registro se movera a la Lista de Espera.',
+      }
+    }
+
     const approvalResult = await pool
       .request()
       .input('referralId', sql.Int, referralId)
@@ -233,17 +306,13 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
             AdmissionStage = 'aprobada',
             Status = 'aceptada',
             ApprovedAt = NOW(),
+            WaitlistEnteredAt = NULL,
             TransportEventReady = TRUE
         WHERE ReferralId = @referralId
         RETURNING *
       `)
 
     const approvedReferral = approvalResult.recordset[0]
-    const houseResult = await pool
-      .request()
-      .input('siteId', sql.Int, assignedSiteId)
-      .query(`SELECT Name FROM Sites WHERE SiteId = @siteId`)
-    const assignedSiteName = houseResult.recordset[0]?.Name || referral.SiteName
 
     const onboardingTask = await createStaffOnboardingTask(pool, {
       referralId,
@@ -272,6 +341,84 @@ export default withApi({ methods: ['GET', 'POST', 'PATCH'], roles: ['hospital', 
       SuggestedRoomCode: suggestedRoom?.RoomCode || null,
       OnboardingTask: onboardingTask,
       Message: `Casa Ronald asignada automaticamente: ${assignedSiteName}.${suggestedRoom?.RoomCode ? ` Habitacion sugerida: ${suggestedRoom.RoomCode}.` : ''} Tarea de onboarding creada para staff.`,
+    }
+  }
+
+  if (req.body.action === 'assign-waitlist-room') {
+    required(req.body, ['roomId'])
+    const roomId = toInt(req.body.roomId, 'roomId')
+    const assignedSiteId = referral.AssignedSiteId || referral.SiteId
+
+    const roomResult = await pool
+      .request()
+      .input('roomId', sql.Int, roomId)
+      .input('siteId', sql.Int, assignedSiteId)
+      .query(`
+        SELECT RoomId, RoomCode, RoomStatus, SiteId
+        FROM Rooms
+        WHERE RoomId = @roomId
+          AND SiteId = @siteId
+          AND IsActive = TRUE
+          AND RoomStatus = 'disponible'
+      `)
+
+    const room = roomResult.recordset[0]
+    if (!room) throw new ApiError(400, 'La habitacion seleccionada ya no esta disponible')
+
+    await pool
+      .request()
+      .input('roomId', sql.Int, room.RoomId)
+      .query(`
+        UPDATE Rooms
+        SET RoomStatus = 'reservada',
+            OccupiedCount = 1,
+            AvailableAt = NULL,
+            RoomNote = NULL
+        WHERE RoomId = @roomId
+      `)
+
+    const referralUpdate = await pool
+      .request()
+      .input('referralId', sql.Int, referralId)
+      .input('roomId', sql.Int, room.RoomId)
+      .query(`
+        UPDATE Referrals
+        SET ReservedRoomId = @roomId,
+            AdmissionStage = 'aprobada',
+            Status = 'aceptada',
+            WaitlistEnteredAt = NULL,
+            ApprovedAt = COALESCE(ApprovedAt, NOW()),
+            TransportEventReady = TRUE
+        WHERE ReferralId = @referralId
+        RETURNING *
+      `)
+
+    const assignedReferral = referralUpdate.recordset[0]
+    const onboardingTask = await createStaffOnboardingTask(pool, {
+      referralId,
+      siteId: assignedSiteId,
+      createdByUserId: req.auth.sub,
+      familyDisplayName: `${assignedReferral.CaregiverName} ${assignedReferral.FamilyLastName}`,
+      originHospital: assignedReferral.OriginHospital,
+      arrivalDate: assignedReferral.ArrivalDate,
+      suggestedRoomCode: room.RoomCode,
+    })
+
+    await logAudit({
+      siteId: assignedSiteId,
+      actorUserId: req.auth.sub,
+      eventType: 'admission.waitlist_assigned',
+      entityType: 'referral',
+      entityId: referralId,
+      metadata: { roomId: room.RoomId, roomCode: room.RoomCode, onboardingTaskId: onboardingTask.StaffTaskId },
+    })
+
+    return {
+      ...assignedReferral,
+      ReservedRoomId: room.RoomId,
+      ReservedRoomCode: room.RoomCode,
+      OnboardingTask: onboardingTask,
+      Message: `Habitacion ${room.RoomCode} asignada. El registro salio de Lista de Espera y quedo activo.`,
     }
   }
 

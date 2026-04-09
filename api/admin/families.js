@@ -73,9 +73,23 @@ export const activateFamilyHandler = withApi({ methods: ['POST'], roles: ['super
     .input('familyLastName', sql.NVarChar(100), referral.FamilyLastName)
     .input('stayDays', sql.Int, stayDays)
     .input('plannedCheckoutDate', sql.Date, new Date(new Date(referral.ArrivalDate).getTime() + stayDays * 24 * 60 * 60 * 1000))
+    .input('reservedRoomId', sql.Int, referral.ReservedRoomId || null)
     .query(`
-      INSERT INTO Families (ReferralId, SiteId, CaregiverName, FamilyLastName, StayDays, PlannedCheckoutDate, AutomationStatus, AdmissionStatus, CreatedAt, UpdatedAt)
-      VALUES (@referralId, @siteId, @caregiverName, @familyLastName, @stayDays, @plannedCheckoutDate, 'pendiente', 'pendiente', NOW(), NOW())
+      INSERT INTO Families (ReferralId, SiteId, RoomId, PlannedRoomId, CaregiverName, FamilyLastName, StayDays, PlannedCheckoutDate, AutomationStatus, AdmissionStatus, CreatedAt, UpdatedAt)
+      VALUES (
+        @referralId,
+        @siteId,
+        @reservedRoomId,
+        @reservedRoomId,
+        @caregiverName,
+        @familyLastName,
+        @stayDays,
+        @plannedCheckoutDate,
+        CASE WHEN @reservedRoomId IS NULL THEN 'pendiente' ELSE 'reservada' END,
+        'pendiente',
+        NOW(),
+        NOW()
+      )
       RETURNING *
     `)
 
