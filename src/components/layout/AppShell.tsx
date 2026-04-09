@@ -85,7 +85,7 @@ export function AppShell() {
   }, [])
 
   const canChange = canChangeSite(role)
-  const isAdminLayout = role === 'admin' || role === 'superadmin'
+  const isAdminLayout = role === 'admin' || role === 'superadmin' || role === 'staff'
   const isLoginRoute = ['/login', '/admin/login', '/staff/login'].includes(location.pathname)
 
 
@@ -110,9 +110,9 @@ export function AppShell() {
               className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-warm-200 hover:bg-warm-800 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Building2 className="h-4 w-4 shrink-0 text-warm-400" />
-              <div className="flex flex-col items-start leading-none flex-1 min-w-0">
+              <div className="flex min-w-0 flex-1 flex-col items-start leading-none">
                 <span className="text-[10px] font-medium uppercase tracking-widest text-warm-400">Sede activa</span>
-                <span className="font-semibold text-white truncate">{site}</span>
+                <span className="w-full truncate font-semibold text-white">{site}</span>
               </div>
               <ChevronDown className={`h-4 w-4 text-warm-400 transition-transform shrink-0 ${isSiteOpen ? 'rotate-180' : ''}`} />
             </button>
