@@ -75,14 +75,7 @@ La plataforma trabaja actualmente sobre estas sedes:
 
 - `tesseract.js`
 - lectura de texto desde archivos cargados en `Admisiones`
-- regex para extraer datos logísticos como:
-  - nombre del menor
-  - edad
-  - hospital
-  - médico referente
-  - tutor
-  - teléfonos
-  - fecha programada
+- regex para extraer datos logísticos
 
 ### Base de datos
 
