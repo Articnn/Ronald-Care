@@ -3,6 +3,7 @@ import { RequireRole } from './components/auth/RequireRole'
 import { AppShell } from './components/layout/AppShell'
 import { AppProvider } from './context/AppContext'
 import { AccountPage } from './pages/AccountPage'
+import { ExecutiveDashboardPage } from './pages/admin/ExecutiveDashboardPage'
 import { AdminPanelPage } from './pages/admin/AdminPanelPage'
 import { KioskPage } from './pages/family/KioskPage'
 import { OperationalAccessPage } from './pages/OperationalAccessPage'
@@ -33,7 +34,7 @@ function App() {
               path="/admin/dashboard"
               element={
                 <RequireRole allowed={['superadmin']}>
-                  <AdminPanelPage />
+                  <ExecutiveDashboardPage />
                 </RequireRole>
               }
             />
@@ -41,7 +42,7 @@ function App() {
               path="/gerente/dashboard"
               element={
                 <RequireRole allowed={['admin']}>
-                  <AdminPanelPage />
+                  <ExecutiveDashboardPage />
                 </RequireRole>
               }
             />
