@@ -225,6 +225,7 @@ CREATE TABLE stafftasks (
   createdbyuserid INTEGER REFERENCES users(userid),
   title VARCHAR(160) NOT NULL,
   instructions TEXT NOT NULL,
+  duedate DATE,
   priority VARCHAR(20) NOT NULL CHECK (priority IN ('baja', 'media', 'alta')),
   suggestedroomcode VARCHAR(20),
   status VARCHAR(20) NOT NULL CHECK (status IN ('pendiente', 'en_proceso', 'completada')),

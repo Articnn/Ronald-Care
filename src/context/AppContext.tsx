@@ -113,6 +113,7 @@ import type {
   VolunteerShift,
   VolunteerTask,
 } from '../types'
+import { normalizeRoleValue } from '../lib/roleRouting'
 
 interface KioskStatus {
   family: FamilyProfile
@@ -699,7 +700,7 @@ function mapVolunteerNotification(item: BackendVolunteerNotification): Volunteer
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<Role>(() => (localStorage.getItem(ROLE_STORAGE_KEY) as Role) || null)
+  const [role, setRoleState] = useState<Role>(() => normalizeRoleValue(localStorage.getItem(ROLE_STORAGE_KEY)))
   const [site, setSiteState] = useState<string>(() => localStorage.getItem(SITE_STORAGE_KEY) || sites[0])
   const [easyRead, setEasyRead] = useState(false)
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY))
@@ -868,13 +869,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const me = await getMe(authToken)
       const profile = me.profile
+      const normalizedRole = normalizeRoleValue(me.role)
       const resolvedUser: CurrentUser = {
         userId: Number(profile.UserId || 0),
         fullName: String(profile.FullName || ''),
         email: String(profile.Email || ''),
-        role: me.role as CurrentUser['role'],
+        role: (normalizedRole || 'staff') as CurrentUser['role'],
         siteId: profile.SiteId ? Number(profile.SiteId) : null,
         siteName: profile.SiteName ? normalizeSite(String(profile.SiteName)) : null,
+      }
+      if (normalizedRole && normalizedRole !== role) {
+        setRoleState(normalizedRole)
       }
       setCurrentUser(resolvedUser)
 
@@ -978,19 +983,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuthError(null)
     try {
       const payload = await loginInternal(email, password)
-      const nextRole = payload.user.role as Role
+      console.log('[loginInternalUser] usuario autenticado:', payload.user)
+      const nextRole = normalizeRoleValue(payload.user.role)
+      if (!nextRole) {
+        throw new Error('El rol recibido no es válido para esta aplicación.')
+      }
+      console.log('[loginInternalUser] role recibido:', nextRole, 'siteId:', payload.user.siteId, 'siteName:', payload.user.siteName)
+
+      if (nextRole === 'staff' && !payload.user.siteId) {
+        throw new Error('Tu cuenta de staff no tiene sede asignada. Contacta a Dirección Ejecutiva.')
+      }
+
+      localStorage.setItem(TOKEN_STORAGE_KEY, payload.token)
+      localStorage.setItem(ROLE_STORAGE_KEY, String(nextRole))
+
       setAuthToken(payload.token)
       setRoleState(nextRole)
       setCurrentUser({
         userId: payload.user.userId,
         fullName: payload.user.fullName,
         email: payload.user.email,
-        role: payload.user.role,
+        role: nextRole,
         siteId: payload.user.siteId,
         siteName: payload.user.siteName ? normalizeSite(payload.user.siteName) : null,
       })
-      if (payload.user.siteName) setSiteState(normalizeSite(payload.user.siteName))
-      else if (nextRole === 'admin' || nextRole === 'superadmin') setSiteState(ALL_SITES_LABEL)
+      if (payload.user.siteName) {
+        const normalizedSite = normalizeSite(payload.user.siteName)
+        localStorage.setItem(SITE_STORAGE_KEY, normalizedSite)
+        setSiteState(normalizedSite)
+      } else if (nextRole === 'admin' || nextRole === 'superadmin') {
+        localStorage.setItem(SITE_STORAGE_KEY, ALL_SITES_LABEL)
+        setSiteState(ALL_SITES_LABEL)
+      }
       return nextRole
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo iniciar sesion'

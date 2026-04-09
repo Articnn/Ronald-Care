@@ -150,6 +150,7 @@ export async function ensureVolunteerManagementSchema() {
           createdbyuserid INTEGER REFERENCES users(userid),
           title VARCHAR(160) NOT NULL,
           instructions TEXT NOT NULL,
+          duedate DATE,
           priority VARCHAR(20) NOT NULL DEFAULT 'media',
           suggestedroomcode VARCHAR(20),
           status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
@@ -160,6 +161,7 @@ export async function ensureVolunteerManagementSchema() {
 
       await pool.query(`
         ALTER TABLE stafftasks
+        ADD COLUMN IF NOT EXISTS duedate DATE,
         ADD COLUMN IF NOT EXISTS suggestedroomcode VARCHAR(20)
       `)
 

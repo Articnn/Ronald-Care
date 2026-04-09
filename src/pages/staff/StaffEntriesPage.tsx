@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { FileUp, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Tesseract from 'tesseract.js'
@@ -28,6 +28,14 @@ function cleanExtractedValue(value?: string) {
     .replace(/\r/g, ' ')
     .replace(/\n+/g, ' ')
     .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+function cleanSummaryValue(value?: string | null) {
+  const cleaned = cleanExtractedValue(value || '')
+  if (!cleaned) return ''
+  return cleaned
+    .replace(/\s*\+\s*$/g, '')
     .trim()
 }
 
@@ -134,12 +142,12 @@ export function StaffEntriesPage() {
         throw new Error('No se pudo leer el documento automáticamente. Por favor, ingresa los datos manualmente')
       }
 
-      setChildFullName((current) => current || extractedName)
-      setOriginHospital((current) => current || extractedHospital)
-      setReferringDoctorName((current) => current || extractedDoctor)
-      setTutorFullName((current) => current || extractedTutor)
-      setTutorPhone((current) => current || extractedTutorPhone)
-      setDoctorOfficePhone((current) => current || extractedOfficePhone)
+      setChildFullName((current) => current || cleanSummaryValue(extractedName))
+      setOriginHospital((current) => current || cleanSummaryValue(extractedHospital))
+      setReferringDoctorName((current) => current || cleanSummaryValue(extractedDoctor))
+      setTutorFullName((current) => current || cleanSummaryValue(extractedTutor))
+      setTutorPhone((current) => current || cleanSummaryValue(extractedTutorPhone))
+      setDoctorOfficePhone((current) => current || cleanSummaryValue(extractedOfficePhone))
       setScheduledDate((current) => current || normalizeDate(extractedDate) || '2026-04-09')
       setLogisticsNote((current) => current || `Admisión precargada desde ${selectedFile.name}.`)
       pushToast({ type: 'success', message: 'Datos extraídos con éxito.' })
@@ -287,7 +295,7 @@ export function StaffEntriesPage() {
                   <h3 className="text-lg font-bold text-warm-900">Datos del menor</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Nombre completo del menor" value={childFullName} onChange={(event) => setChildFullName(event.target.value)} />
+                  <Input label="Nombre completo del menor" value={cleanSummaryValue(childFullName)} onChange={(event) => setChildFullName(event.target.value)} />
                   <Input label="Edad" value={age} onChange={(event) => setAge(event.target.value)} />
                 </div>
               </div>
@@ -298,10 +306,10 @@ export function StaffEntriesPage() {
                   <h3 className="text-lg font-bold text-warm-900">Institución que refiere</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Hospital de origen" value={originHospital} onChange={(event) => setOriginHospital(event.target.value)} />
+                  <Input label="Hospital de origen" value={cleanSummaryValue(originHospital)} onChange={(event) => setOriginHospital(event.target.value)} />
                   <Input label="Departamento / área" value={originDepartment} onChange={(event) => setOriginDepartment(event.target.value)} />
-                  <Input label="Médico que refiere" value={referringDoctorName} onChange={(event) => setReferringDoctorName(event.target.value)} />
-                  <Input label="Teléfono oficina médica" value={doctorOfficePhone} onChange={(event) => setDoctorOfficePhone(event.target.value)} />
+                  <Input label="Médico que refiere" value={cleanSummaryValue(referringDoctorName)} onChange={(event) => setReferringDoctorName(event.target.value)} />
+                  <Input label="Teléfono oficina médica" value={cleanSummaryValue(doctorOfficePhone)} onChange={(event) => setDoctorOfficePhone(event.target.value)} />
                   <Input label="Fecha programada de cita o ingreso" type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
                   <Input label="Motivo de estancia" value="Apoyo Logístico" disabled />
                 </div>
@@ -323,8 +331,8 @@ export function StaffEntriesPage() {
                   <h3 className="text-lg font-bold text-warm-900">Tutor y contacto</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Nombre del tutor o tutora" value={tutorFullName} onChange={(event) => setTutorFullName(event.target.value)} />
-                  <Input label="Teléfono del tutor" value={tutorPhone} onChange={(event) => setTutorPhone(event.target.value)} />
+                  <Input label="Nombre del tutor o tutora" value={cleanSummaryValue(tutorFullName)} onChange={(event) => setTutorFullName(event.target.value)} />
+                  <Input label="Teléfono del tutor" value={cleanSummaryValue(tutorPhone)} onChange={(event) => setTutorPhone(event.target.value)} />
                   <Input label="Acompañantes" type="number" min="0" value={companions} onChange={(event) => setCompanions(event.target.value)} />
                   <label className="block space-y-2">
                     <span className="text-base font-semibold text-warm-900">Sede operativa</span>
@@ -370,14 +378,14 @@ export function StaffEntriesPage() {
             <div className="rounded-3xl bg-warm-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Resumen de admisión</p>
               <div className="mt-4 grid gap-3 text-sm text-warm-700 md:grid-cols-2">
-                <p><strong>Menor:</strong> {childFullName || 'Pendiente'}</p>
+                <p><strong>Menor:</strong> {cleanSummaryValue(childFullName) || 'Pendiente'}</p>
                 <p><strong>Edad:</strong> {age || 'Pendiente'}</p>
-                <p><strong>Hospital:</strong> {originHospital || 'Pendiente'}</p>
-                <p><strong>Área:</strong> {originDepartment || 'Pendiente'}</p>
-                <p><strong>Médico referente:</strong> {referringDoctorName || 'Pendiente'}</p>
-                <p><strong>Tel. oficina:</strong> {doctorOfficePhone || 'Pendiente'}</p>
-                <p><strong>Tutor:</strong> {tutorFullName || 'Pendiente'}</p>
-                <p><strong>Tel. tutor:</strong> {tutorPhone || 'Pendiente'}</p>
+                <p><strong>Hospital:</strong> {cleanSummaryValue(originHospital) || 'Pendiente'}</p>
+                <p><strong>Área:</strong> {cleanSummaryValue(originDepartment) || 'Pendiente'}</p>
+                <p><strong>Médico referente:</strong> {cleanSummaryValue(referringDoctorName) || 'Pendiente'}</p>
+                <p><strong>Tel. oficina:</strong> {cleanSummaryValue(doctorOfficePhone) || 'Pendiente'}</p>
+                <p><strong>Tutor:</strong> {cleanSummaryValue(tutorFullName) || 'Pendiente'}</p>
+                <p><strong>Tel. tutor:</strong> {cleanSummaryValue(tutorPhone) || 'Pendiente'}</p>
                 <p><strong>Fecha programada:</strong> {scheduledDate}</p>
                 <p><strong>Sede:</strong> {site}</p>
                 <p><strong>Documento:</strong> {documentName || 'Captura manual'}</p>

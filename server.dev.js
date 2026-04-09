@@ -116,6 +116,8 @@ const routes = {
   'GET /api/staff/dashboard': staffDashboard,
   'GET /api/staff/roster': staffRoster,
   'GET /api/staff/tasks': staffTasks,
+  'POST /api/staff/tasks': staffTasks,
+  'PATCH /api/staff/tasks': staffTasks,
   'GET /api/analytics/kpis': analyticsKpis,
   'GET /api/donor/impact': donorImpact,
   'GET /api/donor/gallery': donorGallery,

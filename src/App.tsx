@@ -3,7 +3,6 @@ import { RequireRole } from './components/auth/RequireRole'
 import { AppShell } from './components/layout/AppShell'
 import { AppProvider } from './context/AppContext'
 import { AccountPage } from './pages/AccountPage'
-import { AdminLoginPage } from './pages/admin/AdminLoginPage'
 import { AdminPanelPage } from './pages/admin/AdminPanelPage'
 import { KioskPage } from './pages/family/KioskPage'
 import { OperationalAccessPage } from './pages/OperationalAccessPage'
@@ -11,13 +10,13 @@ import { StaffAnalyticsPage } from './pages/staff/StaffAnalyticsPage'
 import { StaffDashboardPage } from './pages/staff/StaffDashboardPage'
 import { StaffEntriesPage } from './pages/staff/StaffEntriesPage'
 import { StaffInventoryPage } from './pages/staff/StaffInventoryPage'
-import { StaffLoginPage } from './pages/staff/StaffLoginPage'
 import { StaffReceptionPage } from './pages/staff/StaffReceptionPage'
 import { StaffRequestsPage } from './pages/staff/StaffRequestsPage'
 import { StaffRoomsPage } from './pages/staff/StaffRoomsPage'
 import { StaffTripsPage } from './pages/staff/StaffTripsPage'
 import { StaffVolunteersPage } from './pages/staff/StaffVolunteersPage'
 import { StaffWaitlistPage } from './pages/staff/StaffWaitlistPage'
+import { TaskManagementPage } from './pages/tasks/TaskManagementPage'
 
 function App() {
   return (
@@ -29,7 +28,23 @@ function App() {
             <Route path="/login" element={<OperationalAccessPage />} />
             <Route path="/access" element={<Navigate to="/login" replace />} />
 
-            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <RequireRole allowed={['superadmin']}>
+                  <AdminPanelPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/gerente/dashboard"
+              element={
+                <RequireRole allowed={['admin']}>
+                  <AdminPanelPage />
+                </RequireRole>
+              }
+            />
             <Route
               path="/admin/panel"
               element={
@@ -42,14 +57,18 @@ function App() {
             <Route path="/hospital/referrals" element={<Navigate to="/staff/admissions" replace />} />
             <Route path="/hospital/referrals/:id" element={<Navigate to="/staff/admissions" replace />} />
 
-            <Route path="/staff/login" element={<StaffLoginPage />} />
+            <Route path="/staff/login" element={<Navigate to="/login" replace />} />
             <Route
-              path="/staff/dashboard"
+              path="/staff/home"
               element={
                 <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffDashboardPage />
                 </RequireRole>
               }
+            />
+            <Route
+              path="/staff/dashboard"
+              element={<Navigate to="/staff/home" replace />}
             />
             <Route
               path="/staff/admissions"
@@ -73,6 +92,14 @@ function App() {
               element={
                 <RequireRole allowed={['staff', 'admin', 'superadmin']}>
                   <StaffReceptionPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <RequireRole allowed={['admin', 'superadmin']}>
+                  <TaskManagementPage />
                 </RequireRole>
               }
             />

@@ -369,6 +369,7 @@ export interface StaffTaskRecord {
   SuggestedRoomCode?: string | null
   Title: string
   Instructions: string
+  DueDate?: string | null
   Priority: 'baja' | 'media' | 'alta'
   Status: 'pendiente' | 'en_proceso' | 'completada'
   CreatedAt: string
@@ -670,11 +671,30 @@ export function getStaffRoster(token: string, siteId?: number | null) {
   return apiRequest<BackendStaffRosterItem[]>(`/staff/roster${query}`, { token })
 }
 
-export function getStaffTasks(token: string, params: { siteId?: number | null; status?: 'pendiente' | 'en_proceso' | 'completada' } = {}) {
+export function getStaffTasks(token: string, params: { siteId?: number | null; status?: 'pendiente' | 'en_proceso' | 'completada'; assignedUserId?: number | null } = {}) {
   const query = new URLSearchParams()
   if (params.siteId) query.set('siteId', String(params.siteId))
   if (params.status) query.set('status', params.status)
+  if (params.assignedUserId) query.set('assignedUserId', String(params.assignedUserId))
   return apiRequest<StaffTaskRecord[]>(`/staff/tasks${query.toString() ? `?${query.toString()}` : ''}`, { token })
+}
+
+export function createStaffTask(token: string, payload: {
+  siteId?: number | null
+  title: string
+  description: string
+  assignedUserId: number
+  dueDate: string
+  priority: 'baja' | 'media' | 'alta'
+}) {
+  return apiRequest<StaffTaskRecord>('/staff/tasks', { method: 'POST', token, body: payload })
+}
+
+export function updateStaffTask(token: string, payload: {
+  staffTaskId: number
+  status?: 'pendiente' | 'en_proceso' | 'completada'
+}) {
+  return apiRequest<StaffTaskRecord>('/staff/tasks', { method: 'PATCH', token, body: payload })
 }
 
 export function sendVolunteerAlert(token: string, payload: { toVolunteerUserId: number; alertType: 'need_help' | 'running_late' | 'task_completed' | 'cover_me' }) {

@@ -165,6 +165,7 @@ const KEY_ALIASES = {
   workarea: 'WorkArea',
   currentload: 'CurrentLoad',
   detail: 'Detail',
+  duedate: 'DueDate',
   departureremindersentat: 'DepartureReminderSentAt',
   dossiersummary: 'DossierSummary',
   estimatedcheckoutdate: 'EstimatedCheckoutDate',

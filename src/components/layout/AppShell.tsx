@@ -1,4 +1,4 @@
-import { Bell, Building2, ChevronDown, ClipboardList, HeartHandshake, LayoutDashboard, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react'
+﻿import { Bell, Building2, ChevronDown, ClipboardCheck, ClipboardList, HeartHandshake, LayoutDashboard, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react'
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAppState } from '../../context/AppContext'
@@ -8,23 +8,25 @@ import type { InternalRole, Role } from '../../types'
 const navByRole: Record<Exclude<Role, null | 'family'>, Array<{ label: string; to: string; icon: ReactElement }>> = {
   superadmin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
-    { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Dashboard', to: '/admin/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Gestión de Tareas', to: '/tasks', icon: <ClipboardCheck className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   admin: [
     { label: 'Panel admin', to: '/admin/panel', icon: <ShieldCheck className="h-4 w-4" /> },
-    { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Dashboard', to: '/gerente/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Gestión de Tareas', to: '/tasks', icon: <ClipboardCheck className="h-4 w-4" /> },
     { label: 'Perfil', to: '/account', icon: <UserCircle2 className="h-4 w-4" /> },
   ],
   hospital: [],
   staff: [
-    { label: 'Dashboard', to: '/staff/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Dashboard', to: '/staff/home', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Admisiones', to: '/staff/admissions', icon: <Building2 className="h-4 w-4" /> },
     { label: 'Lista de Espera', to: '/staff/waitlist', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Recepción', to: '/staff/reception', icon: <ClipboardList className="h-4 w-4" /> },
@@ -86,7 +88,7 @@ export function AppShell() {
   const isAdminLayout = role === 'admin' || role === 'superadmin'
   const isLoginRoute = ['/login', '/admin/login', '/staff/login'].includes(location.pathname)
 
-  // ─── ADMIN / SUPERADMIN: sidebar layout ───────────────────────────────────
+
   if (isAdminLayout) {
     return (
       <div className={`flex min-h-screen bg-gray-50 ${easyRead ? 'text-xl' : ''}`}>
@@ -263,7 +265,7 @@ export function AppShell() {
     )
   }
 
-  // ─── STANDARD LAYOUT (staff, volunteer, hospital, family) ─────────────────
+
   const glassClass = 'border border-white/10 bg-white/5 backdrop-blur-md shadow-lg'
 
   return (
@@ -420,3 +422,5 @@ export function AppShell() {
     </div>
   )
 }
+
+

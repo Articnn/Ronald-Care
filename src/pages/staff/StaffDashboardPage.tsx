@@ -12,6 +12,7 @@ import {
   getDepartureReminders,
   getRooms,
   getStaffTasks,
+  updateStaffTask,
   type AdmissionRecord,
   type ClinicalHistoryRecord,
   type DepartureReminderRecord,
@@ -25,6 +26,27 @@ const inboxViews = [
 ] as const
 
 type InboxView = (typeof inboxViews)[number]['id']
+
+function cleanLatinText(value: string) {
+  return value
+    .replace(/\u00c3\u0081/g, 'Á')
+    .replace(/\u00c3\u0089/g, 'É')
+    .replace(/\u00c3\u008d/g, 'Í')
+    .replace(/\u00c3\u0093/g, 'Ó')
+    .replace(/\u00c3\u009a/g, 'Ú')
+    .replace(/\u00c3\u0091/g, 'Ñ')
+    .replace(/\u00c3\u00a1/g, 'á')
+    .replace(/\u00c3\u00a9/g, 'é')
+    .replace(/\u00c3\u00ad/g, 'í')
+    .replace(/\u00c3\u00b3/g, 'ó')
+    .replace(/\u00c3\u00ba/g, 'ú')
+    .replace(/\u00c3\u00b1/g, 'ñ')
+    .replace(/\u00e2\u0080\u0093/g, '–')
+    .replace(/\u00e2\u0080\u00a2/g, '•')
+    .replace(/\u00c2/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 function toDateInputValue(value?: string | null) {
   if (!value) return ''
@@ -40,7 +62,7 @@ function formatReadableDate(value?: string | null) {
   if (!value) return 'Pendiente'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleDateString('es-MX')
+  return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function mapStageLabel(stage?: AdmissionRecord['AdmissionStage']) {
@@ -79,7 +101,7 @@ function isWithinHours(dateValue: string | null | undefined, hours: number) {
 }
 
 export function StaffDashboardPage() {
-  const { authToken, currentUser, site, availableSites, isSyncing, staffDashboard } = useAppState()
+  const { authToken, currentUser, site, availableSites, isSyncing, staffDashboard, pushToast } = useAppState()
   const [inboxView, setInboxView] = useState<InboxView>('socioeconomico')
   const [inboxSearch, setInboxSearch] = useState('')
   const [inboxDate, setInboxDate] = useState(() => toDateInputValue(new Date().toISOString()))
@@ -163,6 +185,31 @@ export function StaffDashboardPage() {
   }, [inboxDate, inboxSearch, visibleInbox])
   const onboardingTasks = useMemo(() => staffTasks.filter((task) => task.Status !== 'completada').slice(0, 5), [staffTasks])
   const imminentDepartures = useMemo(() => departureReminders.filter((item) => !item.DepartureReminderSentAt).slice(0, 4), [departureReminders])
+  const ownTasks = useMemo(
+    () =>
+      currentUser?.role === 'staff'
+        ? staffTasks.filter((task) => task.AssignedUserId === currentUser.userId && task.Status !== 'completada')
+        : [],
+    [currentUser, staffTasks],
+  )
+
+  const updateOwnTaskStatus = async (staffTaskId: number, status: 'en_proceso' | 'completada') => {
+    if (!authToken) return
+    try {
+      await updateStaffTask(authToken, { staffTaskId, status })
+      const tasksData = await getStaffTasks(authToken, { siteId: selectedSiteId })
+      setStaffTasks(tasksData)
+      pushToast({
+        type: 'success',
+        message: status === 'completada' ? 'Tarea marcada como completada' : 'Tarea marcada en curso',
+      })
+    } catch (taskError) {
+      pushToast({
+        type: 'error',
+        message: taskError instanceof Error ? taskError.message : 'No pudimos actualizar la tarea',
+      })
+    }
+  }
 
   if (isLoading || isSyncing) {
     return (
@@ -194,9 +241,9 @@ export function StaffDashboardPage() {
       {error ? <div className="rounded-2xl bg-white p-4 text-sm font-semibold text-red-700 shadow-soft">{error}</div> : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card className="space-y-4 overflow-hidden">
+        <Card className="min-w-0 space-y-4 overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Bandeja priorizada</p>
               <h2 className="text-2xl font-bold text-warm-900">Bandeja de Entrada de Casos</h2>
               <p className="text-sm text-warm-600">Por defecto muestra los registros de hoy. Puedes plegarla, buscar por familia y abrir fechas anteriores cuando lo necesites.</p>
@@ -248,12 +295,16 @@ export function StaffDashboardPage() {
 
           <div className={`grid overflow-hidden transition-all duration-300 ease-out ${isInboxOpen ? 'max-h-[1800px] gap-4 pt-1 opacity-100' : 'max-h-0 gap-0 pt-0 opacity-0'}`}>
             {filteredInbox.map((admission) => (
-              <div key={admission.ReferralId} className="rounded-[24px] bg-warm-50 p-5">
+              <div key={admission.ReferralId} className="min-w-0 rounded-[24px] bg-warm-50 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-bold text-warm-900">{admission.ChildName || `${admission.CaregiverName} ${admission.FamilyLastName}`}</p>
-                    <p className="text-sm text-warm-700">{admission.OriginHospital || 'Hospital pendiente'} · llegada {formatReadableDate(admission.ArrivalDate)}</p>
-                    <p className="text-sm text-warm-600">Motivo de estancia: Apoyo logístico</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-lg font-bold text-warm-900" title={admission.ChildName || `${admission.CaregiverName} ${admission.FamilyLastName}`}>
+                      {cleanLatinText(admission.ChildName || `${admission.CaregiverName} ${admission.FamilyLastName}`)}
+                    </p>
+                    <p className="truncate text-sm text-warm-700" title={`${admission.OriginHospital || 'Hospital pendiente'} · llegada ${formatReadableDate(admission.ArrivalDate)}`}>
+                      {cleanLatinText(admission.OriginHospital || 'Hospital pendiente')} · llegada {formatReadableDate(admission.ArrivalDate)}
+                    </p>
+                    <p className="truncate text-sm text-warm-600">Motivo de estancia: Apoyo logístico</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <StatusChip status={mapStageLabel(admission.AdmissionStage)} />
@@ -262,14 +313,16 @@ export function StaffDashboardPage() {
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-                  <div className="rounded-2xl bg-white p-4 text-sm text-warm-700">
+                  <div className="min-w-0 rounded-2xl bg-white p-4 text-sm text-warm-700">
                     <p className="font-semibold text-warm-900">Contexto del caso</p>
-                    <p className="mt-2">{admission.DossierSummary || admission.Message || 'Aún falta completar el expediente y validar información extra.'}</p>
+                    <p className="mt-2 break-words">{cleanLatinText(admission.DossierSummary || admission.Message || 'Aún falta completar el expediente y validar información extra.')}</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="rounded-2xl bg-white p-4 text-sm text-warm-700">
+                  <div className="min-w-0 space-y-2">
+                    <div className="min-w-0 rounded-2xl bg-white p-4 text-sm text-warm-700">
                       <p className="font-semibold text-warm-900">Casa objetivo</p>
-                      <p className="mt-1">{admission.AssignedSiteName || admission.SiteName || 'Se calculará al aprobar'}</p>
+                      <p className="mt-1 truncate" title={admission.AssignedSiteName || admission.SiteName || 'Se calculará al aprobar'}>
+                        {cleanLatinText(admission.AssignedSiteName || admission.SiteName || 'Se calculará al aprobar')}
+                      </p>
                     </div>
                     <Link to="/admin/panel" className="block">
                       <Button variant="secondary" className="w-full">Abrir expediente</Button>
@@ -291,39 +344,67 @@ export function StaffDashboardPage() {
           ) : null}
         </Card>
 
-        <div className="space-y-6">
-          <Card className="space-y-3">
+        <div className="min-w-0 space-y-6">
+          <Card className="min-w-0 space-y-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><ClipboardList className="h-5 w-5" /></span>
-              <div>
-                <h3 className="text-xl font-bold text-warm-900">Onboarding de sede</h3>
-                <p className="text-sm text-warm-600">Tareas automáticas que se disparan al aprobar expedientes.</p>
+              <div className="min-w-0">
+                <h3 className="text-xl font-bold text-warm-900">{currentUser?.role === 'staff' ? 'Mis tareas asignadas' : 'Onboarding de sede'}</h3>
+                <p className="text-sm text-warm-600">
+                  {currentUser?.role === 'staff'
+                    ? 'Tareas operativas que te asignó Dirección Ejecutiva o Gerencia de Sede.'
+                    : 'Tareas automáticas y operativas que se disparan al aprobar expedientes.'}
+                </p>
               </div>
             </div>
             <div className="space-y-3">
-              {onboardingTasks.map((task) => (
-                <div key={task.StaffTaskId} className="rounded-2xl bg-warm-50 p-4">
+              {(currentUser?.role === 'staff' ? ownTasks : onboardingTasks).map((task) => (
+                <div key={task.StaffTaskId} className="min-w-0 rounded-2xl bg-warm-50 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-warm-900">{task.Title}</p>
-                      <p className="text-sm text-warm-700">{task.CaregiverName} {task.FamilyLastName} · habitación {task.SuggestedRoomCode || task.RoomCode || 'por definir'}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-bold text-warm-900" title={cleanLatinText(task.Title)}>{cleanLatinText(task.Title)}</p>
+                      <p
+                        className="truncate text-sm text-warm-700"
+                        title={
+                          currentUser?.role === 'staff'
+                            ? `Vence ${formatReadableDate(task.DueDate || task.CreatedAt)} · prioridad ${cleanLatinText(task.Priority)}`
+                            : cleanLatinText(`${task.CaregiverName} ${task.FamilyLastName} · habitación ${task.SuggestedRoomCode || task.RoomCode || 'por definir'}`)
+                        }
+                      >
+                        {currentUser?.role === 'staff'
+                          ? `Vence ${formatReadableDate(task.DueDate || task.CreatedAt)} · prioridad ${cleanLatinText(task.Priority)}`
+                          : cleanLatinText(`${task.CaregiverName} ${task.FamilyLastName} · habitación ${task.SuggestedRoomCode || task.RoomCode || 'por definir'}`)}
+                      </p>
                     </div>
                     <StatusChip status={task.Priority === 'alta' ? 'Ocupada' : task.Priority === 'media' ? 'Preparacion' : 'Pendiente'} />
                   </div>
-                  <p className="mt-3 text-sm text-warm-700">{task.Instructions}</p>
+                  <p className="mt-3 break-words text-sm text-warm-700">{cleanLatinText(task.Instructions)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link to="/staff/reception"><Button variant="ghost">Instrucciones de bienvenida</Button></Link>
+                    {currentUser?.role === 'staff' ? (
+                      <>
+                        {task.Status !== 'en_proceso' ? (
+                          <Button variant="ghost" onClick={() => void updateOwnTaskStatus(task.StaffTaskId, 'en_proceso')}>Marcar en curso</Button>
+                        ) : null}
+                        <Button variant="secondary" onClick={() => void updateOwnTaskStatus(task.StaffTaskId, 'completada')}>Marcar completada</Button>
+                      </>
+                    ) : (
+                      <Link to="/staff/reception"><Button variant="ghost">Instrucciones de bienvenida</Button></Link>
+                    )}
                   </div>
                 </div>
               ))}
-              {onboardingTasks.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">No hay tareas de onboarding pendientes.</div> : null}
+              {(currentUser?.role === 'staff' ? ownTasks.length === 0 : onboardingTasks.length === 0) ? (
+                <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">
+                  {currentUser?.role === 'staff' ? 'No tienes tareas asignadas pendientes.' : 'No hay tareas de onboarding pendientes.'}
+                </div>
+              ) : null}
             </div>
           </Card>
 
-          <Card className="space-y-4">
+          <Card className="min-w-0 space-y-4">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><BellRing className="h-5 w-5" /></span>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-xl font-bold text-warm-900">Próximas salidas</h3>
                 <p className="text-sm text-warm-600">Indicadores discretos hasta que falten menos de 48 horas.</p>
               </div>
@@ -332,11 +413,15 @@ export function StaffDashboardPage() {
               {imminentDepartures.map((reminder) => {
                 const urgent = isWithinHours(reminder.PlannedCheckoutDate, 48)
                 return (
-                  <div key={reminder.FamilyId} className="rounded-2xl bg-warm-50 p-3">
+                  <div key={reminder.FamilyId} className="min-w-0 rounded-2xl bg-warm-50 p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-warm-900">{reminder.CaregiverName} {reminder.FamilyLastName}</p>
-                        <p className="text-sm text-warm-700">Habitación {reminder.RoomCode || 'Por asignar'} · salida {formatReadableDate(reminder.PlannedCheckoutDate)}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold text-warm-900" title={`${reminder.CaregiverName} ${reminder.FamilyLastName}`}>
+                          {cleanLatinText(`${reminder.CaregiverName} ${reminder.FamilyLastName}`)}
+                        </p>
+                        <p className="truncate text-sm text-warm-700" title={`Habitación ${reminder.RoomCode || 'Por asignar'} · salida ${formatReadableDate(reminder.PlannedCheckoutDate)}`}>
+                          Habitación {reminder.RoomCode || 'Por asignar'} · salida {formatReadableDate(reminder.PlannedCheckoutDate)}
+                        </p>
                       </div>
                       <span className={`inline-flex h-3 w-3 rounded-full ${urgent ? 'bg-red-500' : 'bg-orange-400'}`} />
                     </div>
@@ -347,30 +432,32 @@ export function StaffDashboardPage() {
             </div>
           </Card>
 
-          <Card className="space-y-4">
+          <Card className="min-w-0 space-y-4">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><ShieldCheck className="h-5 w-5" /></span>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-xl font-bold text-warm-900">Bitácora de Estancia</h3>
                 <p className="text-sm text-warm-600">Seguimiento acumulado para ajustar estancia y salida sin exponer datos sensibles.</p>
               </div>
             </div>
             <div className="space-y-3">
               {clinicalHistory.map((entry) => (
-                <div key={entry.FollowUpId} className="rounded-2xl bg-warm-50 p-4">
-                  <p className="font-bold text-warm-900">{entry.ClinicName || 'Clínica de seguimiento'}</p>
-                  <p className="mt-1 text-sm text-warm-700">{entry.FeedbackMessage}</p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Nueva salida estimada: {formatReadableDate(entry.EstimatedCheckoutDate)} · {formatReadableDate(entry.RecordedAt)}</p>
+                <div key={entry.FollowUpId} className="min-w-0 rounded-2xl bg-warm-50 p-4">
+                  <p className="truncate font-bold text-warm-900" title={entry.ClinicName || 'Clínica de seguimiento'}>
+                    {cleanLatinText(entry.ClinicName || 'Clínica de seguimiento')}
+                  </p>
+                  <p className="mt-1 break-words text-sm text-warm-700">{cleanLatinText(entry.FeedbackMessage)}</p>
+                  <p className="mt-2 break-words text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Nueva salida estimada: {formatReadableDate(entry.EstimatedCheckoutDate)} · {formatReadableDate(entry.RecordedAt)}</p>
                 </div>
               ))}
               {clinicalHistory.length === 0 ? <div className="rounded-2xl bg-warm-50 p-4 text-sm text-warm-700">Aún no hay feedback clínico registrado para esta sede.</div> : null}
             </div>
           </Card>
 
-          <Card className="space-y-4">
+          <Card className="min-w-0 space-y-4">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-warm-50 text-[#950606]"><LayoutDashboard className="h-5 w-5" /></span>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-xl font-bold text-warm-900">Atajos operativos</h3>
                 <p className="text-sm text-warm-600">Accesos rápidos a lo esencial sin saturar el home.</p>
               </div>
