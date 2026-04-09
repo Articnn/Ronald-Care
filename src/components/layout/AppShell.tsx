@@ -85,9 +85,16 @@ export function AppShell() {
   }, [])
 
   const canChange = canChangeSite(role)
-  const isAdminLayout = role === 'admin' || role === 'superadmin' || role === 'staff'
   const isLoginRoute = ['/login', '/admin/login', '/staff/login'].includes(location.pathname)
+  const isAdminLayout = role === 'admin' || role === 'superadmin' || role === 'staff'
 
+  if (isLoginRoute) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Outlet />
+      </div>
+    )
+  }
 
   if (isAdminLayout) {
     return (

@@ -1,4 +1,4 @@
-﻿import { HeartHandshake, Lock, Mail } from 'lucide-react'
+﻿import { Lock, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppState } from '../context/AppContext'
@@ -21,27 +21,11 @@ export function OperationalAccessPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <div className="hidden w-[420px] shrink-0 flex-col justify-between bg-warm-900 p-10 lg:flex">
-        <div className="flex items-center gap-3">
-          <HeartHandshake className="h-7 w-7 text-warm-300" />
-          <span className="text-lg font-extrabold text-white">RonaldCare</span>
-        </div>
-
-        <p className="text-xs text-warm-500">
-          Un solo acceso. El sistema detecta el rol y te lleva al panel correcto.
-        </p>
-      </div>
-
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-sm bg-white rounded-xl shadow-lg border border-gray-100 p-8 sm:p-10">
 
-          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
-            <HeartHandshake className="h-7 w-7 text-warm-700" />
-            <span className="text-lg font-extrabold text-warm-900 tracking-tight">RonaldCare</span>
-          </div>
-
-          <div className="mb-8 text-center lg:text-left">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-warm-50 lg:mx-0">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-warm-50">
               <Lock className="h-6 w-6 text-warm-700" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-gray-900">Ingreso institucional</h2>
