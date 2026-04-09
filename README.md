@@ -200,9 +200,6 @@ PostgreSQL relacional en Neon
 - `/staff/requests`
 
 
-
-## Autenticación y roles
-
 ### Cómo funciona el login
 
 1. el usuario entra a `/login`
@@ -217,15 +214,6 @@ PostgreSQL relacional en Neon
 - `superadmin` -> `Dirección Ejecutiva`
 - `admin` -> `Gerente de Sede`
 - `staff` -> `Staff / Operación`
-
-### Archivos clave de autenticación
-
-- [C:\Users\pachi\Documents\New project\api\auth\login.js](C:\Users\pachi\Documents\New project\api\auth\login.js)
-- [C:\Users\pachi\Documents\New project\api\auth\me.js](C:\Users\pachi\Documents\New project\api\auth\me.js)
-- [C:\Users\pachi\Documents\New project\src\components\auth\RequireRole.tsx](C:\Users\pachi\Documents\New project\src\components\auth\RequireRole.tsx)
-- [C:\Users\pachi\Documents\New project\src\lib\roleRouting.ts](C:\Users\pachi\Documents\New project\src\lib\roleRouting.ts)
-
-## Endpoints clave
 
 ### Auth
 
@@ -370,29 +358,7 @@ npm run db:seed
 npm run db:setup
 ```
 
-## Recomendaciones técnicas de evolución
 
-### 1. Mantener arquitectura central multi-sede
-
-Es la evolución más realista desde el estado actual:
-
-- un frontend
-- un backend
-- una base central en Neon
-- separación por sede mediante identificador único
-
-### 2. Convertir permisos a sistema configurable
-
-La siguiente mejora importante es dejar de depender tanto de cambios en código para roles y permisos.
-
-Idealmente habría que evolucionar a:
-
-- `roles`
-- `permissions`
-- `role_permissions`
-- administración de permisos desde panel interno
-
-Así el encargado de sistemas podría ajustar permisos sin depender siempre de desarrollo externo.
 
 ## Seguridad
 
