@@ -84,6 +84,7 @@ export function AppShell() {
 
   const canChange = canChangeSite(role)
   const isAdminLayout = role === 'admin' || role === 'superadmin'
+  const isLoginRoute = ['/login', '/admin/login', '/staff/login'].includes(location.pathname)
 
   // ─── ADMIN / SUPERADMIN: sidebar layout ───────────────────────────────────
   if (isAdminLayout) {
@@ -274,41 +275,43 @@ export function AppShell() {
             <p className="text-xl font-extrabold">RonaldCare</p>
           </Link>
 
-          <div className="relative" ref={siteRef}>
-            <button
-              disabled={!canChange}
-              onClick={() => setIsSiteOpen(!isSiteOpen)}
-              className={`group flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-300 hover:border-white/30 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50 ${glassClass} ${isSiteOpen ? 'border-white/30 bg-white/10' : ''}`}
-            >
-              <Building2 className="h-4 w-4 shrink-0 text-white/60 transition-colors group-hover:text-white" />
-              <div className="flex flex-col items-start leading-none">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Sede</span>
-                <span className="font-bold text-white">{site}</span>
-              </div>
-              <ChevronDown className={`h-4 w-4 text-white/40 transition-transform duration-300 ${isSiteOpen ? 'rotate-180' : ''}`} />
-            </button>
+          {!isLoginRoute && (
+            <div className="relative" ref={siteRef}>
+              <button
+                disabled={!canChange}
+                onClick={() => setIsSiteOpen(!isSiteOpen)}
+                className={`group flex cursor-pointer items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-300 hover:border-white/30 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50 ${glassClass} ${isSiteOpen ? 'border-white/30 bg-white/10' : ''}`}
+              >
+                <Building2 className="h-4 w-4 shrink-0 text-white/60 transition-colors group-hover:text-white" />
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Sede</span>
+                  <span className="font-bold text-white">{site}</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-white/40 transition-transform duration-300 ${isSiteOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-            <div
-              className={`absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[160px] origin-top overflow-hidden rounded-xl border border-white/10 bg-warm-700 p-1 shadow-lg transition-all duration-200 ${
-                isSiteOpen ? 'visible scale-100 opacity-100' : 'invisible pointer-events-none scale-95 opacity-0'
-              }`}
-            >
-              {availableSites.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => {
-                    setSite(item)
-                    setIsSiteOpen(false)
-                  }}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-white/10 ${
-                    site === item ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
+              <div
+                className={`absolute left-0 top-[calc(100%+8px)] z-50 w-full min-w-[160px] origin-top overflow-hidden rounded-xl border border-white/10 bg-warm-700 p-1 shadow-lg transition-all duration-200 ${
+                  isSiteOpen ? 'visible scale-100 opacity-100' : 'invisible pointer-events-none scale-95 opacity-0'
+                }`}
+              >
+                {availableSites.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => {
+                      setSite(item)
+                      setIsSiteOpen(false)
+                    }}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-white/10 ${
+                      site === item ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {role && <span className="rounded-full bg-gold-300 px-3 py-1 text-sm font-bold text-warm-900">Rol: {roleLabels[role]}</span>}
 
