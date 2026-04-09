@@ -550,14 +550,14 @@ export function StaffRoomsPage() {
           <div className="space-y-4 rounded-2xl bg-white p-5 shadow-soft">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-[#950606]" />
-              <h2 className="text-xl font-bold text-warm-900">Asignar apoyo a voluntariado</h2>
+              <h2 className="text-xl font-bold text-warm-900">Asignar apoyo a staff</h2>
             </div>
-            <p className="text-sm text-warm-600">Si la habitacion requiere limpieza o atencion por incidente, puedes mandar la tarea a voluntariado de la misma sede. La alerta le llega automaticamente al asignar la tarea.</p>
+            <p className="text-sm text-warm-600">Si la habitacion requiere limpieza o atencion por incidente, puedes mandar la tarea al staff de la misma sede. La alerta le llega automaticamente al asignar la tarea.</p>
 
             <label className="block space-y-2">
-              <span className="text-base font-semibold text-warm-900">Voluntario de apoyo</span>
+              <span className="text-base font-semibold text-warm-900">Staff de apoyo</span>
               <select className="w-full rounded-2xl border border-warm-200 px-4 py-3 text-lg" value={selectedVolunteerUserId} onChange={(event) => setSelectedVolunteerUserId(Number(event.target.value))}>
-                {cleaningVolunteers.length === 0 ? <option value={0}>No hay voluntarios disponibles</option> : null}
+                {cleaningVolunteers.length === 0 ? <option value={0}>No hay staff disponible</option> : null}
                 {cleaningVolunteers.map((volunteer) => (
                   <option key={volunteer.userId} value={volunteer.userId}>
                     {`${volunteer.fullName} · ${volunteer.role}`}
@@ -571,7 +571,7 @@ export function StaffRoomsPage() {
               <p className="mt-1 text-sm text-warm-900">
                 {roomIssue === 'limpieza' ? 'Limpieza requerida' : roomIssue === 'accidente' ? 'Atencion por accidente' : 'Revision por mantenimiento'} en {selectedRoom.RoomCode}
               </p>
-              <p className="mt-2 text-xs text-warm-600">El voluntario debe pertenecer a esta misma sede y recibira su notificacion dentro de la app.</p>
+              <p className="mt-2 text-xs text-warm-600">El staff asignado debe pertenecer a esta misma sede y recibira su notificacion dentro de la app.</p>
             </div>
 
             <Button
@@ -604,7 +604,7 @@ export function StaffRoomsPage() {
                 }
               }}
             >
-              Asignar tarea a voluntario
+              Asignar tarea a staff
             </Button>
 
             <div className="rounded-2xl border border-dashed border-warm-200 p-4 text-sm text-warm-600">

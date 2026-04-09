@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState, type ReactNode } from 'react'
 import { Check, FileUp, Sparkles, Upload } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Tesseract from 'tesseract.js'
@@ -31,9 +31,7 @@ function cleanExtractedValue(value?: string) {
 function cleanSummaryValue(value?: string | null) {
   const cleaned = cleanExtractedValue(value || '')
   if (!cleaned) return ''
-  return cleaned
-    .replace(/\s*\+\s*$/g, '')
-    .trim()
+  return cleaned.replace(/\s*[+/]\s*$/, '').trim()
 }
 
 function extractByPatterns(text: string, patterns: RegExp[]) {
@@ -45,6 +43,10 @@ function extractByPatterns(text: string, patterns: RegExp[]) {
 }
 
 function extractFieldsFromRawText(rawText: string) {
+  const extractedAge = extractByPatterns(rawText, [
+    /Edad(?: del Paciente| del menor)?:\s*([0-9]{1,2})/i,
+    /\b([0-9]{1,2})\s*años?\b/i,
+  ])
   const extractedName = extractByPatterns(rawText, [
     /Nombre del Paciente:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
     /Nombre:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
@@ -54,25 +56,28 @@ function extractFieldsFromRawText(rawText: string) {
     /Hospital:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
   ])
   const extractedDoctor = extractByPatterns(rawText, [
-    /M[eé]dico que refiere:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
-    /M[eé]dico referente:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
+    /M[éeÉ]dico que refiere:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
+    /M[éeÉ]dico referente:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
   ])
   const extractedTutor = extractByPatterns(rawText, [
     /Tutor(?:a)?(?: legal)?:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
     /Responsable:\s*(.+?)(?=\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ ]+:|$)/i,
   ])
   const extractedTutorPhone = extractByPatterns(rawText, [
-    /Tel[eé]fono(?: del tutor| familiar| de contacto)?:\s*([\d\s()+-]{7,})/i,
+    /Tel[éeÉ]fono(?: del tutor| familiar| de contacto| tutor| celular tutor| celular familiar)?:\s*((?:\d{2,3}-\d{3,4}-\d{4})|[\d\s()+-]{7,})/i,
+    /Celular(?: del tutor| familiar)?:\s*((?:\d{2,3}-\d{3,4}-\d{4})|[\d\s()+-]{7,})/i,
   ])
   const extractedOfficePhone = extractByPatterns(rawText, [
-    /Tel[eé]fono(?: de la oficina m[eé]dica| oficina m[eé]dica| oficina)?:\s*([\d\s()+-]{7,})/i,
+    /Tel[éeÉ]fono(?: de la oficina m[éeÉ]dica| oficina m[éeÉ]dica| oficina| oficina medica)?:\s*((?:\d{2,3}-\d{3,4}-\d{4})|[\d\s()+-]{7,})/i,
+    /Conmutador:\s*((?:\d{2,3}-\d{3,4}-\d{4})|[\d\s()+-]{7,})/i,
   ])
   const extractedDate = extractByPatterns(rawText, [
-    /Fecha programada(?: de cita| de ingreso)?:\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/i,
-    /Fecha:\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/i,
+    /Fecha programada(?: de cita| de ingreso)?:\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i,
+    /Fecha:\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i,
   ])
 
   return {
+    extractedAge,
     extractedName,
     extractedHospital,
     extractedDoctor,
@@ -81,6 +86,29 @@ function extractFieldsFromRawText(rawText: string) {
     extractedOfficePhone,
     extractedDate,
   }
+}
+
+function normalizeDate(value: string) {
+  const cleaned = cleanExtractedValue(value)
+  if (!cleaned) return ''
+
+  const normalized = cleaned.replace(/\./g, '/').replace(/-/g, '/')
+  const [a, b, c] = normalized.split('/')
+  if (!a || !b || !c) return ''
+
+  if (normalized.match(/^\d{4}\//)) {
+    return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`
+  }
+
+  const year = c.length === 2 ? `20${c}` : c
+  return `${year}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`
+}
+
+function formatReadableDate(value?: string | null) {
+  if (!value) return 'Pendiente'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString('es-MX')
 }
 
 function StepIndicator({ activeStep }: { activeStep: number }) {
@@ -120,7 +148,7 @@ function StepIndicator({ activeStep }: { activeStep: number }) {
   )
 }
 
-function FormSection({ label, title, children }: { label: string; title: string; children: React.ReactNode }) {
+function FormSection({ label, title, children }: { label: string; title: string; children: ReactNode }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-5 py-3">
@@ -175,6 +203,7 @@ export function StaffEntriesPage() {
         : cleanExtractedValue((await Tesseract.recognize(selectedFile, 'spa+eng')).data.text)
 
       const {
+        extractedAge,
         extractedName,
         extractedHospital,
         extractedDoctor,
@@ -188,6 +217,7 @@ export function StaffEntriesPage() {
         throw new Error('No se pudo leer el documento automáticamente. Por favor, ingresa los datos manualmente')
       }
 
+      setAge((current) => current || cleanSummaryValue(extractedAge))
       setChildFullName((current) => current || cleanSummaryValue(extractedName))
       setOriginHospital((current) => current || cleanSummaryValue(extractedHospital))
       setReferringDoctorName((current) => current || cleanSummaryValue(extractedDoctor))
@@ -433,7 +463,7 @@ export function StaffEntriesPage() {
                     ['Tel. oficina', cleanSummaryValue(doctorOfficePhone) || 'Pendiente'],
                     ['Tutor', cleanSummaryValue(tutorFullName) || 'Pendiente'],
                     ['Tel. tutor', cleanSummaryValue(tutorPhone) || 'Pendiente'],
-                    ['Fecha programada', scheduledDate],
+                    ['Fecha programada', formatReadableDate(scheduledDate)],
                     ['Sede', site],
                     ['Documento', documentName || 'Captura manual'],
                     ['Motivo', 'Apoyo Logístico'],
@@ -502,7 +532,7 @@ export function StaffEntriesPage() {
                   {referral.caregiverName} {referral.familyLastName}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Llegada {referral.arrivalDate} · {referral.companions} acompañantes
+                  Llegada {formatReadableDate(referral.arrivalDate)} · {referral.companions} acompañantes
                 </p>
               </div>
               <StatusChip status={referral.status} />
@@ -517,20 +547,4 @@ export function StaffEntriesPage() {
       </div>
     </div>
   )
-}
-
-function normalizeDate(value: string) {
-  const cleaned = cleanExtractedValue(value)
-  if (!cleaned) return ''
-
-  const normalized = cleaned.replace(/\./g, '/').replace(/-/g, '/')
-  const [a, b, c] = normalized.split('/')
-  if (!a || !b || !c) return ''
-
-  if (normalized.match(/^\d{4}\//)) {
-    return `${a}-${b.padStart(2, '0')}-${c.padStart(2, '0')}`
-  }
-
-  const year = c.length === 2 ? `20${c}` : c
-  return `${year}-${b.padStart(2, '0')}-${a.padStart(2, '0')}`
 }

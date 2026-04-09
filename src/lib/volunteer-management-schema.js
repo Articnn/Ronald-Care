@@ -316,6 +316,80 @@ export async function ensureVolunteerManagementSchema() {
       `)
 
       await pool.query(`
+        INSERT INTO users (siteid, roleid, fullname, email, passwordhash, isactive, createdat, updatedat)
+        SELECT 3, 4, 'Staff Operativo', 'staff.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()
+        WHERE EXISTS (SELECT 1 FROM sites WHERE siteid = 3)
+          AND EXISTS (SELECT 1 FROM roles WHERE roleid = 4 AND rolecode = 'staff')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM users
+            WHERE siteid = 3
+              AND LOWER(email) = 'staff.tla@ronaldcare.demo'
+          )
+      `)
+
+      await pool.query(`
+        INSERT INTO staffprofiles (siteid, userid, workarea, workdays, starttime, endtime, shiftperiod, shiftlabel, availabilitystatus, hourslogged, createdat, updatedat)
+        SELECT 3, u.userid, 'coordinacion', 'Lunes,Martes,Miercoles,Jueves,Viernes', '08:00', '16:00', 'AM', 'manana', 'disponible', 8.00, NOW(), NOW()
+        FROM users u
+        WHERE u.siteid = 3
+          AND LOWER(u.email) = 'staff.tla@ronaldcare.demo'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM staffprofiles sp
+            WHERE sp.userid = u.userid
+          )
+      `)
+
+      await pool.query(`
+        INSERT INTO stafftasks (siteid, referralid, familyid, assigneduserid, createdbyuserid, title, instructions, duedate, priority, status, createdat, updatedat)
+        SELECT
+          3,
+          NULL,
+          NULL,
+          assigned_user.userid,
+          creator.userid,
+          seed.title,
+          seed.instructions,
+          DATE '2026-04-12',
+          seed.priority,
+          seed.status,
+          NOW(),
+          NOW()
+        FROM (
+          VALUES
+            ('Revisión de kit de bienvenida', 'Verificar que los insumos de higiene estén completos para el ingreso de la tarde.', 'media', 'pendiente'),
+            ('Limpieza profunda Habitación 204', 'Coordinar limpieza profunda y revisión final de la habitación 204 para dejarla lista.', 'alta', 'en_proceso'),
+            ('Seguimiento médico externo - Mateo Alejandro', 'Confirmar acompañamiento operativo y seguimiento de salida externa para Mateo Alejandro.', 'alta', 'en_proceso'),
+            ('Actualización de inventario de despensa', 'Actualizar existencias, validar faltantes y dejar corte operativo de despensa.', 'media', 'en_proceso'),
+            ('Confirmación de ingreso logística RM-2026-992', 'Ingreso confirmado, kit entregado y flujo logístico cerrado correctamente.', 'media', 'completada'),
+            ('Registro de donación de ropa - Sede Tlalnepantla', 'Donación capturada en sistema y resguardada en la sede Tlalnepantla.', 'baja', 'completada')
+        ) AS seed(title, instructions, priority, status)
+        CROSS JOIN LATERAL (
+          SELECT userid
+          FROM users
+          WHERE siteid = 3
+            AND LOWER(email) = 'staff.tla@ronaldcare.demo'
+          ORDER BY userid
+          LIMIT 1
+        ) AS assigned_user
+        CROSS JOIN LATERAL (
+          SELECT userid
+          FROM users
+          WHERE roleid = 1
+          ORDER BY userid
+          LIMIT 1
+        ) AS creator
+        WHERE EXISTS (SELECT 1 FROM sites WHERE siteid = 3)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM stafftasks st
+            WHERE st.siteid = 3
+              AND LOWER(st.title) = LOWER(seed.title)
+          )
+      `)
+
+      await pool.query(`
         CREATE INDEX IF NOT EXISTS ix_seguimiento_clinico_family_recordedat
         ON seguimiento_clinico(familyid, recordedat DESC)
       `)

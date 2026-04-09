@@ -1,11 +1,13 @@
-import { AlertCircle, ArrowRight, BellRing, Building2, Clock3, ShieldCheck, Users } from 'lucide-react'
+﻿import { AlertCircle, ArrowRight, BellRing, Building2, Clock3, DoorOpen, ShieldCheck, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { SectionHeader } from '../../components/ui/SectionHeader'
 import { StatusChip } from '../../components/ui/StatusChip'
 import { useAppState } from '../../context/AppContext'
+import { getRooms, type Room } from '../../lib/api'
 
 function formatReadableDate(value?: string | null) {
   if (!value) return 'Pendiente'
@@ -20,6 +22,21 @@ function isUpcoming(dateValue?: string | null, hours = 48) {
   if (Number.isNaN(target.getTime())) return false
   const diffHours = (target.getTime() - Date.now()) / (1000 * 60 * 60)
   return diffHours >= 0 && diffHours <= hours
+}
+
+function roomStatusLabel(room: Room) {
+  if (room.RoomStatus === 'mantenimiento') return 'Mantenimiento'
+  if (room.RoomStatus === 'reservada') return 'Reservada'
+  if (room.RoomStatus === 'ocupada' || Number(room.OccupiedCount || 0) > 0) return 'Ocupada'
+  return 'Disponible'
+}
+
+function roomSummary(rooms: Room[]) {
+  const occupied = rooms.filter((room) => room.RoomStatus === 'ocupada' || Number(room.OccupiedCount || 0) > 0).length
+  const reserved = rooms.filter((room) => room.RoomStatus === 'reservada').length
+  const maintenance = rooms.filter((room) => room.RoomStatus === 'mantenimiento').length
+  const available = Math.max(0, rooms.length - occupied - reserved - maintenance)
+  return { occupied, reserved, maintenance, available }
 }
 
 function DashboardStat({
@@ -49,8 +66,11 @@ function DashboardStat({
 
 export function ExecutiveDashboardPage() {
   const {
+    authToken,
+    currentUser,
     role,
     site,
+    availableSites,
     pendingReferrals,
     families,
     familyStayAutomation,
@@ -59,6 +79,34 @@ export function ExecutiveDashboardPage() {
     notifications,
     unreadNotifications,
   } = useAppState()
+
+  const [rooms, setRooms] = useState<Room[]>([])
+
+  const selectedSiteId =
+    currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+      ? site === 'Todas las sedes'
+        ? null
+        : availableSites.findIndex((item) => item === site) + 1 || null
+      : currentUser?.siteId || null
+
+  useEffect(() => {
+    if (!authToken) return
+    let active = true
+
+    void getRooms(authToken, selectedSiteId)
+      .then((data) => {
+        if (!active) return
+        setRooms(data)
+      })
+      .catch(() => {
+        if (!active) return
+        setRooms([])
+      })
+
+    return () => {
+      active = false
+    }
+  }, [authToken, selectedSiteId])
 
   const executiveLabel = role === 'superadmin' ? 'Dashboard Dirección Ejecutiva' : 'Dashboard Gerente de Sede'
   const executiveSubtitle =
@@ -72,6 +120,8 @@ export function ExecutiveDashboardPage() {
   const availableStaff = staffRoster.filter((member) => member.availability === 'Disponible')
   const urgentReferrals = pendingReferrals.slice(0, 5)
   const latestNotifications = notifications.slice(0, 4)
+  const roomMetrics = useMemo(() => roomSummary(rooms), [rooms])
+  const roomPreview = useMemo(() => rooms.slice(0, 4), [rooms])
 
   return (
     <div className="space-y-8">
@@ -115,6 +165,60 @@ export function ExecutiveDashboardPage() {
             <Link to="/admin/panel">
               <Button variant="secondary">Abrir Panel admin</Button>
             </Link>
+          </div>
+
+          <div className="rounded-[24px] bg-warm-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-500">Habitaciones</p>
+                <h3 className="text-xl font-bold text-warm-900">Room status / acceso rápido</h3>
+                <p className="text-sm text-warm-600">Vista resumida filtrada por la sede activa. Desde aquí puedes saltar al módulo completo.</p>
+              </div>
+              <Link to="/staff/rooms">
+                <Button variant="ghost">Abrir habitaciones</Button>
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Disponibles</p>
+                <p className="mt-2 text-2xl font-black text-warm-900">{roomMetrics.available}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Ocupadas</p>
+                <p className="mt-2 text-2xl font-black text-warm-900">{roomMetrics.occupied}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Reservadas</p>
+                <p className="mt-2 text-2xl font-black text-warm-900">{roomMetrics.reserved}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Mantenimiento</p>
+                <p className="mt-2 text-2xl font-black text-warm-900">{roomMetrics.maintenance}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {roomPreview.map((room) => (
+                <div key={room.RoomId} className="rounded-2xl bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-warm-900">{room.RoomCode}</p>
+                      <p className="text-sm text-warm-700">{room.SiteName}</p>
+                    </div>
+                    <StatusChip status={roomStatusLabel(room)} />
+                  </div>
+                  <p className="mt-3 text-sm text-warm-700">
+                    Capacidad {room.Capacity} · ocupación {room.OccupiedCount}
+                  </p>
+                </div>
+              ))}
+              {roomPreview.length === 0 ? (
+                <div className="rounded-2xl bg-white p-4 text-sm text-warm-700 md:col-span-2">
+                  No hay habitaciones visibles para la sede seleccionada.
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -219,6 +323,12 @@ export function ExecutiveDashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-bold text-warm-900">Abrir Recepción</span>
                   <ArrowRight className="h-4 w-4 text-warm-700" />
+                </div>
+              </Link>
+              <Link to="/staff/rooms" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-bold text-warm-900">Entrar a Habitaciones</span>
+                  <DoorOpen className="h-4 w-4 text-warm-700" />
                 </div>
               </Link>
               <Link to="/tasks" className="rounded-2xl bg-warm-50 p-4 transition hover:-translate-y-0.5">

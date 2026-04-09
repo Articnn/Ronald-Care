@@ -1,28 +1,56 @@
-﻿# RonaldCare Ops Suite
+﻿# RonaldCare
 
-Plataforma operativa no clinica multi-sede para Casa Ronald McDonald.
+Plataforma operativa multi-sede para Casa Ronald McDonald enfocada en admisiones, recepción, hospedaje, lista de espera, seguimiento de estancia y coordinación interna del staff.
 
-RonaldCare centraliza referencias, activacion de familias, hospedaje, check-in, habitaciones, solicitudes, viajes, voluntariado, inventario, kiosko asistido y transparencia para donantes, con una sola base de datos compartida en la nube.
+Hoy el proyecto funciona como un centro de control operativo con acceso unificado, separación por sede y una base de datos centralizada en Neon/PostgreSQL.
 
-## Objetivo
+## Estado actual del producto
 
-El proyecto esta pensado para operar logistica no clinica en tres sedes:
+La app ya no usa una landing pública con selección de perfiles.
+
+El flujo actual de entrada es:
+
+1. `/login`
+2. autenticación por correo y contraseña
+3. redirección automática según rol
+
+Roles operativos vigentes en la interfaz:
+
+- `superadmin` -> visualizado como `Dirección Ejecutiva`
+- `admin` -> visualizado como `Gerente de Sede`
+- `staff` -> visualizado como `Staff / Operación`
+
+La plataforma trabaja actualmente sobre estas sedes:
 
 - Casa Ronald McDonald Ciudad de Mexico
 - Casa Ronald McDonald Puebla
 - Casa Ronald McDonald Tlalnepantla
 
-El sistema soporta estos perfiles:
+## Qué hace hoy RonaldCare
 
-- `superadmin`
-- `admin`
-- `hospital`
-- `staff`
-- `volunteer`
-- `family`
-- `donor` (publico, sin login)
+### Dirección Ejecutiva / Gerente de Sede
 
-## Stack Tecnologico
+- dashboard ejecutivo por sede o global
+- panel administrativo
+- gestión de usuarios internos
+- activación de familias desde referencias
+- automatización de estancia
+- seguimiento de estancia
+- recordatorios de salida
+- gestión de tareas
+- visibilidad de habitaciones y ocupación por sede
+
+### Staff / Operación
+
+- dashboard operativo
+- admisiones con carga documental
+- extracción automática de texto desde PDF o imagen
+- recepción y activación de familias
+- habitaciones y flujo automático de llegadas
+- lista de espera
+- solicitudes
+
+## Stack tecnológico
 
 ### Frontend
 
@@ -38,60 +66,324 @@ El sistema soporta estos perfiles:
 ### Backend
 
 - `Node.js`
-- API estilo serverless montada en `server.dev.js`
-- Endpoints por dominio dentro de `api/`
-- Autenticacion con `JWT`
-- Hash de contrasenas y PIN con `bcryptjs`
+- API modular montada localmente desde `server.dev.js`
+- endpoints organizados por dominio dentro de `api/`
+- autenticación con `JWT`
+- hash de contraseñas con `bcryptjs`
 
-### Base de Datos
+### OCR / extracción documental
+
+- `tesseract.js`
+- lectura de texto desde archivos cargados en `Admisiones`
+- regex para extraer datos logísticos como:
+  - nombre del menor
+  - edad
+  - hospital
+  - médico referente
+  - tutor
+  - teléfonos
+  - fecha programada
+
+### Base de datos
 
 - `PostgreSQL`
 - `Neon` como proveedor cloud
-- Conexion desde backend con `pg`
+- conexión desde backend con `pg`
 
-## Como se maneja la base de datos
+## Cómo se maneja la base de datos
 
-La app no conecta el frontend directo a la base de datos.
+La app no conecta el frontend directo a la base.
 
-El flujo es este:
+El flujo real es:
 
-1. El frontend llama endpoints como `/api/auth/login`, `/api/requests`, `/api/staff/rooms`, etc.
-2. El backend valida permisos, rol y sede.
-3. El backend consulta o actualiza PostgreSQL en Neon.
-4. La informacion vuelve al frontend ya filtrada por sede y permisos.
+1. el frontend llama endpoints `/api/...`
+2. el backend valida token, rol y sede
+3. el backend consulta o actualiza PostgreSQL en Neon
+4. la respuesta vuelve al frontend ya filtrada por permisos
 
-### Archivos clave de DB
+### Tipo de base de datos
 
-- [C:\Users\pachi\Documents\New project\src\lib\db.js](C:\Users\pachi\Documents\New project\src\lib\db.js): pool de conexion a PostgreSQL
-- [C:\Users\pachi\Documents\New project\sql\001_schema.sql](C:\Users\pachi\Documents\New project\sql\001_schema.sql): schema completo
-- [C:\Users\pachi\Documents\New project\sql\002_seed.sql](C:\Users\pachi\Documents\New project\sql\002_seed.sql): datos demo iniciales
-- [C:\Users\pachi\Documents\New project\scripts\run-pg-sql.js](C:\Users\pachi\Documents\New project\scripts\run-pg-sql.js): runner para ejecutar SQL contra Neon
+La base de datos de RonaldCare es:
 
-## Arquitectura del repo
+- `SQL`
+- `relacional`
+- `PostgreSQL`
+
+No es una base NoSQL.
+
+### Por qué se eligió Neon
+
+Se eligió Neon porque:
+
+- permite usar PostgreSQL administrado en la nube
+- encaja bien con datos altamente relacionados
+- simplifica conexión con una sola `DATABASE_URL`
+- facilita trabajar con varias sedes en una sola plataforma
+- es práctico para un proyecto multi-módulo con consultas relacionales
+
+En este proyecto conviene una base relacional porque existen relaciones fuertes entre:
+
+- usuarios
+- roles
+- sedes
+- referencias
+- familias
+- habitaciones
+- tareas
+- solicitudes
+- notificaciones
+
+## Multi-sede: cómo funciona
+
+La app usa un esquema centralizado con separación por sede mediante un identificador único para cada casa.
+
+Eso significa que:
+
+- la información se separa por sede
+- los permisos se validan por rol y sede
+- Dirección Ejecutiva puede ver más de una sede
+- Gerente de Sede queda restringido a su sede
+- Staff trabaja con la sede operativa correspondiente
+
+### Importante
+
+Hoy las sedes son:
+
+- independientes a nivel de datos lógicos
+- no independientes a nivel de infraestructura
+
+Ejemplo:
+
+- si una sede pierde internet local, las otras pueden seguir
+- si falla el backend central o Neon, sí puede afectar a todas
+
+## Arquitectura actual
 
 ```text
-.
-|-- api/                     # endpoints del backend por dominio
-|-- scripts/                 # utilidades de soporte
-|-- sql/                     # schema y seed PostgreSQL
-|-- src/
-|   |-- components/          # UI reutilizable
-|   |-- context/             # AppContext y estado global
-|   |-- data/                # datos visuales locales no operativos donde aun existan
-|   |-- lib/                 # utilidades frontend y backend compartidas
-|   |-- pages/               # vistas por rol/modulo
-|   `-- types.ts             # tipos principales del frontend
-|-- server.dev.js            # servidor local de la API
-|-- .env.example
-|-- package.json
-`-- README.md
+Frontend React/TS (Vite)
+        |
+        v
+Cliente API en src/lib/api.ts
+        |
+        v
+Backend Node con endpoints /api/... en server.dev.js
+        |
+        v
+PostgreSQL relacional en Neon
 ```
 
+## Rutas principales vigentes
+
+### Acceso
+
+- `/login`
+
+### Dirección Ejecutiva
+
+- `/admin/dashboard`
+- `/admin/panel`
+- `/tasks`
+
+### Gerente de Sede
+
+- `/gerente/dashboard`
+- `/admin/panel`
+- `/tasks`
+
+### Staff / Operación
+
+- `/staff/home`
+- `/staff/admissions`
+- `/staff/waitlist`
+- `/staff/reception`
+- `/staff/rooms`
+- `/staff/requests`
+
+## Módulos actuales
+
+### 1. Admisiones
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\staff\StaffEntriesPage.tsx](C:\Users\pachi\Documents\New project\src\pages\staff\StaffEntriesPage.tsx)
+
+Funciones:
+
+- carga de PDF o imagen
+- extracción automática de texto
+- formulario en 3 pasos
+- captura de datos logísticos
+- creación de referencia en estado `referencia`
+- integración con lista de espera si no hay cupo
+
+### 2. Recepción
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\staff\StaffReceptionPage.tsx](C:\Users\pachi\Documents\New project\src\pages\staff\StaffReceptionPage.tsx)
+
+Funciones:
+
+- activación de familia
+- validación de acceso operativo
+
+### 3. Habitaciones
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\staff\StaffRoomsPage.tsx](C:\Users\pachi\Documents\New project\src\pages\staff\StaffRoomsPage.tsx)
+
+Funciones:
+
+- visualización de cuartos por sede
+- estados de habitación
+- ocupación
+- flujo automático de llegadas
+- check-out operativo
+- apoyo de staff por sede
+
+### 4. Lista de Espera
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\staff\StaffWaitlistPage.tsx](C:\Users\pachi\Documents\New project\src\pages\staff\StaffWaitlistPage.tsx)
+
+Funciones:
+
+- familias aprobadas sin habitación
+- prioridad por antigüedad
+- asignación manual de cuarto cuando se libera cupo
+
+### 5. Gestión de Tareas
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\tasks\TaskManagementPage.tsx](C:\Users\pachi\Documents\New project\src\pages\tasks\TaskManagementPage.tsx)
+
+Funciones:
+
+- creación de tareas por sede
+- tablero por estado:
+  - pendientes
+  - en curso
+  - finalizadas
+- asignación a staff o gerente de la sede permitida
+- muro lógico por sede
+
+### 6. Dashboard Ejecutivo
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\admin\ExecutiveDashboardPage.tsx](C:\Users\pachi\Documents\New project\src\pages\admin\ExecutiveDashboardPage.tsx)
+
+Funciones:
+
+- resumen ejecutivo
+- prioridades del día
+- habitaciones por sede
+- salidas próximas
+- accesos rápidos
+- notificaciones recientes
+
+### 7. Panel admin
+
+Ubicación:
+
+- [C:\Users\pachi\Documents\New project\src\pages\admin\AdminPanelPage.tsx](C:\Users\pachi\Documents\New project\src\pages\admin\AdminPanelPage.tsx)
+
+Funciones:
+
+- gestión de usuarios internos
+- activación de familias
+- automatización de estancias
+- seguimiento de estancia
+- recordatorios
+- búsqueda interna y panel operativo detallado
+
+## Autenticación y roles
+
+### Cómo funciona el login
+
+1. el usuario entra a `/login`
+2. envía correo y contraseña
+3. el frontend llama `POST /api/auth/login`
+4. el backend valida usuario, rol, sede y contraseña
+5. genera JWT
+6. el frontend guarda sesión y redirige según rol
+
+### Mapeo visible de roles
+
+- `superadmin` -> `Dirección Ejecutiva`
+- `admin` -> `Gerente de Sede`
+- `staff` -> `Staff / Operación`
+
+### Archivos clave de autenticación
+
+- [C:\Users\pachi\Documents\New project\api\auth\login.js](C:\Users\pachi\Documents\New project\api\auth\login.js)
+- [C:\Users\pachi\Documents\New project\api\auth\me.js](C:\Users\pachi\Documents\New project\api\auth\me.js)
+- [C:\Users\pachi\Documents\New project\src\components\auth\RequireRole.tsx](C:\Users\pachi\Documents\New project\src\components\auth\RequireRole.tsx)
+- [C:\Users\pachi\Documents\New project\src\lib\roleRouting.ts](C:\Users\pachi\Documents\New project\src\lib\roleRouting.ts)
+
+## Endpoints clave
+
+### Auth
+
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `PATCH /api/auth/change-password`
+- `PATCH /api/auth/change-pin`
+
+### Admisiones
+
+- `GET /api/admissions`
+- `POST /api/admissions`
+- `PATCH /api/admissions`
+- `POST /api/admissions/extract`
+- `GET /api/admissions/clinical-history`
+- `GET /api/admissions/departure-reminders`
+
+### Admin
+
+- `GET /api/admin/users`
+- `POST /api/admin/users`
+- `PATCH /api/admin/users`
+- `DELETE /api/admin/users`
+- `GET /api/admin/pending-referrals`
+- `POST /api/admin/activate-family`
+- `GET /api/admin/family-stays`
+- `PATCH /api/admin/family-stays`
+
+### Staff / Operación
+
+- `GET /api/staff/dashboard`
+- `GET /api/staff/roster`
+- `GET /api/staff/tasks`
+- `POST /api/staff/tasks`
+- `PATCH /api/staff/tasks`
+- `GET /api/staff/rooms`
+- `PATCH /api/staff/rooms`
+- `GET /api/staff/arrival-flow`
+- `POST /api/staff/arrival-flow`
+- `PATCH /api/staff/rooms/release`
+
+### Solicitudes
+
+- `GET /api/requests`
+- `POST /api/requests`
+- `PATCH /api/requests/assign`
+- `PATCH /api/requests/resolve`
+- `PATCH /api/requests/status`
+
+### Notificaciones
+
+- `GET /api/notifications`
+- `PATCH /api/notifications`
+
+### Health
+
+- `GET /api/health`
+
 ## Variables de entorno
-
-Usa este archivo base:
-
-- [C:\Users\pachi\Documents\New project\.env.example](C:\Users\pachi\Documents\New project\.env.example)
 
 Ejemplo:
 
@@ -105,13 +397,7 @@ VITE_API_URL=http://localhost:8787/api
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
 ```
 
-Importante:
-
-- No subir `.env`
-- No subir `DATABASE_URL` real
-- No subir secretos JWT reales
-
-## Instalacion
+## Instalación
 
 ### 1. Instalar dependencias
 
@@ -121,22 +407,26 @@ npm install
 
 ### 2. Configurar `.env`
 
-Copia `.env.example` a `.env` y completa la conexion a Neon y el `JWT_SECRET`.
+Copia `.env.example` a `.env` y completa:
 
-### 3. Crear schema y seed en Neon
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `CORS_ORIGIN`
+
+### 3. Crear schema y seed
+
+```bash
+npm run db:setup
+```
+
+O por separado:
 
 ```bash
 npm run db:schema
 npm run db:seed
 ```
 
-O en un solo paso:
-
-```bash
-npm run db:setup
-```
-
-## Ejecutar el proyecto
+## Ejecución local
 
 ### Frontend
 
@@ -179,159 +469,32 @@ npm run db:seed
 npm run db:setup
 ```
 
-## Modulos principales
+## Recomendaciones técnicas de evolución
 
-### Publico / Donor
+### 1. Mantener arquitectura central multi-sede
 
-- landing publica por sede
-- transparencia completa
-- impacto por sede
-- galeria de impacto
-- proximos eventos
+Es la evolución más realista desde el estado actual:
 
-### Hospital
+- un frontend
+- un backend
+- una base central en Neon
+- separación por sede mediante identificador único
 
-- creacion de referencias
-- seguimiento de referencia
+### 2. Convertir permisos a sistema configurable
 
-### Admin / Superadmin
+La siguiente mejora importante es dejar de depender tanto de cambios en código para roles y permisos.
 
-- gestion de usuarios internos
-- activacion de familia desde referencia
-- generacion de QR y PIN
-- pausa y reactivacion de acceso familiar
-- automatizacion de estancia y asignacion de habitacion
+Idealmente habría que evolucionar a:
 
-### Staff
+- `roles`
+- `permissions`
+- `role_permissions`
+- administración de permisos desde panel interno
 
-- dashboard operativo
-- recepcion
-- ayuda asistida / kiosko
-- habitaciones
-- flujo automatico de llegadas
-- solicitudes
-- viajes
-- inventario
-- analitica
+Así el encargado de sistemas podría ajustar permisos sin depender siempre de desarrollo externo.
 
-### Volunteer
+## Seguridad
 
-- tareas del dia
-- historial de tareas
-- horario y rol operativo
-- alertas y notificaciones
-- solicitudes de cambio
-- reportes operativos por area
-
-### Family
-
-- login por QR o ticket + PIN
-- estatus familiar
-- solicitudes
-- viajes
-- comunidad
-- cambio de PIN
-
-## Endpoints locales utiles
-
-### Health
-
-```bash
-curl http://localhost:8787/api/health
-```
-
-### Login staff
-
-```bash
-curl -X POST http://localhost:8787/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"staff@ronaldcare.demo","password":"Demo123!"}'
-```
-
-### Login admin
-
-```bash
-curl -X POST http://localhost:8787/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@ronaldcare.demo","password":"Admin123!"}'
-```
-
-### Login familia
-
-```bash
-curl -X POST http://localhost:8787/api/auth/family-access \
-  -H "Content-Type: application/json" \
-  -d '{"code":"QR-FAM-3481","pin":"Family3481!"}'
-```
-
-## Credenciales demo
-
-### Internos
-
-- `superadmin@ronaldcare.demo` / `Admin123!`
-- `admin@ronaldcare.demo` / `Admin123!`
-- `hospital@ronaldcare.demo` / `Demo123!`
-- `staff@ronaldcare.demo` / `Demo123!`
-- `volunteer@ronaldcare.demo` / `Demo123!`
-
-### Familias
-
-- `QR-FAM-3481` o `TKT-3481` / `Family3481!`
-- `QR-FAM-5520` o `TKT-5520` / `Family5520!`
-- `QR-FAM-7781` o `TKT-7781` / `Family5520!`
-
-## Que ya funciona con backend real
-
-- login interno con JWT
-- login de familia con QR/PIN
-- sesion persistente
-- panel admin
-- activacion de familias
-- QR/PIN familiar
-- voluntariado con tareas, reasignacion y notificaciones
-- dashboard staff
-- solicitudes
-- viajes
-- donor/transparencia por sede
-- habitaciones con incidencias, limpieza y automatizacion base
-- inventario base con datos reales
-- comunidad con persistencia en DB
-
-## Flujo multi-sede
-
-La app esta construida con filtrado por `SiteId`.
-
-Eso permite:
-
-- ver informacion por sede seleccionada
-- restringir usuarios a su sede
-- operar CDMX, Puebla y Tlalnepantla con una sola app
-- mantener una DB centralizada y compartida
-
-## Recomendacion de ramas
-
-- `main`: estable / entregable
-- `dev`: integracion del equipo
-- `feature/<modulo>`: trabajo por funcionalidad
-
-## Seguridad para repo publico
-
-- Nunca subir `.env`
-- Nunca subir `DATABASE_URL` real
-- Nunca subir credenciales reales
-- Nunca subir secretos JWT de produccion
-- Mantener los datos de familias anonimizados en demo
-- Donor debe mostrar solo datos agregados, no PII
-
-## Siguiente paso recomendado
-
-Si se quiere llevar a demo multi-dispositivo o produccion, el siguiente paso es:
-
-1. desplegar frontend
-2. desplegar backend
-3. mantener Neon como DB centralizada
-4. ejecutar pruebas E2E por rol
-
----
-
-Si este README se comparte con el equipo, lo ideal es que todos usen el mismo `schema`, el mismo `seed` y la misma base central en Neon para ver los mismos datos en tiempo real.
+- nunca subir `.env`
+- nunca subir `DATABASE_URL` real
+- nunca subir secretos JWT de producción

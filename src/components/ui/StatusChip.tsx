@@ -13,6 +13,8 @@ type Status =
   | 'Preparacion'
   | 'Reservada'
   | 'Ocupada'
+  | 'Disponible'
+  | 'Mantenimiento'
   | 'Checkout completado'
   | 'Referencia'
   | 'Expediente armado'
@@ -39,6 +41,8 @@ const styles: Record<Status, string> = {
   Preparacion: 'bg-amber-100 text-amber-800',
   Reservada: 'bg-yellow-100 text-yellow-800',
   Ocupada: 'bg-red-100 text-red-800',
+  Disponible: 'bg-emerald-100 text-emerald-800',
+  Mantenimiento: 'bg-orange-100 text-orange-800',
   'Checkout completado': 'bg-emerald-100 text-emerald-800',
   Referencia: 'bg-blue-100 text-blue-800',
   'Expediente armado': 'bg-amber-100 text-amber-800',

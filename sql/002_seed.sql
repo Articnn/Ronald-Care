@@ -1,4 +1,4 @@
-TRUNCATE TABLE seguimiento_clinico, volunteerchangerequests, volunteertasks, stafftasks, staffprofiles, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
+﻿TRUNCATE TABLE seguimiento_clinico, volunteerchangerequests, volunteertasks, stafftasks, staffprofiles, auditevents, communityposts, returnpasses, impactevents, inventorymovements, inventoryitems, volunteershifts, trips, requests, familyaccess, families, rooms, referrals, users, roles, sites RESTART IDENTITY CASCADE;
 
 INSERT INTO sites (siteid, sitecode, name, isactive, createdat) VALUES
   (1, 'CDMX', 'Casa Ronald McDonald Ciudad de Mexico', TRUE, NOW()),
@@ -22,7 +22,8 @@ INSERT INTO users (userid, siteid, roleid, fullname, email, passwordhash, isacti
   (7, 3, 5, 'Voluntaria Tlalnepantla', 'volunteer.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
   (8, 1, 5, 'Limpieza CDMX', 'volunteer.clean.cdmx@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
   (9, 2, 5, 'Limpieza Puebla', 'volunteer.clean.puebla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
-  (10, 3, 5, 'Limpieza Tlalnepantla', 'volunteer.clean.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW());
+  (10, 3, 5, 'Limpieza Tlalnepantla', 'volunteer.clean.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW()),
+  (11, 3, 4, 'Staff Operativo', 'staff.tla@ronaldcare.demo', '$2b$10$ceUvibSQEe28iC0UJOpoM.qW48ntxVigab93PJmyVnHZEuLUO5RPq', TRUE, NOW(), NOW());
 
 INSERT INTO rooms (roomid, siteid, roomcode, capacity, roomtype, occupiedcount, roomstatus, availableat, roomnote, isactive, createdat) VALUES
   (1, 1, 'CDMX-N1', 2, 'normal', 1, 'ocupada', NULL, NULL, TRUE, NOW()),
@@ -93,7 +94,8 @@ INSERT INTO volunteershifts (volunteershiftid, siteid, userid, volunteername, vo
 
 INSERT INTO staffprofiles (staffprofileid, siteid, userid, workarea, workdays, starttime, endtime, shiftperiod, shiftlabel, availabilitystatus, hourslogged, createdat, updatedat) VALUES
   (1, 1, 4, 'recepcion', 'Lunes,Martes,Miercoles,Jueves,Viernes', '07:00', '15:00', 'AM', 'manana', 'disponible', 8.00, NOW(), NOW()),
-  (2, 2, 6, 'apoyo_familiar', 'Lunes,Martes,Jueves,Viernes', '12:00', '18:00', 'PM', 'tarde', 'disponible', 6.00, NOW(), NOW());
+  (2, 2, 6, 'apoyo_familiar', 'Lunes,Martes,Jueves,Viernes', '12:00', '18:00', 'PM', 'tarde', 'disponible', 6.00, NOW(), NOW()),
+  (3, 3, 11, 'coordinacion', 'Lunes,Martes,Miercoles,Jueves,Viernes', '08:00', '16:00', 'AM', 'manana', 'disponible', 8.00, NOW(), NOW());
 
 INSERT INTO volunteertasks (volunteertaskid, siteid, volunteeruserid, assignedbyuserid, familyid, relatedrequestid, title, tasktype, shiftperiod, taskday, status, notes, createdat, updatedat) VALUES
   (1, 1, 5, 4, 1, 1, 'Traslado matutino a cita', 'traslados', 'AM', CURRENT_DATE, 'pendiente', 'Recoger a la familia a las 07:15', NOW(), NOW()),
@@ -134,7 +136,20 @@ INSERT INTO communityposts (communitypostid, familyid, authoralias, message, sta
   (1, 1, 'Familia Lopez', 'Llevar horarios anotados nos ayudo mucho para los traslados.', 'active', 0, NOW(), NULL, NULL);
 
 INSERT INTO stafftasks (stafftaskid, siteid, referralid, familyid, assigneduserid, createdbyuserid, title, instructions, priority, status, createdat, updatedat) VALUES
-  (1, 1, 1, 1, 4, 2, 'Onboarding de llegada para Maria Lopez', 'Preparar recepcion, kit de bienvenida y acceso asistido para la familia Maria Lopez.', 'media', 'pendiente', NOW(), NOW());
+  (1, 1, 1, 1, 4, 2, 'Onboarding de llegada para Maria Lopez', 'Preparar recepcion, kit de bienvenida y acceso asistido para la familia Maria Lopez.', 'media', 'pendiente', NOW(), NOW()),
+  (2, 3, NULL, NULL, 11, 1, 'Revisión de kit de bienvenida', 'Verificar que los insumos de higiene estén completos para el ingreso de la tarde.', 'media', 'pendiente', NOW(), NOW()),
+  (3, 3, NULL, NULL, 11, 1, 'Limpieza profunda Habitación 204', 'Coordinar limpieza profunda y revisión final de la habitación 204 para dejarla lista.', 'alta', 'en_proceso', NOW(), NOW()),
+  (4, 3, NULL, NULL, 11, 1, 'Seguimiento médico externo - Mateo Alejandro', 'Confirmar acompañamiento operativo y seguimiento de salida externa para Mateo Alejandro.', 'alta', 'en_proceso', NOW(), NOW()),
+  (5, 3, NULL, NULL, 11, 1, 'Actualización de inventario de despensa', 'Actualizar existencias, validar faltantes y dejar corte operativo de despensa.', 'media', 'en_proceso', NOW(), NOW()),
+  (6, 3, NULL, NULL, 11, 1, 'Confirmación de ingreso logística RM-2026-992', 'Ingreso confirmado, kit entregado y flujo logístico cerrado correctamente.', 'media', 'completada', NOW(), NOW()),
+  (7, 3, NULL, NULL, 11, 1, 'Registro de donación de ropa - Sede Tlalnepantla', 'Donación capturada en sistema y resguardada en la sede Tlalnepantla.', 'baja', 'completada', NOW(), NOW());
+
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 2;
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 3;
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 4;
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 5;
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 6;
+UPDATE stafftasks SET duedate = '2026-04-12' WHERE stafftaskid = 7;
 
 INSERT INTO seguimiento_clinico (followupid, familyid, referralid, siteid, recordedbyuserid, clinicname, feedbackmessage, previouscheckoutdate, estimatedcheckoutdate, recordedat) VALUES
   (1, 1, 1, 1, 3, 'Hospital Infantil CDMX', 'La familia continuara observacion 2 dias mas por respuesta al tratamiento.', CURRENT_DATE + INTERVAL '1 day', CURRENT_DATE + INTERVAL '2 days', NOW());
@@ -166,4 +181,5 @@ SELECT setval(pg_get_serial_sequence('impactevents', 'impacteventid'), COALESCE(
 SELECT setval(pg_get_serial_sequence('returnpasses', 'returnpassid'), COALESCE((SELECT MAX(returnpassid) FROM returnpasses), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('communityposts', 'communitypostid'), COALESCE((SELECT MAX(communitypostid) FROM communityposts), 1), TRUE);
 SELECT setval(pg_get_serial_sequence('auditevents', 'auditeventid'), COALESCE((SELECT MAX(auditeventid) FROM auditevents), 1), TRUE);
+
 

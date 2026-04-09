@@ -40,6 +40,10 @@ function cleanLatinText(value: string) {
     .trim()
 }
 
+function cleanDisplayValue(value?: string | null) {
+  return cleanLatinText(String(value || '')).replace(/\s*\+\s*$/, '').trim()
+}
+
 export function TaskManagementPage() {
   const { authToken, currentUser, site, availableSites, pushToast } = useAppState()
   const [tasks, setTasks] = useState<StaffTaskRecord[]>([])
@@ -250,7 +254,7 @@ export function TaskManagementPage() {
                   {!isLoadingUsers && eligibleUsers.length === 0 ? <option value="">Sin equipo disponible en esta sede</option> : null}
                   {eligibleUsers.map((user) => (
                     <option key={user.UserId} value={user.UserId}>
-                      {cleanLatinText(user.FullName)}
+                      {cleanDisplayValue(user.FullName)}
                     </option>
                   ))}
                 </select>
@@ -288,7 +292,7 @@ export function TaskManagementPage() {
               </div>
             </div>
 
-            {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{cleanLatinText(error)}</div> : null}
+            {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{cleanDisplayValue(error)}</div> : null}
 
             <Button type="submit" fullWidth isLoading={isSaving} disabled={disableCreation || isLoadingUsers || eligibleUsers.length === 0}>
               Crear tarea
@@ -358,19 +362,19 @@ function TaskCard({ task }: { task: StaffTaskRecord }) {
           <UserCheck2 className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold text-warm-900" title={cleanLatinText(task.Title)}>
-            {cleanLatinText(task.Title)}
+          <p className="truncate font-bold text-warm-900" title={cleanDisplayValue(task.Title)}>
+            {cleanDisplayValue(task.Title)}
           </p>
-          <p className="truncate text-sm text-warm-700" title={cleanLatinText(task.AssignedUserName || 'Sin asignación')}>
-            {cleanLatinText(task.AssignedUserName || 'Sin asignación')}
+          <p className="truncate text-sm text-warm-700" title={cleanDisplayValue(task.AssignedUserName || 'Sin asignación')}>
+            {cleanDisplayValue(task.AssignedUserName || 'Sin asignación')}
           </p>
           <p className="mt-2 break-words text-sm text-warm-600">
-            {cleanLatinText(task.Instructions)}
+            {cleanDisplayValue(task.Instructions)}
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-warm-500">
             <span>Vence {formatDate(task.DueDate || task.CreatedAt)}</span>
             <span>·</span>
-            <span>{cleanLatinText(task.Priority)}</span>
+            <span>{cleanDisplayValue(task.Priority)}</span>
           </div>
         </div>
       </div>
@@ -381,3 +385,5 @@ function TaskCard({ task }: { task: StaffTaskRecord }) {
 function EmptyColumn({ label }: { label: string }) {
   return <div className="rounded-2xl bg-warm-50 px-4 py-5 text-sm text-warm-600">{label}</div>
 }
+
+export default TaskManagementPage

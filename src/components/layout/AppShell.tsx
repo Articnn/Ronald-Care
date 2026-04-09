@@ -91,7 +91,18 @@ export function AppShell() {
   if (isLoginRoute) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Outlet />
+        <header className="border-b border-warm-200 bg-warm-700 text-white shadow-soft">
+          <div className="mx-auto flex max-w-7xl items-center px-6 py-5">
+            <Link to="/login" className="flex items-center gap-3">
+              <HeartHandshake className="h-8 w-8" />
+              <p className="text-xl font-extrabold">RonaldCare</p>
+            </Link>
+          </div>
+        </header>
+
+        <main className="min-h-[calc(100vh-89px)]">
+          <Outlet />
+        </main>
       </div>
     )
   }

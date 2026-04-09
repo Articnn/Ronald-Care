@@ -721,7 +721,7 @@ export function AdminPanelPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold text-gray-900">{referral.caregiverName} {referral.familyLastName}</p>
-                  <p className="text-xs text-gray-500">{referral.site} · llegada {referral.arrivalDate}</p>
+                  <p className="text-xs text-gray-500">{referral.site} · llegada {formatReadableDate(referral.arrivalDate)}</p>
                 </div>
                 <StatusChip status={referral.status} />
               </div>
@@ -759,8 +759,8 @@ export function AdminPanelPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-gray-900">{item.caregiverName} {item.familyLastName}</p>
-                  <p className="text-xs text-gray-500">{item.site} · llegada {item.arrivalDate} · estancia {item.stayDays} días</p>
-                  <p className="text-xs text-gray-500">Salida prevista: {item.plannedCheckoutDate || 'Pendiente'} · Habitación: {item.plannedRoomCode || 'Por asignar'}</p>
+                  <p className="text-xs text-gray-500">{item.site} · llegada {formatReadableDate(item.arrivalDate)} · estancia {item.stayDays} días</p>
+                  <p className="text-xs text-gray-500">Salida prevista: {formatReadableDate(item.plannedCheckoutDate)} · Habitación: {item.plannedRoomCode || 'Por asignar'}</p>
                 </div>
                 <StatusChip status={item.automationStatus} />
               </div>
